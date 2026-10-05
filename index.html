@@ -2046,7 +2046,7 @@ function foundTown(cx, cy, R, opts) {
     align: rollAlignment(rng), militia: 0, relations: {}, wars: {}, raidCooldown: 0, wallR: 0, raidsMade: 0, raidsSuffered: 0,
     shape: [0.25 + rng() * 0.3, rng() * 6.283, 0.15 + rng() * 0.25, rng() * 6.283, rng() * 0.15, rng() * 6.283],
     mil: 0, civ: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
-    res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, coin: 30 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, coin: 0 },
+    res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, game: 0, coin: 30 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, game: 0, coin: 0 },
     power: 0, powerNeed: 0, powerRatio: 1, water: true, master: -1, mineKind: {}, spent: {}, deepSite: {}, livestock: { cattle: 0, pigs: 0, sheep: 0, chickens: 0 },
   };
   seedPeople(town, rng);
@@ -3097,7 +3097,7 @@ function updateWagons() {
       if (from) { from.tradeFood = world.tick + 400; }
       if (to && from && to.res && from.res) { // and whatever the other side is short of, if there is spare
         let best = null, bestAmt = 0;
-        for (const k of RES_KINDS) { const need = resCap(to, k) - to.res[k], spare = from.res[k] - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
+        for (const k of RES_KINDS) { const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
         if (best) { const amt = Math.min(10, Math.floor(bestAmt)); from.res[best] -= amt; addRes(to, best, amt); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}`, 'build'); }
       }
       if (Math.random() < 0.25 && to && from) log(`A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
@@ -4379,7 +4379,8 @@ function holdMarket(tr, town) {
     if (!town.tamed || !town.tamed[k]) { town.tamed = town.tamed || {}; town.tamed[k] = 1; stat('ev', 'tamed'); }
   }
   // Then what it is short of, cheapest first, as long as the coin holds out.
-  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && town.res[k] < resCap(town, k) * 0.4).sort((a, b) => PRICE[a] - PRICE[b]);
+  if (!Number.isFinite(town.res.coin)) town.res.coin = 0;
+  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (town.res[k] || 0) < resCap(town, k) * 0.4).sort((a, b) => PRICE[a] - PRICE[b]);
   for (const k of wants) {
     const amt = Math.min(tr.stock[k], Math.floor(town.res.coin / PRICE[k]), resCap(town, k) - town.res[k]);
     if (amt <= 0) continue;
@@ -4388,6 +4389,7 @@ function holdMarket(tr, town) {
   // And sells its surplus.
   for (const k of RES_KINDS) {
     if (k === 'coin' || !PRICE[k]) continue;
+    if (!Number.isFinite(town.res[k])) town.res[k] = 0;
     const cap = resCap(town, k), over = town.res[k] - Math.floor(cap * 0.5);
     if (town.res[k] < cap * 0.65 || over <= 0) continue;
     const amt = Math.min(over, Math.floor(tr.coin / PRICE[k]));
@@ -4413,6 +4415,7 @@ function growTown(town) {
   const n = world.n, type = world.type;
 
   agePeople(town);
+  for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   town.water = hasWater(town);
   town.powerRatio = updatePower(town);
   if (Math.random() < 0.5) town.res.coin += Math.ceil(town.popLeft / 120); // taxes and market dues
@@ -6442,7 +6445,7 @@ function drawHistory() {
   if (!H || H.ticks.length < 2) { g.fillStyle = '#6a5c4e'; g.font = '11px IBM Plex Mono, monospace'; g.fillText('not enough history yet', 12, 24); renderHistControls(); return; }
   const n = H.ticks.length, m = histState.metric, ids = histTownIds();
   const totals = new Float64Array(n);
-  for (const id of ids) { const r = H.towns[id], v = r[m] || []; for (let k = 0; k < v.length; k++) totals[r.from + k] += v[k]; }
+  for (const id of ids) { const r = H.towns[id], v = r[m] || []; for (let k = 0; k < v.length; k++) totals[r.from + k] += Number.isFinite(v[k]) ? v[k] : 0; }
   let max = 1; for (let k = 0; k < n; k++) max = Math.max(max, totals[k]);
   const padL = 36, padB = 16, padT = 6, padR = 4;
   const x = k => padL + (W - padL - padR) * (n === 1 ? 0 : k / (n - 1)), y = v => padT + (Hh - padT - padB) * (1 - v / max);
@@ -6452,11 +6455,12 @@ function drawHistory() {
   for (const id of ids) {
     const r = H.towns[id], v = r[m] || []; if (!v.length) continue;
     g.beginPath();
-    for (let k = 0; k < v.length; k++) g.lineTo(x(r.from + k), y(base[r.from + k] + v[k]));
+    const val = k => (Number.isFinite(v[k]) ? v[k] : 0);
+    for (let k = 0; k < v.length; k++) g.lineTo(x(r.from + k), y(base[r.from + k] + val(k)));
     for (let k = v.length - 1; k >= 0; k--) g.lineTo(x(r.from + k), y(base[r.from + k]));
     g.closePath(); g.fillStyle = townColor(id); g.globalAlpha = histState.hover === id ? 1 : 0.8; g.fill(); g.globalAlpha = 1;
     g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1; g.stroke();
-    for (let k = 0; k < v.length; k++) base[r.from + k] += v[k];
+    for (let k = 0; k < v.length; k++) base[r.from + k] += val(k);
   }
   g.strokeStyle = '#3a2e27'; g.beginPath(); g.moveTo(padL, padT); g.lineTo(padL, Hh - padB); g.lineTo(W - padR, Hh - padB); g.stroke();
   g.fillStyle = '#9a8a78'; g.font = `${W > 600 ? 12 : 9}px IBM Plex Mono, monospace`; g.textAlign = 'right';
@@ -6699,6 +6703,7 @@ function restore(d) {
   world.surveyed = d.arrays.surveyed ? unpackArr(d.arrays.surveyed, Uint8Array) : new Uint8Array(N);
   world.biome = d.arrays.biome ? unpackArr(d.arrays.biome, Uint8Array) : new Uint8Array(N);
   world.climate = d.climate || { name: 'temperate', moist: 0, cold: 0 }; world.trader = d.trader || null; world.nextTrader = d.nextTrader || 0; world.traderWary = d.traderWary || 0; world.roadProjects = (d.roadProjects || []).slice(); world.stats = d.stats || newStats(); world.herds = (d.herds || []).slice(); world.history = d.history || { ticks: [], towns: {} }; histLastLen = -1;
+  for (const id in world.history.towns) { const r = world.history.towns[id]; for (const m of ['pop', 'homes', 'militia', 'coin', 'food', 'stock']) if (r[m]) for (let k = 0; k < r[m].length; k++) if (!Number.isFinite(r[m][k])) r[m][k] = 0; }
   world.snowLv = new Uint8Array(N); world.snowCells = 0;
   for (let i = 0; i < N; i++) { world.snowLv[i] = snowLevel(world.snow[i]); if (world.snow[i]) world.snowCells++; }
   world.snowCover = 0;
@@ -6715,7 +6720,8 @@ function restore(d) {
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
   world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
-  for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (t.res[k] === undefined) t.res[k] = k === 'coin' ? 30 : 0; if (t.gathered[k] === undefined) t.gathered[k] = 0; } t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (!t.people) seedPeople(t, Math.random); if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
+  for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (!Number.isFinite(t.res[k])) t.res[k] = k === 'coin' ? 30 : 0; if (!Number.isFinite(t.gathered[k])) t.gathered[k] = 0; }
+    if (t.livestock) for (const k of LIVESTOCK) if (!Number.isFinite(t.livestock[k])) t.livestock[k] = 0; t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (!t.people) seedPeople(t, Math.random); if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
   for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;
