@@ -22,6 +22,7 @@ P(ignite) = spread probability x fuel factor x wind factor
 | Grass | 1.00            | 2 to 4                |
 | Pine  | 0.75            | 6 to 10               |
 | Oak   | 0.55            | 12 to 20              |
+| Big pine | 0.65         | 10 to 16              |
 
 Water and rock never burn. Burnt cells leave ash (grass) or a charred stump (trees), with
 embers that glow for a few ticks.
@@ -51,6 +52,32 @@ rolled fresh each time, so no two runs play the same.
   more people than ones that had rallied before the fire arrived.
 
 The dispatch log on the right narrates each run. Stats show buildings and population left.
+
+## A living world
+
+Leave it running. Nothing is static.
+
+- **Regrowth.** Ash greens up into grass, grass seeds into pine where there are trees
+  nearby, pines grow into big pines, oaks spread slowly, stumps crumble, and old
+  firebreaks grass over. Roads stay. The regrowth slider scales all of it.
+- **Weather.** The valley drifts between clear, drought, rain and storms. Drought makes
+  everything tinder and doubles ember throw. Rain damps spread and puts fires out. Storms
+  bring natural lightning, the original assignment's ignition source. You can force a
+  weather state or leave it on auto.
+- **Towns grow.** Between fires a town's population rises, it fills in and then expands
+  outward along new roads until it reaches the size cap you set. Rubble gets rebuilt.
+  At around 35 people a town builds a fire station and buys an engine, buying more as it
+  grows. A prosperous town with a station may open an airstrip. Nobody starts with
+  aircraft. Sorties regenerate slowly.
+- **Settlers.** Every so often a wagon appears at the map edge and heads for open ground
+  to found a small new town, or for a dead town to resettle it. Wagons that drive into
+  a fire do not arrive.
+- **Ignitions.** Rare, so there are long stretches of calm: lightning in storms, a campfire
+  or burn pile that got away (far more likely in a drought), and every town has that one
+  person.
+- **Large pines** burn longer and resist ignition a little more than small ones.
+
+Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 60 events.
 
 ## Controls
 
@@ -82,3 +109,4 @@ The `.nojekyll` file keeps GitHub from running the page through Jekyll.
 - Point the wind east at full strength and strike the west edge.
 - Set map size to 300 and blast radius to 6.
 - Drop a missile right next to a town with the wind blowing toward it and watch the log.
+- Crank speed to 240, set the town cap to 14, and come back in ten minutes to see what the valley became.
