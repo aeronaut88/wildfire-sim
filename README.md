@@ -143,7 +143,17 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   town.
 - **Organic towns.** Footprints are lumpy and growth hugs the streets. New roads get built
   as towns grow.
-- **Settlements panel** shows alignment, militia, walls, tech, wars, allies and feuds.
+- **Buildings.** Tech and population unlock real structures, placed beside roads: town hall
+  (100 people), barracks (militia, drilling soldiers you can see), forge and university
+  (research), factory (research, smoking stacks, and the odd industrial fire), watchtower
+  (detection), missile silo (where the bomb launches from), and tenements that house 20
+  instead of 6 once masonry is known. Every one of them burns.
+- **Battles you can watch.** When a warband arrives, two lines form up (defenders on the
+  wall if there is one) and trade volleys: arrows, crossbow bolts, musket smoke, or gunfire
+  depending on tech. Soldiers fall. Siege engines and artillery lob fire into the town while
+  the fight goes on. Outcomes are overrun (homes torched, captives taken), held, or
+  withdrawn, and a lawful-evil conqueror with the numbers may annex the place outright.
+- **Settlements panel** shows alignment, militia, walls, tech, buildings, wars, allies and feuds.
 
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
