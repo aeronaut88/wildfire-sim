@@ -235,8 +235,10 @@ what paces a town's recovery.
   and only a town that knows what it is will dig for it.
 - **Water.** A town needs a river, a lake or a well. Without one it stays small, and a drought
   kills.
-- **Power.** Water wheels on the river, coal plants that eat coal, and late solar arrays feed
-  factories, universities, waterworks and silos. A brownout slows research.
+- **Power.** Water wheels, coal plants that eat coal, hydroelectric dams on the river (weaker
+  in drought and hard frost), solar arrays that follow the sky, and reactors that burn uranium
+  feed factories, universities, waterworks and silos. A brownout slows research. A reactor
+  that burns down or falls to an army melts down and poisons the land around it for years.
 
 Stockpiles are small, so towns save up for the next building and sometimes announce what
 they are short of. Research alone is not enough: steel needs iron, gunpowder needs coal,
@@ -263,6 +265,12 @@ regrows beneath it, and the HUD shows the share of the valley under cover. Melt 
 the season and the weather: almost nothing in a clear winter, fast in spring rain, and high
 ground holds its snow longest. Ground that has just thawed is damp for a while, which is why
 early spring fires fizzle. Shift+hover a cell to see its snow.
+
+## Looking closer
+
+Scroll to zoom at the cursor, drag to pan, pinch and drag on a phone, or use the + / - / home
+buttons in the HUD. A click that did not drag still fires a missile. This is what makes a
+300 x 300 valley playable.
 
 ## Controls
 

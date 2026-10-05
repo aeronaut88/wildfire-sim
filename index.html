@@ -137,6 +137,12 @@
   .hud .vane.calm path { fill: var(--ink-dim); }
   .hud .ws { color: var(--ink-dim); min-width: 30px; }
   .hud .tk { color: var(--ink-dim); }
+  .hud .zoomctl { pointer-events: auto; display: inline-flex; gap: 3px; margin-left: 2px; }
+  .hud .zoomctl button { font: inherit; font-size: 11px; line-height: 1; padding: 3px 6px; background: #1a1512; color: var(--ink); border: 1px solid var(--panel-edge); cursor: pointer; }
+  .hud .zoomctl button:hover { background: #2a221c; }
+  .hud .zoom { color: var(--ink-dim); min-width: 34px; }
+  #map { cursor: crosshair; touch-action: none; }
+  #map.panning { cursor: grabbing; }
   .tip {
     position: absolute; z-index: 3; pointer-events: none; display: none;
     min-width: 170px; max-width: 240px;
@@ -394,6 +400,9 @@
         <span class="tk" id="hudTick">t0</span>
         <span class="sep"></span>
         <span class="tk" id="hudSeed">#</span>
+        <span class="sep"></span>
+        <span class="zoom" id="hudZoom">1x</span>
+        <span class="zoomctl"><button id="zoomIn" title="zoom in (+)">+</button><button id="zoomOut" title="zoom out (-)">&minus;</button><button id="zoomReset" title="whole map (0)">&#8962;</button></span>
       </div>
       <div class="tip" id="tip"></div>
     </div>
@@ -990,6 +999,18 @@ SPRITES.plant = [
   'gg9999999999999g','gg9D99D99D99D99g','gg9D99D99D99D99g','gg9999999999999g',
   'gg99999KK999999g','gg99999KK999999g','g777777777777777','gggggggggggggggg',
 ];
+SPRITES.hydro = [
+  'gggggggggggggggg','gggg44444444gggg','ggg4455555544ggg','gg445555555544gg',
+  'gg455555555554gg','gg45yy5555yy54gg','gg455y5555y554gg','gg455555555554gg',
+  'gg444444444444gg','ggWWWWWWWWWWWWgg','ggwwwwwwwwwwwwgg','gg444444444444gg',
+  'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
+];
+SPRITES.nuclear = [
+  'gggggggggggggggg','ggggg888888ggggg','gggggRRRRRRggggg','gggggR4444Rggggg',
+  'gggggR4444Rggggg','gggggR4444Rggggg','ggggR444444Rgggg','ggggR444444Rgggg',
+  'gggR44444444Rggg','gggR44444444Rggg','ggR4444444444Rgg','ggRRRRRRRRRRRRgg',
+  'g5555555$$55555g','g5555555$$55555g','g55555555555555g','gggggggggggggggg',
+];
 SPRITES.solar = [
   'gggggggggggggggg','gggggggggggggggg','g55555555555555g','g5uuu5uuu5uuu55g',
   'g5uuu5uuu5uuu55g','g55555555555555g','g5uuu5uuu5uuu55g','g5uuu5uuu5uuu55g',
@@ -1004,7 +1025,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1054,17 +1075,19 @@ function snowStamps(tree) {
     return c;
   }));
 }
-const SNOW16 = snowStamps(false), SNOWT16 = snowStamps(true);
+const SNOW16 = snowStamps(false); // drifts on ice only; land uses the snowed tile sets below
 // Deep snow: a proper snowed version of every tile. Ground pixels turn white with a faint
 // shadow dither, and the first pixel of anything standing up gets a white cap. Roads stay
 // a little darker, as if the town keeps them trodden.
 const SNOW_GROUND = { g: 1, G: 1, h: 1, b: 1, B: 1, a: 1, z: 1, Z: 1, '6': 1, '1': 2, '2': 2, '3': 2 };
-function snowedRows(name, rows) {
+function snowedRows(name, rows, ground) {
   const out = rows.map(r => r.split(''));
   for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
     const g = SNOW_GROUND[out[j][i]];
-    if (g === 1) out[j][i] = hash2(i, j, 9) < 0.16 ? '%' : 'S';
-    else if (g === 2) out[j][i] = hash2(i, j, 9) < 0.5 ? '%' : out[j][i];
+    // Ground whitens in clumps (low-frequency hash) so patchy cover reads as drifts, not static.
+    const h = (hash2(i >> 1, j >> 1, 9) * 0.7 + hash2(i, j, 13) * 0.3);
+    if (g === 1 && h < ground) out[j][i] = hash2(i, j, 17) < 0.16 ? '%' : 'S';
+    else if (g === 2 && h < ground * 0.6) out[j][i] = '%';
   }
   for (let i = 0; i < 16; i++) {
     for (let j = 0; j < 16; j++) {
@@ -1077,11 +1100,13 @@ function snowedRows(name, rows) {
   }
   return out.map(r => r.join(''));
 }
-const SNOWED16 = {};
-{
+const SNOW_GROUND_FRAC = [0, 0.4, 0.75, 1.01];
+const SNOWED16 = SNOW_GROUND_FRAC.map(frac => {
   const pal = { ...PAL, ...SEASON_PAL[3], '%': '#dde5f2' };
-  for (const k in SPRITES) SNOWED16[k] = buildSprite16(snowedRows(k, seasonRows(k, SPRITES[k], 3)), pal);
-}
+  const set = {};
+  for (const k in SPRITES) set[k] = buildSprite16(snowedRows(k, seasonRows(k, SPRITES[k], 3), frac), pal);
+  return set;
+});
 const SEASON_TINT = [null, 'rgba(255,225,140,0.035)', 'rgba(255,165,70,0.05)', 'rgba(185,200,240,0.07)'];
 
 // Black silhouettes for shadows that match the sprite's shape.
@@ -1095,7 +1120,7 @@ for (const k of ['dragon0', 'dragon1', 'plane']) {
   SIL16[k] = c;
 }
 
-let SPR = {}, SPRS = [], SNOW = [], SNOWT = [], SNOWED = {};
+let SPR = {}, SPRS = [], SNOW = [], SNOWED = [];
 function scaleSet(src, px) {
   const out = {};
   for (const k in src) {
@@ -1113,8 +1138,7 @@ function rescaleSprites(px) {
   for (const k in SPR16) if (!SPRS[1][k]) SPRS[1][k] = scaleSet({ k: SPR16[k] }, px).k;
   SPR = SPRS[1];
   SNOW = SNOW16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
-  SNOWT = SNOWT16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
-  SNOWED = scaleSet(SNOWED16, px);
+  SNOWED = SNOWED16.map(set => scaleSet(set, px));
 }
 
 /* ───────────────────────── Noise & RNG ───────────────────────── */
@@ -1154,7 +1178,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1182,15 +1206,17 @@ const FUEL = {
   [T.WHEEL]:      { ignite: 0.6,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.PLANT]:      { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
   [T.SOLAR]:      { ignite: 0.3,  burn: [4, 8],   after: T.RUBBLE, spots: false },
+  [T.HYDRO]:      { ignite: 0.1,  burn: [3, 5],   after: T.RUBBLE, spots: false },
+  [T.NUCLEAR]:    { ignite: 0.35, burn: [10, 16], after: T.RUBBLE, spots: false },
   [T.SILO]:       { ignite: 0.2,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.SOLAR);
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.NUCLEAR);
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
@@ -2433,6 +2459,23 @@ function detonateNuke(targetIdx) {
   log(`The bomb falls on ${nearTown ? nearTown.name : 'the valley'}. The ground will not forget.`, 'nuke');
 }
 
+// A reactor that burns or falls to an army does not just go out.
+function meltdown(i, town) {
+  const n = world.n, cx = i % n, cy = (i - cx) / n, R = 7;
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const d = Math.hypot(dx, dy); if (d > R) continue;
+    addFallout(y * n + x, Math.round(230 * (1 - d / (R + 1))));
+  }
+  for (let k = 0; k < 6; k++) { const a = Math.random() * Math.PI * 2, d = 1 + Math.random() * 3; const x = Math.round(cx + Math.cos(a) * d), y = Math.round(cy + Math.sin(a) * d); if (x >= 0 && y >= 0 && x < n && y < n && isFuel(world.type[y * n + x])) ignite(y * n + x); }
+  const [px, py] = cellCenter(i);
+  popups.push({ x: px, y: py - 20, text: 'MELTDOWN', color: '#b8ff2e', t0: performance.now(), dur: 4000 });
+  explosions.push({ x: px, y: py, t0: performance.now(), dur: 1800, r: 5 * cellPx, nuke: false });
+  shake = 2;
+  if (params.weatherMode === 'auto') setWeather('ashfall', true);
+  town.meltdowns = (town.meltdowns || 0) + 1;
+  log(`MELTDOWN at ${town.name}. The reactor burns open and the land around it is poisoned for years.`, 'nuke');
+}
 function addFallout(i, dose) {
   if (world.fallout[i] === 0) world.falloutList.push(i);
   world.fallout[i] = Math.max(world.fallout[i], dose);
@@ -3275,6 +3318,7 @@ function onBuildingDestroyed(i, cause) {
     town.firstHit = true;
   }
   world.buildingsLeft--; world.buildingsLost++;
+  if (t === T.NUCLEAR) meltdown(i, town);
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
   else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');
   if (t === T.STATION) {
@@ -3485,6 +3529,7 @@ const COST = {
   [T.FACTORY]: { stone: 10, iron: 8, copper: 4 }, [T.UNIVERSITY]: { stone: 10, wood: 6, copper: 4 }, [T.TOWER]: { stone: 6, wood: 2 },
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
+  [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, coal: 2 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10 },
 };
@@ -3523,6 +3568,12 @@ function updatePower(t) {
     else if (t.plantLit) { t.plantLit = false; log(`${t.name}'s coal plant goes cold. No coal.`, 'loss'); }
   }
   const solar = countType(t, T.SOLAR); if (solar) supply += solar * (wk === 'clear' || wk === 'drought' ? 2 : wk === 'snow' || wk === 'storm' ? 0.5 : 1);
+  const hydro = countType(t, T.HYDRO); if (hydro) supply += hydro * 6 * ((world.snowCover || 0) > 0.8 ? 0.5 : wk === 'drought' ? 0.6 : 1); // the river runs low in drought and hard frost
+  const reactors = countType(t, T.NUCLEAR);
+  if (reactors) {
+    if (t.res.uranium > 0) { supply += reactors * 12; t.uT = (t.uT || 0) + 16; if (t.uT >= 120) { t.uT -= 120; t.res.uranium = Math.max(0, t.res.uranium - reactors); } t.reactorOn = true; }
+    else if (t.reactorOn) { t.reactorOn = false; log(`${t.name}'s reactor goes dark. No uranium.`, 'loss'); }
+  }
   const need = countType(t, T.FACTORY) * 2 + countType(t, T.UNIVERSITY) + (t.civ >= 2 ? 1 : 0) + (hasType(t, T.SILO) ? 2 : 0);
   t.power = Math.round(supply); t.powerNeed = need;
   t.powerRatio = need ? Math.min(1, supply / need) : 1;
@@ -3594,6 +3645,14 @@ function buildSites(town) {
   if ((town.mil >= 4 || town.civ >= 3) && !hasType(town, T.PLANT) && town.res.coal >= 8 && canAfford(town, COST[T.PLANT])) {
     const i = placeCivic(town, T.PLANT, false);
     if (i >= 0) { pay(town, COST[T.PLANT]); log(`${town.name} fires up a coal plant`, 'build'); return; }
+  }
+  if (town.civ >= 3 && town.popLeft >= 80 && !hasType(town, T.HYDRO) && canAfford(town, COST[T.HYDRO])) {
+    const i = placeSite(town, T.HYDRO, town.R + 8, (t, j) => t === T.WATER && world.flow[j] >= 0);
+    if (i >= 0) { pay(town, COST[T.HYDRO]); log(`${town.name} dams the river for hydroelectric power`, 'build'); return; }
+  }
+  if ((town.civ >= 4 || town.mil >= 6) && hasType(town, T.UNIVERSITY) && !hasType(town, T.NUCLEAR) && town.res.uranium >= COST[T.NUCLEAR].uranium && canAfford(town, COST[T.NUCLEAR])) {
+    const i = placeCivic(town, T.NUCLEAR, false);
+    if (i >= 0) { pay(town, COST[T.NUCLEAR]); log(`${town.name} brings a reactor online. ${town.align.moral < 0 ? 'Nobody asked whether it was safe.' : 'The engineers swear it is safe.'}`, 'build'); return; }
   }
   if (town.civ >= 4 && countType(town, T.SOLAR) < 2 && canAfford(town, COST[T.SOLAR])) {
     const i = placeCivic(town, T.SOLAR, false);
@@ -4555,7 +4614,9 @@ function checkAchievementStats() {
 ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', /$^/], ['thousand', '🏙️', 'Metropolis', 'A thousand people alive at once', /$^/], ['whiteout', '🏔️', 'Whiteout', 'The whole valley under snow', /$^/],
   ['mine', '⛏️', 'Prospector', 'A town digs a mine', /digs an? \w+ mine/], ['uranium', '☢️', 'Glow', 'Somebody digs for uranium', /digs a uranium mine/],
   ['covet', '⚔️', 'Resource War', 'A war declared over a seam', /over the \w+ seams/], ['power', '⚡', 'Lights On', 'A town makes its own power', /water wheel|coal plant|solar array/],
-  ['workedout', '🕳️', 'Worked Out', 'A seam is dug to nothing', /is worked out/]);
+  ['workedout', '🕳️', 'Worked Out', 'A seam is dug to nothing', /is worked out/],
+  ['hydro', '💧', 'White Coal', 'A town dams the river for power', /hydroelectric/], ['reactor', '☢️', 'Atoms for Peace', 'A reactor comes online', /brings a reactor online/],
+  ['meltdown', '💀', 'Meltdown', 'A reactor burns open', /MELTDOWN/]);
 renderAchievements();
 function renderLog() {
   if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
@@ -4611,6 +4672,8 @@ function spriteKey(i) {
     case T.WHEEL: return 'wheel';
     case T.PLANT: return 'plant';
     case T.SOLAR: return 'solar';
+    case T.HYDRO: return 'hydro';
+    case T.NUCLEAR: return 'nuclear';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
   }
@@ -4630,6 +4693,7 @@ function layout() {
   tctx.imageSmoothingEnabled = false;
   rescaleSprites(cellPx);
   redrawTerrain();
+  resetView();
 }
 
 // Hillshade: high ground a touch paler, hollows a touch darker, so the lie of the land reads.
@@ -4643,15 +4707,13 @@ function blitCell(i) {
     if (frozen && lv > 4) tctx.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx); // drifts on the ice
     return;
   }
-  const deep = lv >= 4; // light cover is dithered over the tile; deep cover is a snowed tile
-  tctx.drawImage(deep ? SNOWED[spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx);
+  // Snow is drawn as the tile itself: caps at a dusting, patchy ground, mostly white, all white.
+  tctx.drawImage(lv ? SNOWED[Math.min(3, lv - 1)][spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx);
   if (world.elev) {
     const e = world.elev[i];
     if (e > 0.52) { tctx.fillStyle = `rgba(255,250,235,${Math.min(0.28, (e - 0.52) * 0.7)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
     else if (e < 0.4) { tctx.fillStyle = `rgba(0,10,20,${Math.min(0.22, (0.4 - e) * 0.9)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
   }
-  if (deep) { if (lv > 4) tctx.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx); } // drifts over the snowed tile
-  else if (lv) tctx.drawImage((isTree(t) || t === T.SNAG ? SNOWT : SNOW)[lv - 1][(x ^ y) & 1], x * cellPx, y * cellPx);
 }
 function redrawTerrain() {
   const n = world.n;
@@ -4678,9 +4740,32 @@ function cellCenter(i) {
   return [((i % n) + 0.5) * cellPx, (Math.floor(i / n) + 0.5) * cellPx];
 }
 
+/* ───────────────────────── View: pan and zoom ─────────────────────────
+   Everything is drawn in map pixels; the view transform magnifies a window of it. Wheel zooms
+   at the cursor, drag pans, pinch and one-finger drag do the same on a phone. */
+const view = { zoom: 1, x: 0, y: 0 };
+function clampView() {
+  const size = canvas.width, span = size / view.zoom;
+  view.x = Math.max(0, Math.min(size - span, view.x));
+  view.y = Math.max(0, Math.min(size - span, view.y));
+}
+function applyView() { ctx.setTransform(view.zoom, 0, 0, view.zoom, -view.x * view.zoom, -view.y * view.zoom); }
+function zoomAt(factor, sx, sy) { // sx, sy in canvas pixels
+  const wx = view.x + sx / view.zoom, wy = view.y + sy / view.zoom;
+  view.zoom = Math.max(1, Math.min(12, view.zoom * factor));
+  view.x = wx - sx / view.zoom; view.y = wy - sy / view.zoom;
+  clampView(); updateZoomHud();
+}
+function panBy(dx, dy) { view.x -= dx / view.zoom; view.y -= dy / view.zoom; clampView(); }
+function resetView() { view.zoom = 1; view.x = 0; view.y = 0; updateZoomHud(); }
+function updateZoomHud() { const el = $('hudZoom'); if (el) el.textContent = view.zoom < 1.05 ? '1x' : view.zoom.toFixed(1).replace(/\.0$/, '') + 'x'; }
+function canvasPoint(clientX, clientY) { const r = canvas.getBoundingClientRect(); return [(clientX - r.left) / r.width * canvas.width, (clientY - r.top) / r.height * canvas.height]; }
+function fillScreen(style) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = style; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
+
 function render(now, tickFrac) {
   flushDirty();
   ctx.save();
+  applyView();
   if (shake > 0) {
     const a = shake * 3;
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
@@ -4725,16 +4810,16 @@ function render(now, tickFrac) {
     const x = (t.cx + 0.5) * cellPx, y = (t.cy - t.R - 0.6) * cellPx;
     const dead = t.housesLeft === 0 || t.popLeft <= 0;
     ctx.font = nameFont;
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillText(t.name.toUpperCase(), x + 1, y - cellPx * 0.9 + 1);
-    ctx.fillStyle = dead ? '#9a8a78' : (t.mobilized ? '#ffb627' : '#e9dccb');
+    ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = Math.max(2, cellPx * 0.4); // outlined so names read on snow and ash alike
+    ctx.strokeText(t.name.toUpperCase(), x, y - cellPx * 0.9);
+    ctx.fillStyle = dead ? '#b8a890' : (t.mobilized ? '#ffb627' : '#e9dccb');
     ctx.fillText(t.name.toUpperCase(), x, y - cellPx * 0.9);
     if (cellPx >= 4) {
       const stat = dead ? (t.popLeft > 0 ? `${t.popLeft} survivors` : 'abandoned') : `pop ${t.popLeft} · ${t.housesLeft} homes${t.hasStation ? ' · ' + t.trucks.filter(q => q.alive).length + ' eng' : ''}`;
       ctx.font = statFont;
-      ctx.fillStyle = 'rgba(0,0,0,0.6)';
-      ctx.fillText(stat, x + 1, y + 1);
-      ctx.fillStyle = dead ? '#9a8a78' : 'rgba(233,220,203,0.85)';
+      ctx.lineWidth = Math.max(2, cellPx * 0.3);
+      ctx.strokeText(stat, x, y);
+      ctx.fillStyle = dead ? '#b8a890' : 'rgba(233,220,203,0.95)';
       ctx.fillText(stat, x, y);
     }
   }
@@ -4767,7 +4852,7 @@ function render(now, tickFrac) {
     if (!t.buildings) continue;
     for (const i of t.buildings) {
       const tt = world.type[i];
-      if ((tt === T.FACTORY && Math.random() < 0.25) || (tt === T.FORGE && Math.random() < 0.08) || (tt === T.PLANT && t.plantLit && Math.random() < 0.4)) {
+      if ((tt === T.FACTORY && Math.random() < 0.25) || (tt === T.FORGE && Math.random() < 0.08) || (tt === T.PLANT && t.plantLit && Math.random() < 0.4) || (tt === T.NUCLEAR && t.reactorOn && Math.random() < 0.3)) {
         const [px, py] = cellCenter(i);
         particles.push({ x: px + (tt === T.FACTORY ? (Math.random() < 0.5 ? -1 : 1) * cellPx * 0.3 : 0), y: py - cellPx * 0.45, vx: params.windX * params.windStrength * 25 + (Math.random() - 0.5) * 8, vy: -14 - Math.random() * 10, life: 0, max: 1600 + Math.random() * 900, color: 'smoke', size: 1.5 + Math.random() * 2, grav: -6 });
       }
@@ -4789,7 +4874,7 @@ function render(now, tickFrac) {
       if (b.face < 0) { ctx.save(); ctx.translate(x + ox + cellPx, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, x + ox, y);
     }
     ctx.font = `${Math.max(7, Math.round(cellPx * 0.8))}px Silkscreen, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-    ctx.fillStyle = '#000'; ctx.fillText(String(b.size), x + cellPx / 2 + 1, y - 1); ctx.fillStyle = '#ffb08a'; ctx.fillText(String(b.size), x + cellPx / 2, y - 2);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 2; ctx.strokeText(String(b.size), x + cellPx / 2, y - 2); ctx.fillStyle = '#ffb08a'; ctx.fillText(String(b.size), x + cellPx / 2, y - 2);
   }
 
   if (world.beavers && world.beavers.stage === 'building') {
@@ -4884,7 +4969,7 @@ function render(now, tickFrac) {
     ctx.restore();
     if (d.name) {
       ctx.font = `${Math.max(8, Math.round(cellPx * 1.0))}px Silkscreen, monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillText(d.name.toUpperCase(), px + 1, py - sz * 0.55 + 1);
+      ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = 3; ctx.strokeText(d.name.toUpperCase(), px, py - sz * 0.55);
       ctx.fillStyle = '#ff6a6a'; ctx.fillText(d.name.toUpperCase(), px, py - sz * 0.55);
     }
     // Flame jet from the mouth while breathing over the town.
@@ -4899,11 +4984,8 @@ function render(now, tickFrac) {
     }
   }
 
-  if (world.dragon) { // the sky goes ugly while it is here
-    ctx.fillStyle = 'rgba(120, 10, 0, 0.10)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  drawWeather(now);
+  if (world.dragon) fillScreen('rgba(120, 10, 0, 0.10)'); // the sky goes ugly while it is here
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); drawWeather(now); ctx.restore(); // weather is a screen-space effect
   drawEffects(now);
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
@@ -4918,7 +5000,7 @@ function render(now, tickFrac) {
     ctx.globalAlpha = 1 - t * t;
     ctx.font = `bold ${fs}px Silkscreen, monospace`;
     const yy = p.y - t * 24 - lift * (fs + 2);
-    ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x + 1, yy + 1);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = Math.max(2, fs * 0.22); ctx.strokeText(p.text, p.x, yy);
     ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, yy);
     ctx.globalAlpha = 1;
   }
@@ -5099,8 +5181,7 @@ function drawEffects(now) {
       ctx.beginPath(); ctx.arc(e.x, e.y, fr, 0, Math.PI * 2); ctx.fill();
     }
     if (t < 0.12) {
-      ctx.fillStyle = `rgba(255,240,200,${(0.12 - t) / 0.12 * (e.nuke ? 1 : 0.35)})`;
-      ctx.fillRect(-10, -10, canvas.width + 20, canvas.height + 20);
+      fillScreen(`rgba(255,240,200,${(0.12 - t) / 0.12 * (e.nuke ? 1 : 0.35)})`);
     }
     if (e.nuke) {
       // Mushroom column and cap, rising.
@@ -5119,8 +5200,7 @@ function drawEffects(now) {
     if (t >= 1) { bolts.splice(k, 1); continue; }
     const a = t < 0.15 ? 1 : (1 - t) / 0.85;
     const flicker = 0.6 + 0.4 * Math.sin(now * 0.08);
-    ctx.fillStyle = `rgba(200,220,255,${a * 0.18})`;
-    ctx.fillRect(-10, -10, canvas.width + 20, canvas.height + 20);
+    fillScreen(`rgba(200,220,255,${a * 0.18})`);
     ctx.lineJoin = 'round';
     ctx.strokeStyle = `rgba(120,170,255,${a * 0.5 * flicker})`; ctx.lineWidth = 6; strokePath(b.pts);
     ctx.strokeStyle = `rgba(255,255,255,${a * flicker})`; ctx.lineWidth = 2; strokePath(b.pts);
@@ -5324,7 +5404,7 @@ function updateHud() {
 
 function civicSummary(t) {
   const parts = [];
-  for (const [ty, nm] of [[T.TOWNHALL, 'hall'], [T.BARRACKS, 'barracks'], [T.FORGE, 'forge'], [T.FACTORY, 'factory'], [T.UNIVERSITY, 'university'], [T.TOWER, 'tower'], [T.SILO, 'silo'], [T.TENEMENT, 'tenement'], [T.LUMBERYARD, 'lumberyard'], [T.QUARRY, 'quarry'], [T.MINE, 'mine'], [T.WELL, 'well'], [T.WHEEL, 'water wheel'], [T.PLANT, 'coal plant'], [T.SOLAR, 'solar array']]) {
+  for (const [ty, nm] of [[T.TOWNHALL, 'hall'], [T.BARRACKS, 'barracks'], [T.FORGE, 'forge'], [T.FACTORY, 'factory'], [T.UNIVERSITY, 'university'], [T.TOWER, 'tower'], [T.SILO, 'silo'], [T.TENEMENT, 'tenement'], [T.LUMBERYARD, 'lumberyard'], [T.QUARRY, 'quarry'], [T.MINE, 'mine'], [T.WELL, 'well'], [T.WHEEL, 'water wheel'], [T.PLANT, 'coal plant'], [T.SOLAR, 'solar array'], [T.HYDRO, 'hydro dam'], [T.NUCLEAR, 'reactor']]) {
     const c = countType(t, ty); if (c) parts.push(c > 1 ? `${c} ${nm}${nm.endsWith('s') ? '' : 's'}` : nm);
   }
   return parts.length ? ' · ' + parts.join(', ') : '';
@@ -5376,7 +5456,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array' });
+Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -5461,17 +5541,66 @@ function randomFuelCell() {
   }
   return Math.floor(Math.random() * N);
 }
-function cellFromEvent(ev) {
-  const r = canvas.getBoundingClientRect();
-  const x = Math.floor((ev.clientX - r.left) / r.width * world.n);
-  const y = Math.floor((ev.clientY - r.top) / r.height * world.n);
+function cellFromPoint(clientX, clientY) {
+  const [sx, sy] = canvasPoint(clientX, clientY);
+  const x = Math.floor((view.x + sx / view.zoom) / cellPx), y = Math.floor((view.y + sy / view.zoom) / cellPx);
   if (x < 0 || y < 0 || x >= world.n || y >= world.n) return -1;
   return y * world.n + x;
 }
+function cellFromEvent(ev) { return cellFromPoint(ev.clientX, ev.clientY); }
+// Mouse: wheel zooms at the cursor, left-drag pans, a click that did not drag fires a missile.
+let drag = null, dragged = false;
+canvas.addEventListener('wheel', ev => { ev.preventDefault(); const [sx, sy] = canvasPoint(ev.clientX, ev.clientY); zoomAt(ev.deltaY < 0 ? 1.25 : 1 / 1.25, sx, sy); hover = cellFromEvent(ev); }, { passive: false });
+canvas.addEventListener('mousedown', ev => { if (ev.button !== 0) return; drag = [ev.clientX, ev.clientY]; dragged = false; });
+window.addEventListener('mousemove', ev => {
+  if (!drag) return;
+  const dx = ev.clientX - drag[0], dy = ev.clientY - drag[1];
+  if (!dragged && Math.hypot(dx, dy) < 4) return;
+  dragged = true; canvas.classList.add('panning');
+  const r = canvas.getBoundingClientRect(), k = canvas.width / r.width;
+  panBy(dx * k, dy * k); drag = [ev.clientX, ev.clientY];
+});
+window.addEventListener('mouseup', () => { drag = null; canvas.classList.remove('panning'); });
 canvas.addEventListener('mousemove', ev => { hover = cellFromEvent(ev); });
 canvas.addEventListener('mouseleave', () => { hover = -1; });
-canvas.addEventListener('click', ev => { const i = cellFromEvent(ev); if (i >= 0) launchMissile(i); });
-canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const i = cellFromEvent(ev); if (i >= 0) lightning(i); });
+canvas.addEventListener('click', ev => { if (dragged) { dragged = false; return; } const i = cellFromEvent(ev); if (i >= 0) launchMissile(i); });
+canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); if (dragged) return; const i = cellFromEvent(ev); if (i >= 0) lightning(i); });
+// Touch: one finger pans, two pinch, a quick tap that did not move fires a missile.
+let touches = null, tapStart = null;
+canvas.addEventListener('touchstart', ev => {
+  ev.preventDefault();
+  const t = [...ev.touches].map(q => [q.clientX, q.clientY]);
+  touches = t;
+  tapStart = t.length === 1 ? { x: t[0][0], y: t[0][1], at: performance.now(), moved: false } : null;
+}, { passive: false });
+canvas.addEventListener('touchmove', ev => {
+  ev.preventDefault();
+  const t = [...ev.touches].map(q => [q.clientX, q.clientY]);
+  if (!touches) { touches = t; return; }
+  const r = canvas.getBoundingClientRect(), k = canvas.width / r.width;
+  if (t.length === 1 && touches.length === 1) {
+    const dx = t[0][0] - touches[0][0], dy = t[0][1] - touches[0][1];
+    if (tapStart && Math.hypot(t[0][0] - tapStart.x, t[0][1] - tapStart.y) > 8) tapStart.moved = true;
+    panBy(dx * k, dy * k);
+  } else if (t.length >= 2 && touches.length >= 2) {
+    const d0 = Math.hypot(touches[1][0] - touches[0][0], touches[1][1] - touches[0][1]), d1 = Math.hypot(t[1][0] - t[0][0], t[1][1] - t[0][1]);
+    const mx = (t[0][0] + t[1][0]) / 2, my = (t[0][1] + t[1][1]) / 2, mx0 = (touches[0][0] + touches[1][0]) / 2, my0 = (touches[0][1] + touches[1][1]) / 2;
+    const [sx, sy] = canvasPoint(mx, my);
+    if (d0 > 0) zoomAt(d1 / d0, sx, sy);
+    panBy((mx - mx0) * k, (my - my0) * k);
+    if (tapStart) tapStart.moved = true;
+  }
+  touches = t;
+}, { passive: false });
+canvas.addEventListener('touchend', ev => {
+  ev.preventDefault();
+  if (tapStart && !tapStart.moved && ev.touches.length === 0 && performance.now() - tapStart.at < 350) { const i = cellFromPoint(tapStart.x, tapStart.y); if (i >= 0) launchMissile(i); }
+  touches = ev.touches.length ? [...ev.touches].map(q => [q.clientX, q.clientY]) : null;
+  tapStart = null;
+}, { passive: false });
+$('zoomIn').addEventListener('click', () => zoomAt(1.5, canvas.width / 2, canvas.height / 2));
+$('zoomOut').addEventListener('click', () => zoomAt(1 / 1.5, canvas.width / 2, canvas.height / 2));
+$('zoomReset').addEventListener('click', resetView);
 
 window.addEventListener('keydown', ev => {
   if (ev.target.tagName === 'INPUT') return;
@@ -5533,7 +5662,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
     ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
-    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['logger', 'logger'], ['miner', 'miner'],
+    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['logger', 'logger'], ['miner', 'miner'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],
   ];
   const leg = $('legend');
@@ -5750,7 +5879,7 @@ renderSlots();
 setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, view, cellFromPoint, zoomAt, resetView, missiles, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 100;
