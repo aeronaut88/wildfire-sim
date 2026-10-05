@@ -1843,6 +1843,7 @@ function growTown(town) {
 
   const pressure = town.popLeft >= capacity * 0.8 || town.housesLeft < 3;
   if (pressure && Math.random() < 0.5) buildHouse(town, false);
+  if (pressure && town.housesLeft >= 6 && Math.random() < 0.1) expandRoads(town);
 
   if (!town.hasStation && town.popLeft >= 35 && Math.random() < 0.2) {
     const spot = findTownSpot(town, t => t === T.GRASS || t === T.ASH || t === T.RUBBLE);
@@ -1968,26 +1969,79 @@ function roadCells(town) {
   return out;
 }
 
-function layRoads(town, live) {
-  const n = world.n, type = world.type;
-  const put = (x, y) => {
-    if (x < 0 || y < 0 || x >= n || y >= n) return;
-    const i = y * n + x, t = type[i];
-    if (t === T.WATER || t === T.ROCK || isBuilding(t) || t === T.PAD || t === T.HANGAR || t === T.RUBBLE) return;
-    if (isTree(t) && live !== false) world.treeCount--;
-    type[i] = T.DIRT; world.road[i] = 1; dirty.add(i);
-  };
-  put(town.cx, town.cy);
-  for (const a of town.layout.spokes) {
+// All road cells a layout implies for a town of its current radius.
+function layoutCells(town, layout) {
+  const cells = [[town.cx, town.cy]];
+  const line = (x0, y0, a, from, to) => {
     const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180);
-    for (let d = 0.5; d <= town.R; d += 0.5) put(Math.round(town.cx + ca * d), Math.round(town.cy + sa * d));
+    for (let d = from; d <= to; d += 0.5) cells.push([Math.round(x0 + ca * d), Math.round(y0 + sa * d)]);
+  };
+  for (const a of layout.spokes) line(town.cx, town.cy, a, 0.5, town.R);
+  for (const b of layout.branches || []) {
+    if (b.at > town.R) continue;
+    const bx = town.cx + Math.cos(b.spoke * Math.PI / 180) * b.at, by = town.cy + Math.sin(b.spoke * Math.PI / 180) * b.at;
+    line(bx, by, b.spoke + b.dir, 0.5, Math.min(b.len, town.R - 0.5));
   }
-  if (town.layout.ring) {
-    const rr = town.layout.ring;
+  if (layout.ring) {
+    const rr = layout.ring;
     for (let dy = -rr - 1; dy <= rr + 1; dy++) for (let dx = -rr - 1; dx <= rr + 1; dx++) {
-      if (Math.abs(Math.hypot(dx, dy) - rr) < 0.55) put(town.cx + dx, town.cy + dy);
+      if (Math.abs(Math.hypot(dx, dy) - rr) < 0.55) cells.push([town.cx + dx, town.cy + dy]);
     }
   }
+  return cells;
+}
+
+function layRoads(town, live) {
+  const n = world.n, type = world.type;
+  for (const [x, y] of layoutCells(town, town.layout)) {
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const i = y * n + x, t = type[i];
+    if (t === T.WATER || t === T.ROCK || isBuilding(t) || t === T.PAD || t === T.HANGAR || t === T.RUBBLE) continue;
+    if (isTree(t) && live !== false) world.treeCount--;
+    type[i] = T.DIRT; world.road[i] = 1; dirty.add(i);
+  }
+}
+
+// Growing towns build new roads: a spoke into the widest gap, a side street off a spoke, or a ring road.
+function expandRoads(town) {
+  const n = world.n, type = world.type, L = town.layout;
+  L.branches = L.branches || [];
+  const opts = [];
+  const angles = L.spokes.slice().sort((a, b) => a - b);
+  let bestGap = 0, bestAngle = 0;
+  for (let k = 0; k < angles.length; k++) {
+    const a = angles[k], b = k === angles.length - 1 ? angles[0] + 360 : angles[k + 1];
+    if (b - a > bestGap) { bestGap = b - a; bestAngle = (a + (b - a) / 2) % 360; }
+  }
+  if (bestGap >= 70 && L.spokes.length < 8) opts.push({ kind: 'spoke', angle: (bestAngle + (Math.random() - 0.5) * 24 + 360) % 360 });
+  if (town.R >= 4 && L.branches.length < Math.floor(town.R * 0.8)) {
+    const sp = L.spokes[Math.floor(Math.random() * L.spokes.length)];
+    opts.push({ kind: 'branch', spoke: sp, at: 2 + Math.floor(Math.random() * Math.max(1, town.R - 2)), dir: Math.random() < 0.5 ? 90 : -90, len: 2 + Math.floor(Math.random() * 3) });
+  }
+  if (town.R >= 5 && !L.ring && Math.random() < 0.5) opts.push({ kind: 'ring', r: Math.max(2, Math.round(town.R * (0.5 + Math.random() * 0.25))) });
+  if (!opts.length) return false;
+  const o = opts[Math.floor(Math.random() * opts.length)];
+  const trial = { spokes: L.spokes.slice(), branches: L.branches.slice(), ring: L.ring };
+  if (o.kind === 'spoke') trial.spokes.push(o.angle);
+  else if (o.kind === 'branch') trial.branches.push(o);
+  else trial.ring = o.r;
+  // Only the cells this proposal adds; most of them must be free ground.
+  const have = new Set(layoutCells(town, L).map(([x, y]) => y * n + x));
+  let free = 0, total = 0;
+  for (const [x, y] of layoutCells(town, trial)) {
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const i = y * n + x;
+    if (have.has(i)) continue;
+    total++;
+    const t = type[i];
+    if (!(t === T.WATER || t === T.ROCK || isBuilding(t) || t === T.PAD || t === T.HANGAR || t === T.RUBBLE)) free++;
+  }
+  if (total < 2 || free < total * 0.6) return false;
+  town.layout = trial;
+  layRoads(town, true);
+  recomputeRing(town);
+  log(`${town.name} lays a new ${o.kind === 'ring' ? 'ring road' : o.kind === 'branch' ? 'side street' : 'road'}`, 'build');
+  return true;
 }
 
 /* ───────────────────────── That one person ───────────────────────── */
