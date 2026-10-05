@@ -218,6 +218,33 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).
 
+## Resources
+
+Nothing is free any more. Every house, field, workshop, engine, wall, tank and bomb is paid for
+in wood, stone, iron, copper, coal or uranium, and so is every rebuild after a fire, which is
+what paces a town's recovery.
+
+- **Wood** comes from the forest. Loggers in red walk out to the nearest tree, fell it (the
+  tree really goes, leaving a stump that regrows), and carry the timber home. A lumberyard
+  raises the storage cap and fields more loggers, and the clear-cut around a busy town is
+  visible on the map.
+- **Stone** comes from a quarry opened at a rock face, worked by quarriers.
+- **Iron, copper, coal and uranium** are seams in the rock, drawn as flecked outcrops. A town
+  digs a mine beside a seam and miners in yellow helmets walk the ore home two units at a
+  time. Seams are finite; when one is dug to nothing the mine is worked out. Uranium is rare
+  and only a town that knows what it is will dig for it.
+- **Water.** A town needs a river, a lake or a well. Without one it stays small, and a drought
+  kills.
+- **Power.** Water wheels on the river, coal plants that eat coal, and late solar arrays feed
+  factories, universities, waterworks and silos. A brownout slows research.
+
+Stockpiles are small, so towns save up for the next building and sometimes announce what
+they are short of. Research alone is not enough: steel needs iron, gunpowder needs coal,
+artillery needs a powered factory, and the bomb needs a university, a silo and forty
+uranium. Allied wagons carry whatever the other town is short of. A sacked town is looted and
+an annexed one pays tribute. A militaristic town that cannot reach a metal its neighbour
+digs comes to covet it, relations sour, and the war that follows is declared over the seam.
+
 ## Seasons and snow
 
 The year is 1,200 ticks long and every tile wears the season. Spring is fresh green with
