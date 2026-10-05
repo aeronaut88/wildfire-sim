@@ -111,6 +111,12 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   Type a number or any words and press Enter (or Load) to rebuild that exact valley, towns
   and all. Copy link puts `?seed=...&size=...` on the clipboard, and the address bar always
   carries the current one. Same seed, same map. What happens next is still up to the dice.
+- **Save and load.** The Save / Load group has three browser slots plus an autosave that
+  writes itself every minute while running. Export file downloads the whole world as
+  `wildfire-<seed>-t<tick>.json.gz`: plain JSON inside gzip, so it is small (about 7 to 1, a 100 x 100
+  world is around 30 KB) and still readable with any gunzip. Import file loads one back, paused,
+  with every slider and toggle restored. Saves carry terrain, fire, wet cells, towns with
+  their crews and engines, weather, wind, settlers, dragon, the log and your settings.
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).

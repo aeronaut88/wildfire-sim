@@ -316,6 +316,14 @@
   .seedrow input:focus { outline: 1px solid var(--ember); }
   .seedrow button { padding: 8px 9px 6px; }
   .seedrow button.ok { color: #a7e36f; border-color: #3f6a2a; }
+  .slots { display: flex; flex-direction: column; gap: 6px; }
+  .slot { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: center; background: #120e0c; border: 1px solid var(--panel-edge); padding: 6px 8px; }
+  .slot .nm { font-family: var(--pixel); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  .slot .meta { font-size: 10px; color: var(--ink-dim); }
+  .slot .meta.empty { color: #4e4238; font-style: italic; }
+  .slot button { padding: 6px 8px 4px; font-size: 9px; }
+  .slot button:disabled { opacity: 0.35; cursor: default; }
+  .slot button.flash { color: #a7e36f; border-color: #3f6a2a; }
   .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: var(--ink-dim); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend canvas { width: 16px; height: 16px; image-rendering: pixelated; border: 1px solid #000; background: #1d2a1a; }
@@ -390,6 +398,16 @@
         <button id="seedCopy" title="Copy a link to this valley">Copy link</button>
       </div>
       <div class="foot" style="margin-top:-2px">Every load and every New Forest rolls a fresh seed. Same seed, same valley. Copy link to share this one.</div>
+    </div>
+
+    <div class="group">
+      <div class="title">Save / Load</div>
+      <div class="slots" id="slots"></div>
+      <div class="btnrow">
+        <button id="exportBtn" title="Download this valley as a file">Export file</button>
+        <button id="importBtn" title="Load a valley from a file">Import file</button>
+        <input type="file" id="importFile" accept=".gz,.json,.wildfire" style="display:none">
+      </div>
     </div>
 
     <div class="group">
@@ -3167,8 +3185,185 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
   }
 })();
 
+/* ───────────────────────── Save / Load ───────────────────────── */
+
+const SAVE_VERSION = 1;
+const SLOTS = [['auto', 'Autosave'], ['1', 'Slot 1'], ['2', 'Slot 2'], ['3', 'Slot 3']];
+
+function bytesToB64(u8) { let bin = ''; for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(bin); }
+function b64ToBytes(b64) { const bin = atob(b64); const u8 = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i); return u8; }
+const packArr = a => bytesToB64(new Uint8Array(a.buffer, a.byteOffset, a.byteLength));
+const unpackArr = (b64, Ctor) => { const u8 = b64ToBytes(b64); const copy = new Uint8Array(u8.length); copy.set(u8); return new Ctor(copy.buffer); };
+
+function snapshot() {
+  const townToId = t => (t ? t.id : -1);
+  return {
+    v: SAVE_VERSION, savedAt: Date.now(), n: world.n, seed: world.seed, tick: world.tick,
+    arrays: {
+      type: packArr(world.type), variant: packArr(world.variant), burnLeft: packArr(world.burnLeft), glow: packArr(world.glow),
+      wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
+      fert: packArr(world.fert), since: packArr(world.since), intensity: packArr(world.intensity),
+    },
+    burning: world.burning, glowing: world.glowing, wetList: world.wetList,
+    totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
+    buildingsTotal: world.buildingsTotal, buildingsLeft: world.buildingsLeft, popTotal: world.popTotal, popLeft: world.popLeft,
+    buildingsLost: world.buildingsLost, deaths: world.deaths,
+    weather: world.weather, wind: world.wind, sweepPos: world.sweepPos, sweepStep: world.sweepStep, sweepOffset: world.sweepOffset || 0, lastCrownLog: world.lastCrownLog,
+    towns: world.towns.map(t => ({ ...t, ring: undefined, claimed: [...t.claimed] })),
+    air: world.air ? { ...world.air, plane: null } : null,
+    settlers: world.settlers ? { ...world.settlers, town: townToId(world.settlers.town) } : null,
+    dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town) } : null,
+    params: { ...params },
+    log: logEntries.slice(),
+  };
+}
+
+function restore(d) {
+  if (!d || d.v !== SAVE_VERSION || !d.arrays) throw new Error('not a Wildfire save');
+  const n = d.n, N = n * n;
+  missiles.length = 0; explosions.length = 0; bolts.length = 0; particles.length = 0; popups.length = 0;
+  world.n = n; world.seed = d.seed; world.tick = d.tick;
+  world.type = unpackArr(d.arrays.type, Uint8Array); world.variant = unpackArr(d.arrays.variant, Uint8Array);
+  world.burnLeft = unpackArr(d.arrays.burnLeft, Int16Array); world.glow = unpackArr(d.arrays.glow, Uint8Array);
+  world.wet = unpackArr(d.arrays.wet, Int16Array); world.wetKind = unpackArr(d.arrays.wetKind, Uint8Array);
+  world.townOf = unpackArr(d.arrays.townOf, Int8Array); world.road = unpackArr(d.arrays.road, Uint8Array);
+  world.fert = unpackArr(d.arrays.fert, Uint8Array); world.since = unpackArr(d.arrays.since, Int32Array);
+  world.intensity = unpackArr(d.arrays.intensity, Uint8Array);
+  world.residents = new Uint8Array(N);
+  world.burning = d.burning.slice(); world.glowing = d.glowing.slice(); world.wetList = d.wetList.slice();
+  world.water = []; for (let i = 0; i < N; i++) if (world.type[i] === T.WATER) world.water.push(i);
+  Object.assign(world, { totalFuel: d.totalFuel, burnedCount: d.burnedCount, treeCount: d.treeCount, buildingsTotal: d.buildingsTotal, buildingsLeft: d.buildingsLeft,
+    popTotal: d.popTotal, popLeft: d.popLeft, buildingsLost: d.buildingsLost, deaths: d.deaths, weather: d.weather, wind: d.wind, sweepPos: d.sweepPos, sweepStep: d.sweepStep,
+    sweepOffset: d.sweepOffset, lastCrownLog: d.lastCrownLog });
+  world.towns = d.towns.map(t => { const tt = { ...t, claimed: new Set(t.claimed) }; return tt; });
+  for (const t of world.towns) recomputeRing(t);
+  world.air = d.air ? { ...d.air, plane: null } : null;
+  world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
+  world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
+  if (world.dragon && !world.dragon.town) world.dragon = null;
+  Object.assign(params, d.params);
+  logEntries.length = 0; logEntries.push(...d.log); renderLog();
+  applyParamsToUi();
+  $('size').value = n; $('sizeOut').innerHTML = `${n} &times; ${n}`;
+  layout();
+  syncSeedUi();
+  lastHud = ''; lastTownsKey = ''; lastWeatherShown = ''; lastStatForce = '';
+  setRunning(false);
+}
+
+function applyParamsToUi() {
+  const setRange = (id, outId, v, fmt) => { $(id).value = v; $(outId).innerHTML = fmt(v); };
+  setRange('speed', 'speedOut', params.speed, v => `${v} t/s`);
+  setRange('spread', 'spreadOut', params.spread, v => (+v).toFixed(2));
+  setRange('wind', 'windOut', params.windStrength, v => (+v).toFixed(2));
+  setRange('blast', 'blastOut', params.blast, v => v === 0 ? 'point' : `${v}`);
+  setRange('density', 'densityOut', params.density, v => (+v).toFixed(2));
+  setRange('regrow', 'regrowOut', params.regrow, v => v === 0 ? 'off' : (+v).toFixed(1));
+  setRange('townCap', 'townCapOut', params.townCap, v => `${v}`);
+  document.querySelectorAll('.seg button[data-nb]').forEach(x => x.classList.toggle('on', +x.dataset.nb === params.neighbors));
+  document.querySelectorAll('#spotSeg button').forEach(x => x.classList.toggle('on', (x.dataset.spot === '1') === !!params.spotting));
+  document.querySelectorAll('#weatherSeg button').forEach(x => x.classList.toggle('on', x.dataset.w === params.weatherMode));
+  windAutoBtn.classList.toggle('on', params.windMode === 'auto');
+  compassBtns.forEach(q => { q.classList.remove('auto'); q.classList.toggle('on', params.windMode !== 'auto' && q.dataset.dir === `${params.windX},${params.windY}`); });
+}
+
+// Compressed text form: "gz:" + base64(gzip(json)) when the browser can, else "raw:" + json.
+async function encodeSave(obj) {
+  const json = JSON.stringify(obj);
+  if (typeof CompressionStream === 'function') {
+    try {
+      const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+      const buf = await new Response(stream).arrayBuffer();
+      return 'gz:' + bytesToB64(new Uint8Array(buf));
+    } catch (e) { /* fall through */ }
+  }
+  return 'raw:' + json;
+}
+async function decodeSave(text) {
+  text = String(text).trim();
+  if (text.startsWith('gz:')) {
+    const stream = new Blob([b64ToBytes(text.slice(3))]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(stream).text());
+  }
+  if (text.startsWith('raw:')) return JSON.parse(text.slice(4));
+  return JSON.parse(text);
+}
+
+const slotsEl = $('slots');
+const slotKey = id => 'wildfire.save.' + id;
+const metaKey = id => 'wildfire.meta.' + id;
+function slotMeta(id) { try { const m = localStorage.getItem(metaKey(id)); return m ? JSON.parse(m) : null; } catch (e) { return null; } }
+function ago(ms) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+function renderSlots() {
+  slotsEl.innerHTML = SLOTS.map(([id, name]) => {
+    const m = slotMeta(id);
+    const meta = m ? `t${m.tick} · ${m.towns} town${m.towns === 1 ? '' : 's'} · ${m.n}² · ${ago(m.savedAt)}` : 'empty';
+    return `<div class="slot" data-slot="${id}"><div><div class="nm">${name}</div><div class="meta ${m ? '' : 'empty'}">${meta}</div></div>` +
+      `<button data-act="save" ${id === 'auto' ? 'disabled title="Autosave writes itself every minute"' : ''}>Save</button><button data-act="load" ${m ? '' : 'disabled'}>Load</button></div>`;
+  }).join('');
+}
+async function saveToSlot(id) {
+  const snap = snapshot();
+  const text = await encodeSave(snap);
+  try {
+    localStorage.setItem(slotKey(id), text);
+    localStorage.setItem(metaKey(id), JSON.stringify({ savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n }));
+  } catch (e) { log('Could not save: browser storage is full or blocked', 'loss'); return false; }
+  renderSlots();
+  return true;
+}
+async function loadFromSlot(id) {
+  const text = localStorage.getItem(slotKey(id));
+  if (!text) return false;
+  try { restore(await decodeSave(text)); } catch (e) { log('That save could not be read', 'loss'); return false; }
+  log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}. Paused.`, 'good');
+  return true;
+}
+slotsEl.addEventListener('click', async ev => {
+  const b = ev.target.closest('button'); if (!b || b.disabled) return;
+  const id = b.closest('.slot').dataset.slot;
+  if (b.dataset.act === 'save') { if (await saveToSlot(id)) { b.textContent = 'Saved'; b.classList.add('flash'); setTimeout(renderSlots, 900); } }
+  else await loadFromSlot(id);
+});
+// Files are plain gzip-compressed JSON (.json.gz): readable with any gunzip, small on disk.
+async function encodeFile(obj) {
+  const json = JSON.stringify(obj);
+  if (typeof CompressionStream === 'function') {
+    const stream = new Blob([json]).stream().pipeThrough(new CompressionStream('gzip'));
+    return new Blob([await new Response(stream).arrayBuffer()], { type: 'application/gzip' });
+  }
+  return new Blob([json], { type: 'application/json' });
+}
+async function decodeFile(buf) {
+  const u8 = new Uint8Array(buf);
+  if (u8[0] === 0x1f && u8[1] === 0x8b) {
+    const stream = new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return JSON.parse(await new Response(stream).text());
+  }
+  return decodeSave(new TextDecoder().decode(u8));
+}
+$('exportBtn').addEventListener('click', async () => {
+  const blob = await encodeFile(snapshot());
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `wildfire-${world.seed}-t${world.tick}.json${blob.type === 'application/gzip' ? '.gz' : ''}`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  log(`Exported ${a.download}`, 'good');
+});
+$('importBtn').addEventListener('click', () => $('importFile').click());
+$('importFile').addEventListener('change', async ev => {
+  const f = ev.target.files && ev.target.files[0]; if (!f) return;
+  try { restore(await decodeFile(await f.arrayBuffer())); log(`Loaded ${f.name} at tick ${world.tick}. Paused.`, 'good'); }
+  catch (e) { log('That file is not a Wildfire save', 'loss'); }
+  ev.target.value = '';
+});
+renderSlots();
+// Autosave once a minute while running.
+setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
+
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), seed: () => world.seed };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 100;
