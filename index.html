@@ -177,6 +177,14 @@
   #histChart { width: 100%; height: auto; display: block; background: #0b0807; border: 1px solid var(--panel-edge); cursor: crosshair; }
   .histopt { font-size: 11px; color: var(--ink-dim); display: flex; gap: 6px; align-items: center; }
   .histread { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); min-height: 16px; }
+  .title .mini { float: right; font: inherit; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; padding: 2px 6px; background: #1a1512; color: var(--ink-dim); border: 1px solid var(--panel-edge); cursor: pointer; }
+  .title .mini:hover { color: var(--ember-hot); border-color: var(--ember-hot); }
+  #histFull { display: none; position: fixed; inset: 0; z-index: 50; background: rgba(8, 6, 5, 0.97); padding: 18px 24px; overflow: auto; }
+  #histFull.on { display: block; }
+  #histFull .group { max-width: 1600px; margin: 0 auto; }
+  #histFull #histChart { height: calc(100vh - 220px); }
+  #histFull .histbar button { font-size: 12px; padding: 5px 10px; }
+  #histFull .histread { font-size: 13px; }
   .readout .stat { cursor: help; }
   #statTip { display: none; position: absolute; z-index: 6; max-width: 360px; padding: 8px 10px; background: rgba(13, 11, 10, 0.96); border: 1px solid var(--panel-edge); box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0,0,0,0.5); font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--ink); }
   #statTip h4 { margin: 0 0 4px; font-family: var(--pixel); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ember-hot); }
@@ -408,6 +416,7 @@
   </div>
 </header>
 
+<div id="histFull"></div>
 <main>
   <section class="stage">
     <div class="viewport" id="viewport">
@@ -505,7 +514,7 @@
     </div>
 
     <div class="group">
-      <div class="title">History</div>
+      <div class="title">History <button id="histFullBtn" class="mini" title="full screen (Esc to close)">full screen</button></div>
       <div class="histbar" id="histMetrics"></div>
       <canvas id="histChart" width="340" height="200"></canvas>
       <div class="histread" id="histRead"></div>
@@ -3699,7 +3708,7 @@ function townRubble(town) {
 function updateWorkers(town) {
   const n = world.n, type = world.type, burnLeft = world.burnLeft;
   if (!town.workers) town.workers = [];
-  if (town.mobilized || town.popLeft <= 0 || town.housesLeft + townRubble(town).length === 0) {
+  if (town.mobilized || town.popLeft <= 0) {
     town.workers.length = 0; // everyone indoors or gone
     return;
   }
@@ -3710,7 +3719,7 @@ function updateWorkers(town) {
   const drilling = town.workers.filter(w => w.soldier).length;
   spawnGatherers(town);
   if (town.workers.filter(w => !w.soldier && !w.gather).length < want && world.tick % 6 === 0) {
-    const home = musterPoint(town);
+    const home = campPoint(town);
     if (home >= 0) { const hx = home % n, hy = Math.floor(home / n); town.workers.push({ x: hx, y: hy, px: hx, py: hy, target: -1, linger: 0, face: 1, job: 'stroll' }); }
   }
   if (drilling < wantDrill && world.tick % 9 === 0) {
@@ -3736,7 +3745,7 @@ function updateWorkers(town) {
       // Pick a job: rebuild rubble when there is any, otherwise wander the roads, or go back indoors.
       if (w.job === 'home' || (w.job !== 'rebuild' && !rubble.length && Math.random() < 0.3)) {
         if ((w.homeTries = (w.homeTries || 0) + 1) > 1) continue; // could not reach the door: they found another
-        const h = musterPoint(town); if (h < 0) continue; // nowhere to go: they are indoors
+        const h = campPoint(town); if (h < 0) continue; // nowhere to go: they are indoors
         w.target = h; w.job = 'home'; w.linger = 0; w.stall = 0;
       } else if (rubble.length && Math.random() < 0.75) {
         w.target = rubble[Math.floor(Math.random() * rubble.length)]; w.job = 'rebuild';
@@ -3767,8 +3776,12 @@ function updateWorkers(town) {
 
 function rebuildAt(town, i) {
   if (world.type[i] !== T.RUBBLE) return;
-  if (!canAfford(town, COST[T.HOUSE])) { town.short = 'wood'; if (!town.shortLogged || world.tick - town.shortLogged > 300) { town.shortLogged = world.tick; log(`${town.name} wants to rebuild but has no timber`, 'loss'); } return; } // paced by the woodpile
-  pay(town, COST[T.HOUSE]); town.short = null;
+  if (!canAfford(town, COST[T.HOUSE])) {
+    // No timber: now and then they rebuild from what the ruins still hold. Slow, but nobody is ever stuck for good.
+    if (Math.random() < 0.12) { if (!town.scavLogged || world.tick - town.scavLogged > 600) { town.scavLogged = world.tick; log(`${town.name} rebuilds with timber scavenged from the ruins`, 'build'); } }
+    else { town.short = 'wood'; if (!town.shortLogged || world.tick - town.shortLogged > 300) { town.shortLogged = world.tick; log(`${town.name} wants to rebuild but has no timber`, 'loss'); } return; }
+  } else pay(town, COST[T.HOUSE]); // paced by the woodpile
+  town.short = null;
   world.type[i] = T.HOUSE;
   world.variant[i] = Math.random() < 0.6 ? 0 : 1;
   world.townOf[i] = town.id;
@@ -4103,8 +4116,8 @@ function pickGatherTarget(town, w) {
 }
 function spawnGatherers(town) {
   const n = world.n, type = world.type;
-  if (world.tick % 7 !== 0 || town.popLeft < 8) return;
-  const muster = musterPoint(town); if (muster < 0) return;
+  if (world.tick % 7 !== 0 || town.popLeft < 4) return;
+  const muster = campPoint(town); if (muster < 0) return;
   const mk = (job, site, siteType, home) => { const hx = home % n, hy = (home - hx) / n; town.workers.push({ x: hx, y: hy, px: hx, py: hy, target: -1, linger: 0, face: 1, job, gather: true, site, siteType, home, phase: 'out', work: 0, carry: 0, stuck: 0 }); };
   const herdsNear = (world.herds || []).some(h => Math.hypot(h.x - town.cx, h.y - town.cy) <= town.R + 18);
   const wantHunt = herdsNear && town.popLeft >= 15 && (town.res.game || 0) < resCap(town, 'game') ? Math.min(2, 1 + Math.floor(town.popLeft / 120)) : 0;
@@ -4457,7 +4470,7 @@ function buildHouse(town, quiet) {
   // Soft cap: past the comfortable radius each extra ring is harder to add, but never impossible.
   const over = Math.max(0, town.R + 1 - Math.max(params.townCap, town.R0));
   if (over > 0 && Math.random() > Math.pow(0.45, over)) return false;
-  if (!canAfford(town, COST[T.HOUSE])) { town.short = 'wood'; return false; }
+  if (!canAfford(town, COST[T.HOUSE]) && !(town.housesLeft === 0 && Math.random() < 0.1)) { town.short = 'wood'; return false; } // a town with nothing standing scrapes a first house together
   const maxR = town.R + 1;
   for (let dy = -maxR - 1; dy <= maxR + 1; dy++) for (let dx = -maxR - 1; dx <= maxR + 1; dx++) {
     const d = Math.hypot(dx, dy);
@@ -4693,6 +4706,14 @@ function musterPoint(town) {
   const standing = town.buildings.filter(i => isBuilding(world.type[i]) && world.burnLeft[i] <= 0);
   if (!standing.length) return -1;
   return standing[Math.floor(Math.random() * standing.length)];
+}
+// Where the townsfolk gather for work: a standing building, else the ruins, else a campfire at the centre.
+function campPoint(town) {
+  const m = musterPoint(town); if (m >= 0) return m;
+  const rubble = townRubble(town).filter(i => world.burnLeft[i] <= 0);
+  if (rubble.length) return rubble[Math.floor(Math.random() * rubble.length)];
+  const c = town.cy * world.n + town.cx;
+  return passable(world.type[c]) && world.burnLeft[c] <= 0 ? c : -1;
 }
 
 // Greedy walking with two safeguards: never step straight back into the cell just left (that is
@@ -5179,10 +5200,13 @@ function spriteFor(i) { return (SPRS[world.look ? world.look[i] : 1] || SPRS[1])
 function layout() {
   const rect = viewport.getBoundingClientRect();
   const avail = Math.max(200, Math.min(rect.width, rect.height) - 16);
-  cellPx = Math.max(2, Math.floor(avail / world.n));
-  const size = cellPx * world.n;
+  const fit = Math.max(2, Math.floor(avail / world.n));
+  const budget = rect.width < 600 ? 1500 : 2400; // canvas edge in device pixels we are willing to push every frame
+  cellPx = Math.max(fit, Math.min(8, Math.floor(budget / world.n)));
+  const size = cellPx * world.n, css = Math.min(avail, size);
   canvas.width = size; canvas.height = size;
-  canvas.style.width = size + 'px'; canvas.style.height = size + 'px';
+  canvas.style.width = css + 'px'; canvas.style.height = css + 'px';
+  canvas.style.imageRendering = size > css ? 'auto' : 'pixelated'; // smooth when shrunk to fit, crisp when 1:1
   terrain.width = size; terrain.height = size;
   ctx.imageSmoothingEnabled = false;
   tctx.imageSmoothingEnabled = false;
@@ -5864,7 +5888,7 @@ function frame(now) {
     updateStats();
     updateHud();
     updateTip();
-    if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); if (world.history && world.history.ticks.length !== histLastLen && document.querySelector('.tabpane[data-tab="Valley"].on')) drawHistory(); }
+    if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); if (world.history && world.history.ticks.length !== histLastLen && (histFull || document.querySelector('.tabpane[data-tab="History"].on'))) drawHistory(); }
   } catch (e) {
     console.error(e);
     if (++frameErrors <= 3) log(`A hiccup in the simulation (${(e && e.message || String(e)).slice(0, 80)}); carrying on`, 'loss');
@@ -6174,10 +6198,10 @@ $('zoomReset').addEventListener('click', resetView);
 let showTab = () => {};
 (function buildTabs() {
   const panel = document.querySelector('aside.panel'), nav = $('tabs');
-  const TABS = [['Play', ['Run', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Valley', ['Settlements', 'History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
+  const TABS = [['Play', ['Run', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Towns', ['Settlements']], ['History', ['History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
   const groups = [...panel.children].filter(el => el !== nav);
   const byTitle = {};
-  for (const g of groups) { const t = g.querySelector(':scope > .title'); byTitle[g.classList.contains('foot') ? '__foot' : (t ? t.textContent.trim() : '')] = g; }
+  for (const g of groups) { const t = g.querySelector(':scope > .title'); byTitle[g.classList.contains('foot') ? '__foot' : (t ? t.firstChild.textContent.trim() : '')] = g; } // first text node: titles may carry a button
   const panes = {};
   for (const [name, titles] of TABS) {
     const pane = document.createElement('div'); pane.className = 'tabpane'; pane.dataset.tab = name;
@@ -6191,7 +6215,7 @@ let showTab = () => {};
     for (const b of nav.children) b.classList.toggle('on', b.dataset.tab === name);
     for (const k in panes) panes[k].classList.toggle('on', k === name);
     try { localStorage.setItem('wildfire.tab', name); } catch (e) { /* private window */ }
-    if (name === 'Valley') { histLastLen = -1; drawHistory(); }
+    if (name === 'History') { histLastLen = -1; drawHistory(); }
   };
   let start = 'Play'; try { start = localStorage.getItem('wildfire.tab') || 'Play'; } catch (e) { /* ignore */ }
   showTab(start);
@@ -6245,8 +6269,12 @@ function drawHistory() {
     for (let k = 0; k < v.length; k++) base[r.from + k] += v[k];
   }
   g.strokeStyle = '#3a2e27'; g.beginPath(); g.moveTo(padL, padT); g.lineTo(padL, Hh - padB); g.lineTo(W - padR, Hh - padB); g.stroke();
-  g.fillStyle = '#9a8a78'; g.font = '9px IBM Plex Mono, monospace'; g.textAlign = 'right';
+  g.fillStyle = '#9a8a78'; g.font = `${W > 600 ? 12 : 9}px IBM Plex Mono, monospace`; g.textAlign = 'right';
   g.fillText(String(Math.round(max)), padL - 3, padT + 8); g.fillText('0', padL - 3, Hh - padB);
+  if (W > 600) { // room for a few more rungs and the year marks
+    g.textAlign = 'right'; for (let q = 1; q < 4; q++) { const v = max * q / 4; g.fillStyle = 'rgba(255,255,255,0.05)'; g.fillRect(padL, y(v), W - padL - padR, 1); g.fillStyle = '#9a8a78'; g.fillText(String(Math.round(v)), padL - 3, y(v) + 4); }
+    g.textAlign = 'center'; for (let yr = YEAR; yr <= H.ticks[n - 1]; yr += YEAR) { const k = H.ticks.findIndex(t => t >= yr); if (k < 0) break; g.fillText('Y' + (yr / YEAR + 1), x(k), Hh - 4); }
+  }
   g.textAlign = 'left'; g.fillText('t' + H.ticks[0], padL, Hh - 4);
   g.textAlign = 'right'; g.fillText(`t${H.ticks[n - 1]} · Y${Math.floor(H.ticks[n - 1] / YEAR) + 1}`, W - padR, Hh - 4);
   histLastLen = n;
@@ -6280,6 +6308,18 @@ $('histChart').addEventListener('mousemove', ev => {
 });
 $('histChart').addEventListener('mouseleave', () => { $('histRead').textContent = ''; });
 
+// Full-screen history: the same panel, moved into an overlay and drawn big.
+let histFull = false;
+function toggleHistFull() {
+  const group = $('histChart').closest('.group'), overlay = $('histFull');
+  histFull = !histFull;
+  if (histFull) { group.dataset.home = ''; group.parentElement.dataset.histHome = '1'; histHome = group.parentElement; overlay.appendChild(group); overlay.classList.add('on'); $('histFullBtn').textContent = 'close'; const c = $('histChart'); c.width = Math.min(1600, window.innerWidth - 60); c.height = Math.max(300, window.innerHeight - 230); }
+  else { overlay.classList.remove('on'); histHome.appendChild(group); $('histFullBtn').textContent = 'full screen'; const c = $('histChart'); c.width = 340; c.height = 200; }
+  histLastLen = -1; drawHistory();
+}
+let histHome = null;
+$('histFullBtn').addEventListener('click', toggleHistFull);
+window.addEventListener('resize', () => { if (histFull) { const c = $('histChart'); c.width = Math.min(1600, window.innerWidth - 60); c.height = Math.max(300, window.innerHeight - 230); histLastLen = -1; drawHistory(); } });
 const SPEEDS = [1, 2, 4, 8, 15, 30, 60, 120, 240];
 function nudgeSpeed(dir) {
   const cur = params.speed; let k = SPEEDS.findIndex(v => v >= cur); if (k < 0) k = SPEEDS.length - 1;
@@ -6295,7 +6335,8 @@ window.addEventListener('keydown', ev => {
     case '-': case '_': zoomAt(1 / 1.5, canvas.width / 2, canvas.height / 2); break;
     case '=': case '+': zoomAt(1.5, canvas.width / 2, canvas.height / 2); break;
     case '0': resetView(); break;
-    case 'h': case 'H': showTab('Valley'); break;
+    case 'h': case 'H': showTab('History'); break;
+    case 'Escape': if (histFull) toggleHistFull(); break;
     case ' ': ev.preventDefault(); setRunning(!running); break;
     case 'm': case 'M': launchMissile(randomFuelCell()); break;
     case 'l': case 'L': lightning(randomFuelCell()); break;

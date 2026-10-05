@@ -303,11 +303,12 @@ beasts.
 
 ## The sidebar
 
-Four tabs: Play (run, ignite, dispatch, save and seed), Valley (settlements and history),
-Settings (world, fire, wind, terrain and the legend) and Info (achievements and the notes).
-The running log sits under the map so you are always in tune with the world.
+Five tabs: Play (run, ignite, dispatch, save and seed), Towns, History, Settings (world,
+fire, wind, terrain and the legend) and Info (achievements and the notes). The running log
+sits under the map so you are always in tune with the world.
 
-The History panel draws sand plots: every town is a layer, stacked, from its founding to its
+The History tab draws sand plots, and a full-screen button blows them up to the whole window
+(Escape closes): every town is a layer, stacked, from its founding to its
 end, so a town that dies shows as a band that narrows to nothing. Pick population, homes,
 militia, coin, food or stockpile; click a town to hide it, double-click to see it alone, tick
 "hide dead towns", and hover the chart to read the numbers at any tick. Press H to jump there.
@@ -317,8 +318,13 @@ Hotkeys: `[` and `]` step the speed down and up, `-` and `=` zoom, `0` shows the
 ## Looking closer
 
 Scroll to zoom at the cursor, drag to pan, pinch and drag on a phone, or use the + / - / home
-buttons in the HUD. A click that did not drag still fires a missile. This is what makes a
-300 x 300 valley playable.
+buttons in the HUD. A click that did not drag still fires a missile. Big maps are drawn at full
+sprite detail internally (up to 8 px a cell) and scaled to fit, so a 300 x 300 valley shows
+real houses and trees when you zoom in.
+
+A town that loses everything is never stuck: its people muster at the ruins or a campfire,
+two of them cut wood even without a lumberyard, and if there is no timber at all they slowly
+rebuild with what they scavenge from the rubble.
 
 ## Controls
 
