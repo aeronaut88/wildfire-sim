@@ -309,6 +309,15 @@ towns cling to the river and the watering holes, and nothing grows on open sand.
 fields with no water within reach wither back to scrub, three times as fast in the desert. The History
 facts block names the climate, and the trees tile shows the biome shares.
 
+## Travel
+
+Walking speed depends on the ground: a road or bridge is the fast way (over one and a half
+cells a tick), open ground is a cell a tick, scrub and reeds slow, forest and marsh slower,
+jungle slower still, and deep snow slows everything. Trucks and crews feel it too. A town
+that opens a quarry, mine, derrick or shaft a long walk away sends a crew to lay a road out
+to it, paid in stone, and every trip after that is faster. Shift+hover says whether a cell is
+fast or hard going.
+
 ## Beasts
 
 Herds of deer, wild boar, wild sheep, grouse and the odd aurochs roam the open ground, run
@@ -419,6 +428,13 @@ rebuild with what they scavenge from the rubble.
 
 Sliders: speed (ticks per second), blast radius, spread probability, wind strength,
 map size (30 to 300, default 200), and tree density. Changing size or density regenerates the map.
+
+## Safety
+
+The page runs no scripts but its own, talks to no server, and its content security policy
+says so. Save files are the only untrusted input: every file is checked for shape and size
+before it is loaded, every string in it that could be shown is stripped of anything that could
+be markup, and only known settings within their ranges are taken from it.
 
 ## Host it on GitHub Pages
 

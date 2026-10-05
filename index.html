@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com data:; img-src 'self' data: blob:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
 <title>Wildfire Sim</title>
 <meta name="description" content="Probabilistic forest fire cellular automaton with pixel-art sprites, wind, towns that fight back, and missile strikes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -3202,15 +3203,33 @@ function maybeTradeRoad() {
   }
 }
 // Lay one cell of a road project per step: the crew walks the route and the road grows behind it.
+// A work road: from the town out to a quarry, mine, derrick or shaft that is a long walk away.
+function startWorkRoad(town, site) {
+  const n = world.n, key = 'work-' + site;
+  if ((world.roadProjects || []).some(pr => pr.key === key)) return false;
+  const path = roadPath(town.cy * n + town.cx, site);
+  if (!path || path.length < 8 || path.filter(c => world.type[c] === T.WATER).length > 6) return false;
+  if (town.res.stone < 4) return false;
+  world.roadProjects = world.roadProjects || [];
+  const what = BUILDING_NAMES[town.sites && town.sites[site] ? town.sites[site].type : world.type[site]] || 'work site';
+  world.roadProjects.push({ key, a: town.id, b: town.id, path, k: 0, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, wait: 0, water: 0, halted: false, work: true, site, what });
+  log(`${town.name} sends a crew to lay a road out to its ${what.toLowerCase()}`, 'build');
+  return true;
+}
 function updateRoadProjects() {
   const projects = world.roadProjects || [];
   if (!projects.length) return;
   const n = world.n, keep = [];
   for (const pr of projects) {
     pr.px = pr.x; pr.py = pr.y;
-    const a = world.towns[pr.a], b = world.towns[pr.b], road = world.tradeRoads[pr.key];
-    if (!road || !isAlive(a) || !isAlive(b) || atWar(a, b)) { delete world.tradeRoads[pr.key]; log(`The road between ${a.name} and ${b.name} is abandoned half built`, 'loss'); continue; }
-    if (pr.k >= pr.path.length) { road.building = false; log(`The road between ${a.name} and ${b.name} is finished${pr.water ? '; wagons can cross the bridge' : ''}`, 'build'); continue; }
+    const a = world.towns[pr.a], b = world.towns[pr.b], road = pr.work ? null : world.tradeRoads[pr.key];
+    if (pr.work) {
+      if (!isAlive(a) || !(isBuilding(world.type[pr.site]) || world.type[pr.site] === T.SITE)) { if (isAlive(a)) log(`${a.name}'s road crew comes home; the ${pr.what.toLowerCase()} is gone`, 'loss'); continue; }
+      if (pr.k >= pr.path.length) { log(`${a.name} finishes the road to its ${pr.what.toLowerCase()}`, 'build'); stat('ev', 'workRoads'); continue; }
+    } else {
+      if (!road || !isAlive(a) || !isAlive(b) || atWar(a, b)) { delete world.tradeRoads[pr.key]; log(`The road between ${a.name} and ${b.name} is abandoned half built`, 'loss'); continue; }
+      if (pr.k >= pr.path.length) { road.building = false; log(`The road between ${a.name} and ${b.name} is finished${pr.water ? '; wagons can cross the bridge' : ''}`, 'build'); continue; }
+    }
     const c = pr.path[pr.k];
     if (world.burnLeft[c] > 0 || world.burnLeft[pr.y * n + pr.x] > 0) { keep.push(pr); continue; } // wait for the fire to pass
     if (world.tick % 2 === 0) { keep.push(pr); continue; } // one cell every other tick
@@ -3218,7 +3237,7 @@ function updateRoadProjects() {
     const needs = t === T.WATER ? { wood: 2 } : (pr.k % 3 === 0 ? { stone: 1 } : null);
     if (needs) {
       const payer = canAfford(a, needs) && (a.res.stone >= b.res.stone || !canAfford(b, needs)) ? a : canAfford(b, needs) ? b : null;
-      if (!payer) { if (!pr.halted) { pr.halted = true; log(`Road work between ${a.name} and ${b.name} halts for want of ${Object.keys(needs)[0]}`, 'loss'); } keep.push(pr); continue; }
+      if (!payer) { if (!pr.halted) { pr.halted = true; log(pr.work ? `${a.name}'s road work halts for want of ${Object.keys(needs)[0]}` : `Road work between ${a.name} and ${b.name} halts for want of ${Object.keys(needs)[0]}`, 'loss'); } keep.push(pr); continue; }
       pay(payer, needs); pr.halted = false;
     }
     if (!(world.road[c] || isBuilding(t) || t === T.ROCK || t === T.WALL || t === T.DAM || t === T.BRIDGE)) {
@@ -4334,12 +4353,12 @@ function buildSites(town) {
       if (!world.surveyed[i] || !world.deep[i] || !world.deepAmt[i] || isBuilding(world.type[i])) continue;
       const kind = world.deep[i], type = kind === 5 ? T.DERRICK : T.SHAFT;
       if (countType(town, type) >= 2 || !canAfford(town, COST[type])) continue;
-      if (buildOn(town, i, type)) { pay(town, COST[type]); town.deepSite[i] = kind; log(kind === 5 ? `${town.name} raises an oil derrick` : `${town.name} sinks a shaft to the deep ${ORE_NAMES[kind]}`, 'build'); return; }
+      if (buildOn(town, i, type)) { pay(town, COST[type]); town.deepSite[i] = kind; log(kind === 5 ? `${town.name} raises an oil derrick` : `${town.name} sinks a shaft to the deep ${ORE_NAMES[kind]}`, 'build'); if (Math.hypot(x - town.cx, y - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
   if (town.popLeft >= 25 && !hasType(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
-    if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); return; }
+    if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
   }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
     for (const kind of [6, 1, 2, 3, 4]) { // gold first: everyone knows what that is
@@ -4347,7 +4366,7 @@ function buildSites(town) {
       if (kind === 4 && town.mil < 4 && town.civ < 3) continue; // nobody digs for uranium until they know what it is
       if (countType(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80)) break;
       const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
-      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); return; }
+      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
   const wells = countType(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
@@ -5261,8 +5280,21 @@ function campPoint(town) {
 // Greedy walking with two safeguards: never step straight back into the cell just left (that is
 // what made people shuffle between two cells), and count steps that bring the target no closer
 // in a.stall so callers can give up on an unreachable target.
+// How far a walker gets per tick on a given cell: a road is the fast way, forest and marsh are slow going.
+function terrainSpeed(i) {
+  if (world.road[i]) return 1.6;
+  const t = world.type[i];
+  let v = (t === T.BRIDGE) ? 1.6 : (t === T.SCRUB || t === T.REEDS || t === T.CACTUS) ? 0.75 : (t === T.MUD) ? 0.5 : (t === T.JUNGLE) ? 0.4 : isTree(t) ? 0.55 : 1;
+  if (world.biome && world.biome[i] === 4 && !isBuilding(t)) v *= 0.8; // marsh ground
+  if (world.snowLv && world.snowLv[i] >= 3) v *= 0.6; // wading through snow
+  return v;
+}
 function stepToward(a, tx, ty, speed, allowBurning) {
   const n = world.n, type = world.type;
+  // Movement is a budget: fast ground earns more than a step a tick, slow ground less.
+  a.move = Math.min(3, (a.move || 0) + speed * terrainSpeed(a.y * n + a.x));
+  if (a.move < 1) return a.x === tx && a.y === ty;
+  speed = Math.floor(a.move); a.move -= speed;
   for (let s = 0; s < speed; s++) {
     if (a.x === tx && a.y === ty) { a.stall = 0; return true; }
     const before = Math.max(Math.abs(tx - a.x), Math.abs(ty - a.y));
@@ -6625,6 +6657,7 @@ function updateTip() {
   if (world.elev) lines.push(`<div><span class="k">elevation:</span> ${Math.round(world.elev[i] * 100)}${world.flow && world.flow[i] >= 0 ? (world.flow[i] === i ? ', river mouth' : ', river, flows ' + (() => { const j = world.flow[i]; const dx = j % n - x, dy = Math.floor(j / n) - y; return dy < 0 ? 'north' : dy > 0 ? 'south' : dx > 0 ? 'east' : 'west'; })()) : ''}${world.flooded.includes(i) ? ', flood water' : ''}</div>`);
   if (t === T.FARM && world.townOf[i] >= 0) lines.push(`<div class="town">Fields of ${world.towns[world.townOf[i]].name}, feeds 12</div>`);
   if (world.fallout[i] > 0) lines.push(`<div class="fire">Fallout ${Math.round(world.fallout[i] / 2.55)}%${world.fallout[i] > 40 ? ', nothing grows or builds here' : ', fading'}</div>`);
+  { const sp = terrainSpeed(i); if (sp !== 1) lines.push(`<div class="dim">${sp > 1 ? 'fast going: a road' : sp >= 0.7 ? 'slow going' : 'hard going'}</div>`); }
   if (world.biome) lines.push(`<div class="dim">${BIOME_NAMES[world.biome[i]]}${world.biome[i] === 5 ? (nearWater(i, 4) ? ', irrigable' : ', nothing will grow here') : ''}</div>`);
   if (world.type[i] === T.ROCK && world.oreKind[i]) lines.push(`<div>${ORE_NAMES[world.oreKind[i]][0].toUpperCase() + ORE_NAMES[world.oreKind[i]].slice(1)} seam · ${world.ore[i]} left</div>`);
   if (world.surveyed[i] && world.deep[i]) lines.push(`<div>${world.deep[i] === 5 ? 'Oil field' : 'Deep ' + ORE_NAMES[world.deep[i]] + ' seam'} (surveyed) · ${world.deepAmt[i]} left</div>`);
@@ -6930,7 +6963,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
 }
 function renderHistControls() {
   renderHistFacts();
@@ -7106,8 +7139,50 @@ function snapshot() {
   };
 }
 
+// Strings from a save file are shown with innerHTML in places, so anything that could be markup is stripped.
+function cleanStr(v, max) { return typeof v === 'string' ? v.replace(/[<>&"'`]/g, '').slice(0, max || 200) : ''; }
+function cleanKeys(obj, max) { const out = {}; if (obj && typeof obj === 'object') for (const k of Object.keys(obj).slice(0, 500)) { const v = obj[k]; if (typeof v === 'number' && Number.isFinite(v)) out[cleanStr(k, 80)] = v; } return out; }
+function validateSave(d) {
+  if (!d || typeof d !== 'object' || d.v !== SAVE_VERSION || !d.arrays || typeof d.arrays !== 'object') throw new Error('not a Wildfire save');
+  const n = d.n;
+  if (!Number.isInteger(n) || n < 30 || n > 300) throw new Error('bad map size');
+  if (!Array.isArray(d.towns) || d.towns.length > 200) throw new Error('bad town list');
+  if (!Number.isFinite(d.tick) || d.tick < 0) throw new Error('bad tick');
+  for (const [k, bytes] of [['type', 1], ['variant', 1], ['burnLeft', 2], ['glow', 1], ['wet', 2], ['wetKind', 1], ['townOf', 1], ['road', 1], ['fert', 1], ['since', 4], ['intensity', 1]]) {
+    const a = d.arrays[k]; if (typeof a !== 'string') throw new Error('missing ' + k);
+    const len = Math.floor(a.replace(/=+$/, '').length * 3 / 4); if (len !== n * n * bytes) throw new Error('bad array ' + k);
+  }
+  // Scrub every string that will be shown.
+  d.log = (Array.isArray(d.log) ? d.log : []).slice(0, 60).map(e => ({ tick: Number.isFinite(e && e.tick) ? e.tick : 0, text: cleanStr(e && e.text, 300), kind: cleanStr(e && e.kind, 20) }));
+  for (const t of d.towns) {
+    if (!t || typeof t !== 'object') throw new Error('bad town');
+    t.name = cleanStr(t.name, 60) || 'Nameless';
+    t.chronicle = (Array.isArray(t.chronicle) ? t.chronicle : []).slice(0, 40).map(e => ({ tick: Number.isFinite(e && e.tick) ? e.tick : 0, text: cleanStr(e && e.text, 300) }));
+    t.people = (Array.isArray(t.people) ? t.people : []).slice(0, 20).map(p => ({ ...p, name: cleanStr(p && p.name, 60), story: cleanStr(p && p.story, 200), cause: cleanStr(p && p.cause, 60), role: cleanStr(p && p.role, 20), trait: p && TRAITS[p.trait] ? p.trait : undefined, deeds: (Array.isArray(p && p.deeds) ? p.deeds : []).slice(0, 6).map(dd => ({ tick: Number.isFinite(dd && dd.tick) ? dd.tick : 0, text: cleanStr(dd && dd.text, 200) })) }));
+    if (t.res && typeof t.res === 'object') for (const k of Object.keys(t.res)) if (!RES_KINDS.includes(k)) delete t.res[k];
+  }
+  if (d.trader && d.trader.stock) d.trader.stock = cleanKeys(d.trader.stock, 20);
+  if (d.dragon) d.dragon.name = cleanStr(d.dragon.name, 60);
+  if (d.dragonGrudge) d.dragonGrudge.name = cleanStr(d.dragonGrudge.name, 60);
+  if (d.history && d.history.towns) for (const id in d.history.towns) { const r = d.history.towns[id]; if (r) r.name = cleanStr(r.name, 60); }
+  if (d.stats) { for (const g of ['deaths', 'deathsTown', 'lost', 'lostTown', 'ev', 'dragons']) if (d.stats[g]) d.stats[g] = cleanKeys(d.stats[g], 80); if (d.stats.max) d.stats.max.name = cleanStr(d.stats.max.name, 60); }
+  if (d.climate) d.climate.name = cleanStr(d.climate.name, 20);
+  if (d.weather) d.weather.kind = WEATHER[d.weather.kind] ? d.weather.kind : 'clear';
+  return d;
+}
+const PARAM_LIMITS = { speed: [1, 240], spread: [0, 1], neighbors: [4, 8], windStrength: [0, 1], density: [0, 1], blast: [0, 12], regrow: [0, 5], townCap: [3, 16], maxTowns: [1, 12], windX: [-1, 1], windY: [-1, 1] };
+function applySavedParams(src) {
+  if (!src || typeof src !== 'object') return;
+  for (const k of Object.keys(params)) {
+    if (!(k in src) || typeof src[k] !== typeof params[k]) continue;
+    let v = src[k];
+    if (typeof v === 'number') { if (!Number.isFinite(v)) continue; const lim = PARAM_LIMITS[k]; if (lim) v = Math.max(lim[0], Math.min(lim[1], v)); }
+    if (typeof v === 'string') { if (k === 'weatherMode' && !(v === 'auto' || WEATHER[v])) continue; if (k === 'windMode' && v !== 'auto' && v !== 'manual') continue; v = v.slice(0, 20); }
+    params[k] = v;
+  }
+}
 function restore(d) {
-  if (!d || d.v !== SAVE_VERSION || !d.arrays) throw new Error('not a Wildfire save');
+  d = validateSave(d);
   const n = d.n, N = n * n;
   missiles.length = 0; explosions.length = 0; bolts.length = 0; particles.length = 0; popups.length = 0;
   world.n = n; world.seed = d.seed; world.tick = d.tick;
@@ -7155,7 +7230,7 @@ function restore(d) {
   for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;
-  Object.assign(params, d.params);
+  applySavedParams(d.params);
   logEntries.length = 0; logEntries.push(...d.log); renderLog();
   applyParamsToUi();
   $('size').value = n; $('sizeOut').innerHTML = `${n} &times; ${n}`;
@@ -7308,7 +7383,18 @@ renderSlots();
 setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, view, cellFromPoint, zoomAt, resetView, missiles, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
+// Debug: time the pieces of a tick over N ticks, for finding what costs what.
+function profileTicks(ticks) {
+  const fns = { updateSnow, updateLook, regrowSweep, updateHydrology, updateHerds, updateBoats, updateWarbands, updateBattles, updateFallout, updateDiplomacy, updateWagons, updateRoadProjects, updateTrader, updateSettlers, flushDirty, updateCrews, updateTrucks, updateWorkers, growTown, maybeArson };
+  const t0 = performance.now(); for (let k = 0; k < ticks; k++) step(); const total = performance.now() - t0;
+  const out = { totalMsPerTick: +(total / ticks).toFixed(3) };
+  for (const nm of ['updateSnow', 'updateLook', 'regrowSweep', 'updateHydrology', 'updateHerds', 'updateBoats', 'updateWarbands', 'updateBattles', 'updateFallout', 'updateDiplomacy', 'updateWagons', 'updateRoadProjects', 'updateTrader', 'updateSettlers', 'flushDirty']) { const a = performance.now(); for (let k = 0; k < 200; k++) { world.tick++; fns[nm](); } out[nm] = +((performance.now() - a) / 200).toFixed(3); }
+  for (const nm of ['updateCrews', 'updateTrucks', 'updateWorkers', 'growTown', 'maybeArson']) { const a = performance.now(); for (let k = 0; k < 50; k++) { world.tick++; for (const t of world.towns) fns[nm](t); } out[nm + ' (all towns)'] = +((performance.now() - a) / 50).toFixed(3); }
+  { const a = performance.now(); for (let k = 0; k < 50; k++) { world.tick++; updateTowns(); } out['updateTowns (whole)'] = +((performance.now() - a) / 50).toFixed(3); }
+  { const a = performance.now(); for (let k = 0; k < 100; k++) render(performance.now(), 0); out.render = +((performance.now() - a) / 100).toFixed(3); }
+  return out;
+}
+window.__wildfire = { world, params, reset, step, profileTicks, terrain, render, stepToward, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, view, cellFromPoint, zoomAt, resetView, missiles, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 200;
