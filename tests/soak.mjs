@@ -2,8 +2,11 @@
 import { spawn } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 
-const CHROME = 'C:/Users/james/AppData/Local/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-win64/chrome-headless-shell.exe';
-const URL = 'file:///C:/Users/james/Projects/random/forest-fire/index.html';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const CHROME = process.env.WILDFIRE_CHROME || 'C:/Users/james/AppData/Local/ms-playwright/chromium_headless_shell-1243/chrome-headless-shell-win64/chrome-headless-shell.exe';
+const URL = 'file:///' + path.resolve(HERE, '..', 'index.html').split(path.sep).join('/');
 const PORT = Number(process.env.WILDFIRE_PORT || 9412);
 const OUT = process.argv[2] || 'soak';
 const SECONDS = parseInt(process.argv[3] || '70', 10);
