@@ -125,6 +125,12 @@
   .hud .w.drought { color: #e0a33a; }
   .hud .w.storm { color: #e6ecff; }
   .hud .w.clear { color: var(--ink); }
+  .hud .w.snow { color: #e8f0ff; }
+  .hud .season { font-weight: bold; }
+  .hud .season.s0 { color: #8be07a; }
+  .hud .season.s1 { color: #ffd166; }
+  .hud .season.s2 { color: #ff9f45; }
+  .hud .season.s3 { color: #cfe0ff; }
   .hud .sep { width: 1px; height: 14px; background: var(--panel-edge); }
   .hud .vane { width: 18px; height: 18px; transition: transform 300ms ease; }
   .hud .vane path { fill: var(--ember-hot); }
@@ -376,6 +382,8 @@
     <div class="viewport" id="viewport">
       <canvas id="map" width="800" height="800"></canvas>
       <div class="hud" id="hud">
+        <span class="season s0" id="hudSeason">Spring</span>
+        <span class="sep"></span>
         <span class="w clear" id="hudWeather">Clear</span>
         <span class="sep"></span>
         <svg class="vane" id="hudVane" viewBox="0 0 20 20"><path d="M2 8 L12 8 L12 4 L19 10 L12 16 L12 12 L2 12 Z"/></svg>
@@ -588,9 +596,17 @@ const PAL = {
   'V': '#7a4e22', 'H': '#f3eee0',
   // civic
   '4': '#8b8b93', '5': '#5c5c64', '6': '#c9a86a', '7': '#2f2f36', '8': '#e8e0c8', '9': '#a33a2a', '0': '#3b6ea8',
+  // ice
+  '<': '#c4dcf0', '>': '#a3c3e3', '=': '#e6f0fb',
 };
 
 const SPRITES = {
+  ice: [
+    '<<<<<<<<<<<<<<<<','<<==<<<<<<<<<<<<','<<<<<<<<<<>><<<<','<<<<<<<<<>><<<<<',
+    '<<<<<<<<>><<<<<<','<<<<<<<>><<<<<<<','<<<<<<<<<<<<<<==','<<<<<<<<<<<<<<<<',
+    '<<<<<<<<<<<<<<<<','<==<<<<<<<<<<<<<','<<<<<<<<<<<<<<<<','<<<<<>><<<<<<<<<',
+    '<<<<<<>><<<<<<<<','<<<<<<<>><<<<==<','<<<<<<<<<<<<<<<<','<<<<<<<<<<<<<<<<',
+  ],
   grass0: [
     'gggggggggggggggg','ggggGgggggggggGg','gggGGgggghggggGg','ggggggggghgggggg',
     'gggggggggggggggg','gGggggggggggGggg','gGgggghgggggGggg','gggggghggggggggg',
@@ -895,14 +911,15 @@ const SPRITES = {
   ],
 };
 
-function buildSprite16(rows) {
+function buildSprite16(rows, pal) {
+  pal = pal || PAL;
   const c = document.createElement('canvas');
   c.width = 16; c.height = 16;
   const x = c.getContext('2d');
   for (let j = 0; j < 16; j++) {
     const row = rows[j];
     for (let i = 0; i < 16; i++) {
-      const col = PAL[row[i]];
+      const col = pal[row[i]];
       if (!col) continue;
       x.fillStyle = col;
       x.fillRect(i, j, 1, 1);
@@ -933,6 +950,85 @@ SPRITES.bomber = SPRITES.plane.map(row => row.replace(/x/g, '5').replace(/d/g, '
 // Raiders wear blue so you can tell the two sides apart.
 SPRITES.raider = SPRITES.soldier.map(row => row.replace(/d/g, 'u'));
 for (const k of ['raider', 'tank', 'cannon', 'bomber']) SPR16[k] = buildSprite16(SPRITES[k]);
+/* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
+   The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
+   gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
+   Snow is a separate layer of dithered stamps laid over whatever the tile looks like. */
+const SEASON_PAL = [
+  { g: '#4f9a3b', G: '#68ba4e', h: '#3d8030', o: '#2f8a38', O: '#5cba62', n: '#1f6329', p: '#357f33', P: '#4ea050', q: '#225a26' },
+  null,
+  { g: '#8d8a3f', G: '#a89c48', h: '#6f6d2f', o: '#c0581f', O: '#e8922a', n: '#7a3115', p: '#2b6d2d', P: '#3e8b42', q: '#1c4a1f' },
+  { g: '#8b8a73', G: '#9d9c84', h: '#72715c', o: '#5c4634', O: '#8b8a73', n: '#3c2e21', p: '#2a5c3b', P: '#3a784b', q: '#1b4229', A: '#163a25', Q: '#245438', M: '#326f47' },
+];
+function seasonRows(name, rows, sea) {
+  if (sea === 1) return rows;
+  const map = (fn) => rows.map((row, j) => row.split('').map((ch, i) => fn(ch, i, j)).join(''));
+  if (name === 'oak') {
+    if (sea === 3) return map((ch, i, j) => ch === 'O' ? 'g' : ch === 'o' ? ((i + j) % 2 ? 'g' : 'T') : ch === 'n' ? ((i * 3 + j) % 3 ? 'T' : 'g') : ch);
+  }
+  if (name === 'birch') {
+    if (sea === 2) return map(ch => ch === 'G' ? 'E' : ch);
+    if (sea === 3) return map((ch, i, j) => ch === 'G' ? ((i + j * 2) % 3 ? 'g' : 'a') : ch);
+  }
+  if (name === 'farm') {
+    if (sea === 0) return map(ch => ch === '6' ? 'P' : ch);
+    if (sea === 2) return map(ch => ch === '6' ? 'E' : ch);
+    if (sea === 3) return map(ch => ch === '6' ? 'z' : ch);
+  }
+  if (name === 'scrub' && sea === 2) return map(ch => ch === 'z' ? 'e' : ch);
+  return rows;
+}
+const SPR16S = [0, 1, 2, 3].map(sea => {
+  const pal = SEASON_PAL[sea] ? { ...PAL, ...SEASON_PAL[sea] } : PAL;
+  const set = {};
+  for (const k in SPRITES) set[k] = sea === 1 ? SPR16[k] : buildSprite16(seasonRows(k, SPRITES[k], sea), pal);
+  return set;
+});
+// Snow stamps: six depths, two variants each. Caps on the tops of things and drifts along the
+// bottom edge fill in first, so a dusting reads as snow on branches before the ground goes white.
+const SNOW_COVER = [0.12, 0.28, 0.45, 0.62, 0.74, 0.82];
+function snowStamps(tree) {
+  return SNOW_COVER.map(cover => [0, 1].map(v => {
+    const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+    const x = c.getContext('2d');
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
+      // Trees keep their dark middle: snow sits on the crown and piles around the foot.
+      const w = hash2(i, j, 977 + v * 31) - (j < 4 ? 0.22 : j >= 13 ? 0.2 : 0) + (tree && j >= 4 && j < 13 ? 0.42 : 0);
+      if (w < cover) { x.fillStyle = hash2(i, j, 55) < 0.2 ? '#dde6f4' : '#f4f7fd'; x.fillRect(i, j, 1, 1); }
+    }
+    return c;
+  }));
+}
+const SNOW16 = snowStamps(false), SNOWT16 = snowStamps(true);
+// Deep snow: a proper snowed version of every tile. Ground pixels turn white with a faint
+// shadow dither, and the first pixel of anything standing up gets a white cap. Roads stay
+// a little darker, as if the town keeps them trodden.
+const SNOW_GROUND = { g: 1, G: 1, h: 1, b: 1, B: 1, a: 1, z: 1, Z: 1, '6': 1, '1': 2, '2': 2, '3': 2 };
+function snowedRows(name, rows) {
+  const out = rows.map(r => r.split(''));
+  for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
+    const g = SNOW_GROUND[out[j][i]];
+    if (g === 1) out[j][i] = hash2(i, j, 9) < 0.16 ? '%' : 'S';
+    else if (g === 2) out[j][i] = hash2(i, j, 9) < 0.5 ? '%' : out[j][i];
+  }
+  for (let i = 0; i < 16; i++) {
+    for (let j = 0; j < 16; j++) {
+      const ch = rows[j][i];
+      if (ch === '.' || SNOW_GROUND[ch]) continue;
+      out[j][i] = 'S';
+      if (j + 1 < 16 && rows[j + 1][i] !== '.' && !SNOW_GROUND[rows[j + 1][i]] && hash2(i, j, 21) < 0.45) out[j + 1][i] = 'S';
+      break;
+    }
+  }
+  return out.map(r => r.join(''));
+}
+const SNOWED16 = {};
+{
+  const pal = { ...PAL, ...SEASON_PAL[3], '%': '#dde5f2' };
+  for (const k in SPRITES) SNOWED16[k] = buildSprite16(snowedRows(k, seasonRows(k, SPRITES[k], 3)), pal);
+}
+const SEASON_TINT = [null, 'rgba(255,225,140,0.035)', 'rgba(255,165,70,0.05)', 'rgba(185,200,240,0.07)'];
+
 // Black silhouettes for shadows that match the sprite's shape.
 const SIL16 = {};
 for (const k of ['dragon0', 'dragon1', 'plane']) {
@@ -944,17 +1040,26 @@ for (const k of ['dragon0', 'dragon1', 'plane']) {
   SIL16[k] = c;
 }
 
-let SPR = {};
-function rescaleSprites(px) {
-  SPR = {};
-  for (const k in SPR16) {
+let SPR = {}, SPRS = [], SNOW = [], SNOWT = [], SNOWED = {};
+function scaleSet(src, px) {
+  const out = {};
+  for (const k in src) {
     const c = document.createElement('canvas');
     c.width = px; c.height = px;
     const x = c.getContext('2d');
     x.imageSmoothingEnabled = false;
-    x.drawImage(SPR16[k], 0, 0, px, px);
-    SPR[k] = c;
+    x.drawImage(src[k], 0, 0, px, px);
+    out[k] = c;
   }
+  return out;
+}
+function rescaleSprites(px) {
+  SPRS = SPR16S.map(set => scaleSet(set, px));
+  for (const k in SPR16) if (!SPRS[1][k]) SPRS[1][k] = scaleSet({ k: SPR16[k] }, px).k;
+  SPR = SPRS[1];
+  SNOW = SNOW16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
+  SNOWT = SNOWT16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
+  SNOWED = scaleSet(SNOWED16, px);
 }
 
 /* ───────────────────────── Noise & RNG ───────────────────────── */
@@ -1031,7 +1136,7 @@ const WEATHER = {
   rain:    { label: 'Rain',    spread: 0.35, spot: 0,   regrow: 3.0,  rainOut: 0.06, lightning: 0,     tint: 'rgba(40,70,140,0.22)' },
   storm:   { label: 'Storm',   spread: 0.55, spot: 0.5, regrow: 2.0,  rainOut: 0.04, lightning: 0.02,  tint: 'rgba(20,30,70,0.32)' },
   ashfall: { label: 'Ashfall', spread: 0.8,  spot: 0.3, regrow: 0.15, rainOut: 0,    lightning: 0,     tint: 'rgba(60,60,65,0.45)' },
-  snow:    { label: 'Snow',    spread: 0.2,  spot: 0,   regrow: 0,    rainOut: 0.03, lightning: 0,     tint: 'rgba(235,240,255,0.42)' },
+  snow:    { label: 'Snow',    spread: 0.2,  spot: 0,   regrow: 0,    rainOut: 0.03, lightning: 0,     tint: 'rgba(205,218,245,0.12)' },
   drystorm: { label: 'Dry storm', spread: 1.2, spot: 1.8, regrow: 0.4, rainOut: 0,   lightning: 0.03,  tint: 'rgba(70,40,90,0.28)' },
 };
 const WEATHER_NEXT = {
@@ -1117,6 +1222,8 @@ function generate(n, seed) {
   world.intensity = new Uint8Array(N); // 1 = crown fire
   world.fallout = new Uint8Array(N); world.falloutList = []; // radiation, decays slowly
   world.elev = new Float32Array(N); world.flow = new Int32Array(N).fill(-1); world.river = []; world.beavers = null; world.flooded = []; world.floodOrig = new Map(); world.floodUntil = 0;
+  world.snow = new Uint8Array(N); world.snowLv = new Uint8Array(N); world.snowCells = 0; world.snowCover = 0; // snow depth per cell and the drawn level
+  world.look = new Uint8Array(N); world.lookSeason = 0; world.lookLeft = 0; world.lookPos = 0; // which season each tile currently wears
   // Regrowth visits cells in a scattered order (multiplication by a stride coprime to N) so it never looks like a band sweeping down.
   world.sweepStep = Math.floor(N * 0.6180339) | 1;
   const gcd = (a, b) => b ? gcd(b, a % b) : a;
@@ -1638,7 +1745,7 @@ function step() {
   const current = world.burning;
   const count = current.length;
   const next = [];
-  const type = world.type, burnLeft = world.burnLeft, wet = world.wet;
+  const type = world.type, burnLeft = world.burnLeft, wet = world.wet, snow = world.snow;
   const hasWind = params.windStrength > 0 && (params.windX !== 0 || params.windY !== 0);
   const W = WEATHER[world.weather.kind];
   const spreadMul = params.spread * W.spread;
@@ -1661,6 +1768,7 @@ function step() {
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
       let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat;
       if (wet[j] > 0) p *= crown ? 0.3 : 0.1;
+      if (snow[j] > 10) p *= crown ? 0.2 : 0.06; // fuel under snow barely takes
       if (Math.random() < p) ignite(j);
     }
     if (crown) {
@@ -1694,6 +1802,8 @@ function step() {
   world.tick++;
   updateSeason();
   updateWeather();
+  updateSnow();
+  updateLook();
   updateWind();
   maybeMeteor();
   updateHydrology();
@@ -2250,6 +2360,7 @@ function updateBoats() {
   const keep = [];
   for (const b of world.boats) {
     b.px = b.x; b.py = b.y; b.t0 = world.tick;
+    if (world.snow[b.y * n + b.x] >= ICE_AT) { keep.push(b); continue; } // frozen in
     if (b.fire) {
       const t = world.towns[b.town];
       if (!t || !isAlive(t)) continue;
@@ -2290,7 +2401,7 @@ function waterStep(b, tx, ty) {
   for (let my = -1; my <= 1; my++) for (let mx = -1; mx <= 1; mx++) {
     if (!mx && !my) continue;
     const nx = b.x + mx, ny = b.y + my;
-    if (nx < 0 || ny < 0 || nx >= n || ny >= n || type[ny * n + nx] !== T.WATER) continue;
+    if (nx < 0 || ny < 0 || nx >= n || ny >= n || type[ny * n + nx] !== T.WATER || world.snow[ny * n + nx] >= ICE_AT) continue;
     if (nx === b.lx && ny === b.ly) continue; // no shuffling back and forth
     const d = Math.hypot(tx - nx, ty - ny) + (mx && mx !== b.face ? 0.15 : 0); // mild preference to keep heading
     if (d < bd) { bd = d; bx = nx; by = ny; }
@@ -2594,9 +2705,77 @@ function updateWeather() {
   }
 }
 
+/* ───────────────────────── Snow ─────────────────────────
+   Every cell carries a snow depth. Snowfall builds it a little unevenly, so cover comes in ragged;
+   melt depends on the season and the weather, high ground holds its snow longest, and ground that
+   has just thawed is damp for a while. Water freezes over under enough snow. */
+const SNOW_LV = [6, 24, 50, 85, 130, 190]; // depth thresholds for the six drawn levels
+const ICE_AT = 40;
+function snowLevel(d) { let lv = 0; while (lv < 6 && d >= SNOW_LV[lv]) lv++; return lv; }
+function thawWet(i) {
+  if (!isFuel(world.type[i])) return;
+  if (world.wet[i] <= 0) world.wetList.push(i);
+  world.wet[i] = Math.max(world.wet[i], 30);
+  world.wetKind[i] = 3; // damp, not shown as a puddle
+}
+function updateSnow() {
+  const snowing = world.weather.kind === 'snow';
+  if (!snowing && !world.snowCells) return;
+  const snow = world.snow, lv = world.snowLv, N = world.n * world.n, type = world.type, tick = world.tick, burnLeft = world.burnLeft, elev = world.elev;
+  const sea = season(), wk = world.weather.kind;
+  // expected depth lost per tick when it is not snowing
+  const melt = sea === 3 ? (wk === 'rain' || wk === 'storm' ? 1.0 : 0.03) : sea === 0 ? (wk === 'rain' || wk === 'storm' ? 3 : wk === 'drought' ? 2 : 1.2) : 4;
+  let cells = 0;
+  for (let i = 0; i < N; i++) {
+    let d = snow[i];
+    if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
+    else if (snowing) {
+      if (d >= 255) { cells++; continue; }
+      if ((((i * 2654435761) + tick * 40503) >>> 0) % 16 < 11) d++; else { if (d) cells++; continue; }
+    } else {
+      if (!d) continue;
+      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1);
+      let dec = Math.floor(m);
+      if (((((i * 2654435761) + tick * 40503) >>> 0) & 1023) / 1024 < m - dec) dec++;
+      if (!dec) { cells++; continue; }
+      d = Math.max(0, d - dec);
+      if (!d) thawWet(i);
+    }
+    if (d) cells++;
+    snow[i] = d;
+    const l = snowLevel(d);
+    if (l !== lv[i]) { lv[i] = l; dirty.add(i); }
+  }
+  world.snowCells = cells;
+  if (!cells) world.snowCover = 0;
+  else if (tick % 50 === 0) { let c = 0; for (let i = 0; i < N; i++) if (snow[i] >= SNOW_LV[1]) c++; world.snowCover = c / N; }
+}
+// Tiles change into the new season's colours a few at a time, scattered across the map, over
+// the first hundred ticks or so of the season, so autumn arrives tree by tree rather than all at once.
+function updateLook() {
+  const sea = season();
+  if (sea !== world.lookSeason) {
+    world.lookSeason = sea;
+    const look = world.look; let c = 0;
+    for (let i = 0; i < look.length; i++) if (look[i] !== sea) c++;
+    world.lookLeft = c;
+  }
+  if (!world.lookLeft) return;
+  const N = world.n * world.n, look = world.look, step = world.sweepStep, count = Math.ceil(N / 60);
+  let k0 = world.lookPos || 0;
+  for (let k = 0; k < count && world.lookLeft > 0; k++) {
+    if (k0 >= N) k0 = 0;
+    const i = (k0++ * step + (world.sweepOffset || 0)) % N;
+    if (look[i] === sea) continue;
+    if (Math.random() < 0.6) { look[i] = sea; world.lookLeft--; dirty.add(i); }
+  }
+  world.lookPos = k0;
+}
+
 function fireDanger() {
   const W = WEATHER[world.weather.kind];
   let d = W.spread * (1 + params.windStrength) * (season() === 1 ? 1.3 : season() === 3 ? 0.4 : 1);
+  if ((world.snowCover || 0) > 0.5) d *= 0.3;
   if (world.weather.kind === 'drystorm') d *= 1.5;
   return d < 0.5 ? 'low' : d < 1.1 ? 'moderate' : d < 1.8 ? 'high' : 'EXTREME';
 }
@@ -2695,6 +2874,7 @@ function regrowSweep() {
     if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE && t !== T.BIGPINE && t !== T.OAK && t !== T.MUD) continue;
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
     if (world.fallout[i] > 40) continue; // poisoned ground
+    if (world.snow[i] > 20) continue; // nothing grows under snow
     if (world.tick - world.since[i] < regrowWait(i)) continue;
     const r = Math.random();
     if (t === T.ASH || t === T.MUD) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
@@ -3969,8 +4149,9 @@ function checkAchievementStats() {
   if (world.tick % 50 !== 0) return;
   if (world.tick >= 12000 && !achDone['decade']) unlock('decade');
   if (world.popLeft >= 1000) unlock('thousand');
+  if ((world.snowCover || 0) >= 0.95) unlock('whiteout');
 }
-ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', /$^/], ['thousand', '🏙️', 'Metropolis', 'A thousand people alive at once', /$^/]);
+ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', /$^/], ['thousand', '🏙️', 'Metropolis', 'A thousand people alive at once', /$^/], ['whiteout', '🏔️', 'Whiteout', 'The whole valley under snow', /$^/]);
 renderAchievements();
 function renderLog() {
   if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
@@ -3988,42 +4169,43 @@ const tctx = terrain.getContext('2d');
 const dirty = new Set();
 let waterFrame = 0, fireFrame = 0, hover = -1, shake = 0;
 
-function spriteFor(i) {
+function spriteKey(i) {
   const t = world.type[i];
   switch (t) {
-    case T.WATER: return SPR[waterFrame ? 'water1' : 'water0'];
-    case T.ROCK: return SPR.rock;
-    case T.GRASS: return SPR[world.variant[i] ? 'grass1' : 'grass0'];
-    case T.PINE: return SPR.pine;
-    case T.OAK: return SPR.oak;
-    case T.ASH: return SPR[world.glow[i] ? 'ashGlow' : 'ash'];
-    case T.STUMP: return SPR[world.glow[i] ? 'stumpGlow' : 'stump'];
-    case T.HOUSE: return SPR[world.variant[i] ? 'house1' : 'house0'];
-    case T.STATION: return SPR.station;
-    case T.RUBBLE: return SPR.rubble;
-    case T.DIRT: return SPR[world.road[i] ? 'road' : 'dirt'];
-    case T.BIGPINE: return SPR.bigpine;
-    case T.BIRCH: return SPR.birch;
-    case T.SCRUB: return SPR.scrub;
-    case T.SNAG: return SPR.snag;
-    case T.FARM: return SPR.farm;
-    case T.BRIDGE: return SPR.bridge;
-    case T.DAM: return SPR.dam;
-    case T.MUD: return SPR.mud;
-    case T.WALL: return SPR.wall;
-    case T.TENEMENT: return SPR.tenement;
-    case T.BARRACKS: return SPR.barracks;
-    case T.FORGE: return SPR.forge;
-    case T.FACTORY: return SPR.factory;
-    case T.UNIVERSITY: return SPR.university;
-    case T.TOWER: return SPR.tower;
-    case T.SILO: return SPR.silo;
-    case T.TOWNHALL: return SPR.townhall;
-    case T.PAD: return SPR.pad;
-    case T.HANGAR: return SPR.hangar;
+    case T.WATER: return waterFrame ? 'water1' : 'water0';
+    case T.ROCK: return 'rock';
+    case T.GRASS: return world.variant[i] ? 'grass1' : 'grass0';
+    case T.PINE: return 'pine';
+    case T.OAK: return 'oak';
+    case T.ASH: return world.glow[i] ? 'ashGlow' : 'ash';
+    case T.STUMP: return world.glow[i] ? 'stumpGlow' : 'stump';
+    case T.HOUSE: return world.variant[i] ? 'house1' : 'house0';
+    case T.STATION: return 'station';
+    case T.RUBBLE: return 'rubble';
+    case T.DIRT: return world.road[i] ? 'road' : 'dirt';
+    case T.BIGPINE: return 'bigpine';
+    case T.BIRCH: return 'birch';
+    case T.SCRUB: return 'scrub';
+    case T.SNAG: return 'snag';
+    case T.FARM: return 'farm';
+    case T.BRIDGE: return 'bridge';
+    case T.DAM: return 'dam';
+    case T.MUD: return 'mud';
+    case T.WALL: return 'wall';
+    case T.TENEMENT: return 'tenement';
+    case T.BARRACKS: return 'barracks';
+    case T.FORGE: return 'forge';
+    case T.FACTORY: return 'factory';
+    case T.UNIVERSITY: return 'university';
+    case T.TOWER: return 'tower';
+    case T.SILO: return 'silo';
+    case T.TOWNHALL: return 'townhall';
+    case T.PAD: return 'pad';
+    case T.HANGAR: return 'hangar';
   }
-  return SPR.ash;
+  return 'ash';
 }
+function spriteFor(i) { return (SPRS[world.look ? world.look[i] : 1] || SPRS[1])[spriteKey(i)]; }
 
 function layout() {
   const rect = viewport.getBoundingClientRect();
@@ -4042,12 +4224,23 @@ function layout() {
 // Hillshade: high ground a touch paler, hollows a touch darker, so the lie of the land reads.
 function blitCell(i) {
   const n = world.n, x = i % n, y = (i - x) / n;
-  tctx.drawImage(spriteFor(i), x * cellPx, y * cellPx);
   const t = world.type[i];
-  if (t === T.WATER || !world.elev) return;
-  const e = world.elev[i];
-  if (e > 0.52) { tctx.fillStyle = `rgba(255,250,235,${Math.min(0.28, (e - 0.52) * 0.7)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
-  else if (e < 0.4) { tctx.fillStyle = `rgba(0,10,20,${Math.min(0.22, (0.4 - e) * 0.9)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
+  const lv = world.snowLv ? world.snowLv[i] : 0;
+  if (t === T.WATER) {
+    const frozen = world.snow && world.snow[i] >= ICE_AT;
+    tctx.drawImage(frozen ? SPR.ice : spriteFor(i), x * cellPx, y * cellPx);
+    if (frozen && lv > 4) tctx.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx); // drifts on the ice
+    return;
+  }
+  const deep = lv >= 4; // light cover is dithered over the tile; deep cover is a snowed tile
+  tctx.drawImage(deep ? SNOWED[spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx);
+  if (world.elev) {
+    const e = world.elev[i];
+    if (e > 0.52) { tctx.fillStyle = `rgba(255,250,235,${Math.min(0.28, (e - 0.52) * 0.7)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
+    else if (e < 0.4) { tctx.fillStyle = `rgba(0,10,20,${Math.min(0.22, (0.4 - e) * 0.9)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
+  }
+  if (deep) { if (lv > 4) tctx.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx); } // drifts over the snowed tile
+  else if (lv) tctx.drawImage((isTree(t) || t === T.SNAG ? SNOWT : SNOW)[lv - 1][(x ^ y) & 1], x * cellPx, y * cellPx);
 }
 function redrawTerrain() {
   const n = world.n;
@@ -4063,7 +4256,7 @@ function redrawWater() {
   const n = world.n;
   const s = SPR[waterFrame ? 'water1' : 'water0'];
   for (const i of world.water) {
-    if (world.type[i] !== T.WATER) continue;
+    if (world.type[i] !== T.WATER || world.snow[i] >= ICE_AT) continue; // ice does not ripple
     const x = i % n, y = (i - x) / n;
     tctx.drawImage(s, x * cellPx, y * cellPx);
   }
@@ -4086,6 +4279,7 @@ function render(now, tickFrac) {
 
   if (world.wetList.length) {
     for (const i of world.wetList) {
+      if (world.wetKind[i] === 3) continue; // damp ground after a thaw
       const x = i % n, y = (i - x) / n;
       const a = Math.min(1, world.wet[i] / 12);
       ctx.fillStyle = world.wetKind[i] === 2 ? `rgba(255,90,130,${0.45 * a})` : `rgba(90,160,255,${0.4 * a})`;
@@ -4339,11 +4533,13 @@ function render(now, tickFrac) {
 
 const missiles = [], explosions = [], bolts = [], particles = [], popups = [];
 
-let rainDrops = null;
+let rainDrops = null, flakes = null;
 function drawWeather(now) {
   const W = WEATHER[world.weather.kind];
-  if (!W.tint) return;
   const w = canvas.width, h = canvas.height;
+  const st = SEASON_TINT[season()];
+  if (st) { ctx.fillStyle = st; ctx.fillRect(0, 0, w, h); }
+  if (!W.tint) return;
   ctx.fillStyle = W.tint;
   ctx.fillRect(0, 0, w, h);
   if (W.rainOut > 0) {
@@ -4365,9 +4561,17 @@ function drawWeather(now) {
       ctx.fillRect(0, 0, w, h);
     }
   } else if (world.weather.kind === 'snow') {
-    if (!rainDrops) rainDrops = Array.from({ length: 140 }, () => [Math.random(), Math.random()]);
-    ctx.fillStyle = 'rgba(255,255,255,0.75)';
-    for (const d of rainDrops) { const y = ((d[1] + now * 0.00012) % 1) * h; const x = ((d[0] + Math.sin(now * 0.0007 + d[1] * 9) * 0.01) % 1 + 1) % 1 * w; ctx.fillRect(x, y, 2, 2); }
+    // Flakes of three sizes drift down with the wind; the big ones fall fastest, like they are nearer.
+    if (!flakes) flakes = Array.from({ length: 320 }, () => ({ x: Math.random(), y: Math.random(), s: 1 + Math.floor(Math.random() * 3), v: 0.6 + Math.random() * 0.9, ph: Math.random() * 6.28 }));
+    const wx = params.windX * params.windStrength, wy = params.windY * params.windStrength;
+    const t = now * 0.00007;
+    for (const f of flakes) {
+      const y = (((f.y + t * f.v * (0.8 + f.s * 0.25) * (1 + wy * 0.5)) % 1) + 1) % 1 * h;
+      const x = (((f.x + t * f.v * wx * 0.8 + Math.sin(now * 0.001 * f.v + f.ph) * 0.005) % 1) + 1) % 1 * w;
+      const sz = Math.max(1, Math.round(f.s * cellPx / 7));
+      ctx.fillStyle = f.s === 3 ? 'rgba(255,255,255,0.95)' : f.s === 2 ? 'rgba(240,245,255,0.8)' : 'rgba(225,235,255,0.6)';
+      ctx.fillRect(x, y, sz, sz);
+    }
   } else if (world.weather.kind === 'drystorm' && Math.random() < 0.02) {
     ctx.fillStyle = 'rgba(255,230,255,0.14)';
     ctx.fillRect(0, 0, w, h);
@@ -4465,7 +4669,7 @@ function drawEffects(now) {
 
   for (let k = explosions.length - 1; k >= 0; k--) {
     const e = explosions[k];
-    const t = (now - e.t0) / e.dur;
+    const t = Math.max(0, (now - e.t0) / e.dur); // the frame clock can trail performance.now() on a heavy frame; never let the ring go negative
     if (t >= 1) { explosions.splice(k, 1); continue; }
     const ease = 1 - Math.pow(1 - t, 3);
     ctx.strokeStyle = `rgba(255,230,180,${(1 - t) * 0.8})`;
@@ -4680,6 +4884,7 @@ $('wind').addEventListener('input', () => {
 // Weather / wind HUD in the map corner, and the compass mirror while on auto.
 const hudEls = { weather: $('hudWeather'), vane: $('hudVane'), wind: $('hudWind'), tick: $('hudTick'), seed: $('hudSeed') };
 let lastHud = '';
+let lastSeasonHud = -1;
 function updateHud() {
   const wk = world.weather.kind;
   const s = params.windStrength, calm = s < 0.08 || (params.windX === 0 && params.windY === 0);
@@ -4699,7 +4904,10 @@ function updateHud() {
     }
   }
   const danger = fireDanger();
-  hudEls.tick.textContent = `Y${Math.floor(world.tick / YEAR) + 1} ${SEASONS[season()]} · t${world.tick} · fire danger ${danger}`;
+  const sea = season();
+  if (sea !== lastSeasonHud) { lastSeasonHud = sea; const el = $('hudSeason'); el.textContent = ['Spring', 'Summer', 'Autumn', 'Winter'][sea]; el.className = 'season s' + sea; }
+  const cover = world.snowCover || 0;
+  hudEls.tick.textContent = `Y${Math.floor(world.tick / YEAR) + 1} · t${world.tick} · fire danger ${danger}${cover >= 0.02 ? ` · snow ${Math.round(cover * 100)}%` : ''}`;
 }
 
 function civicSummary(t) {
@@ -4769,7 +4977,8 @@ function updateTip() {
   if (world.elev) lines.push(`<div><span class="k">elevation:</span> ${Math.round(world.elev[i] * 100)}${world.flow && world.flow[i] >= 0 ? (world.flow[i] === i ? ', river mouth' : ', river, flows ' + (() => { const j = world.flow[i]; const dx = j % n - x, dy = Math.floor(j / n) - y; return dy < 0 ? 'north' : dy > 0 ? 'south' : dx > 0 ? 'east' : 'west'; })()) : ''}${world.flooded.includes(i) ? ', flood water' : ''}</div>`);
   if (t === T.FARM && world.townOf[i] >= 0) lines.push(`<div class="town">Fields of ${world.towns[world.townOf[i]].name}, feeds 12</div>`);
   if (world.fallout[i] > 0) lines.push(`<div class="fire">Fallout ${Math.round(world.fallout[i] / 2.55)}%${world.fallout[i] > 40 ? ', nothing grows or builds here' : ', fading'}</div>`);
-  if (world.wet[i] > 0) lines.push(world.wetKind[i] === 2 ? `<div class="ret">Retardant, ${world.wet[i]} ticks</div>` : `<div class="wet">Wet, ${world.wet[i]} ticks</div>`);
+  if (world.snow[i] > 0) lines.push(`<div class="wet">${world.type[i] === T.WATER && world.snow[i] >= ICE_AT ? 'Frozen over' : world.snow[i] < SNOW_LV[1] ? 'A dusting of snow' : world.snow[i] < SNOW_LV[3] ? 'Snow cover' : 'Deep snow'}</div>`);
+  if (world.wet[i] > 0) lines.push(world.wetKind[i] === 2 ? `<div class="ret">Retardant, ${world.wet[i]} ticks</div>` : world.wetKind[i] === 3 ? `<div class="wet">Damp from the thaw, ${world.wet[i]} ticks</div>` : `<div class="wet">Wet, ${world.wet[i]} ticks</div>`);
   const f = FUEL[t];
   if (f) lines.push(`<div><span class="k">fuel:</span> ignites x${f.ignite}, burns ${f.burn[0]}-${f.burn[1]} ticks${f.spots ? ', throws embers' : ''}</div>`);
   else lines.push(`<div><span class="k">fuel:</span> none</div>`);
@@ -4939,7 +5148,7 @@ function snapshot() {
       type: packArr(world.type), variant: packArr(world.variant), burnLeft: packArr(world.burnLeft), glow: packArr(world.glow),
       wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
       fert: packArr(world.fert), since: packArr(world.since), intensity: packArr(world.intensity), fallout: packArr(world.fallout),
-      elev: packArr(world.elev), flow: packArr(world.flow),
+      elev: packArr(world.elev), flow: packArr(world.flow), snow: packArr(world.snow), look: packArr(world.look),
     },
     river: world.river, flooded: world.flooded, floodOrig: [...world.floodOrig], floodUntil: world.floodUntil,
     beavers: world.beavers ? { ...world.beavers, pond: [...world.beavers.pond] } : null,
@@ -4978,6 +5187,12 @@ function restore(d) {
   world.river = (d.river || []).slice(); world.flooded = (d.flooded || []).slice(); world.floodOrig = new Map(d.floodOrig || []); world.floodUntil = d.floodUntil || 0;
   world.beavers = d.beavers ? { ...d.beavers, pond: new Set(d.beavers.pond || []) } : null;
   world.tradeRoads = d.tradeRoads || {}; world.wagons = (d.wagons || []).slice(); world.lastSeason = d.lastSeason;
+  world.snow = d.arrays.snow ? unpackArr(d.arrays.snow, Uint8Array) : new Uint8Array(N);
+  world.snowLv = new Uint8Array(N); world.snowCells = 0;
+  for (let i = 0; i < N; i++) { world.snowLv[i] = snowLevel(world.snow[i]); if (world.snow[i]) world.snowCells++; }
+  world.snowCover = 0;
+  world.look = d.arrays.look ? unpackArr(d.arrays.look, Uint8Array) : new Uint8Array(N).fill(season());
+  world.lookSeason = -1; world.lookLeft = 0; world.lookPos = 0; // updateLook recounts on the next tick
   world.residents = new Uint8Array(N);
   world.burning = d.burning.slice(); world.glowing = d.glowing.slice(); world.wetList = d.wetList.slice();
   world.water = []; for (let i = 0; i < N; i++) if (world.type[i] === T.WATER) world.water.push(i);
@@ -5115,7 +5330,7 @@ renderSlots();
 setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 100;

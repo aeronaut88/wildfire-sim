@@ -218,6 +218,25 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).
 
+## Seasons and snow
+
+The year is 1,200 ticks long and every tile wears the season. Spring is fresh green with
+fields sprouting, summer is the base art, autumn turns the grass gold and the oaks and
+birches to flame and amber, and winter leaves dead grass, bare twiggy hardwoods and dark
+blue-green pines. The change arrives a few tiles at a time, scattered across the map, over
+the first hundred ticks or so of the season, so autumn comes tree by tree. A pill in the
+HUD names the season.
+
+Snow is real. Flakes of three sizes drift down with the wind, and every cell keeps a snow
+depth. Snowfall builds it a little unevenly, so cover comes in ragged: caps on crowns and
+roofs first, then drifts along the ground, then the whole valley white. Trees keep their
+dark middles so the forest still reads under deep snow. Water freezes over, boats are
+locked in, and nothing ripples until the thaw. Fuel under snow barely takes a flame, nothing
+regrows beneath it, and the HUD shows the share of the valley under cover. Melt depends on
+the season and the weather: almost nothing in a clear winter, fast in spring rain, and high
+ground holds its snow longest. Ground that has just thawed is damp for a while, which is why
+early spring fires fizzle. Shift+hover a cell to see its snow.
+
 ## Controls
 
 | Action              | Mouse / button      | Key     |
