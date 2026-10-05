@@ -158,6 +158,27 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   Columns that march into a wildfire take losses and re-route.
 - **Settlements panel** shows alignment, militia, walls, tech, buildings, wars, allies and feuds.
 
+## More life
+
+- **More towns, softer cap.** The Max living towns slider (default 5, more on big maps)
+  replaces the hard limit of three. The radius slider is now a *comfortable* radius: towns
+  can grow past it, but each extra ring is harder to add, and big cities pay: plague in the
+  crowded streets without a waterworks, riots in sprawling chaotic cities, and kitchen
+  fires on the far edge that nobody notices. The panel marks such towns as sprawling.
+- **Tanker loyalty.** The airstrip's town will not fly for a town it is at war with or
+  hates, and it favours itself and its allies.
+- **Dragons are worse.** Wider breath, crews caught under it burn, it takes several hits to
+  drive one off, and a sortie may rampage across two or three towns. A dragon that is driven
+  off remembers, and tends to come back for the same town.
+- **Fire from the sky.** Dry lightning storms (purple sky, no rain, high wind) spin out of
+  droughts. Very rarely a meteor falls, blasts a crater, and scatters fire around it.
+- **New fuels.** Birch grows by the water and burns fast. Dry scrub covers thin ground and
+  flashes over in a tick or two. Ancient oaks and big pines occasionally die standing into
+  snags that catch from almost anything and throw embers.
+- **Boats.** Fishing boats drift on the lakes and rivers. A town with a waterworks beside
+  the water launches a fireboat that sprays shore fires from the river.
+
+
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).
