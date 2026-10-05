@@ -1420,6 +1420,13 @@ const GROW = { ashToGrass: 45, stumpToAsh: 70, breakToGrass: 100, grassToPine: 1
 const REGROW_DELAY = [50, 110];
 const SWEEP_DIV = 16;
 
+// Per-cell dormancy: hashed on (x, y) so neighbours wake at unrelated times and no rows or columns line up.
+function regrowWait(i) {
+  const n = world.n, x = i % n, y = (i - x) / n;
+  const u = hash2(x, y, world.seed ^ 0x5bd1e995);
+  return (REGROW_DELAY[0] + u * (REGROW_DELAY[1] - REGROW_DELAY[0])) / Math.max(0.25, params.regrow);
+}
+
 function inAnyTown(x, y) {
   for (const tw of world.towns) if (Math.hypot(tw.cx - x, tw.cy - y) <= tw.R + 0.5) return true;
   return false;
@@ -1433,13 +1440,12 @@ function regrowSweep() {
   const step = world.sweepStep;
   let k0 = world.sweepPos;
   for (let k = 0; k < count; k++) {
-    if (k0 >= N) k0 = 0;
-    const i = (k0++ * step) % N; // exact: k0 * step < 2^53 for any map size here
+    if (k0 >= N) { k0 = 0; world.sweepOffset = Math.floor(Math.random() * N); }
+    const i = (k0++ * step + (world.sweepOffset || 0)) % N; // exact: well below 2^53 for any map size here
     const t = type[i];
     if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE) continue;
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
-    const wait = REGROW_DELAY[0] + (i * 7919) % (REGROW_DELAY[1] - REGROW_DELAY[0]);
-    if (world.tick - world.since[i] < wait / Math.max(0.25, params.regrow)) continue;
+    if (world.tick - world.since[i] < regrowWait(i)) continue;
     const r = Math.random();
     if (t === T.ASH) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.STUMP) { if (r < mul / GROW.stumpToAsh) { type[i] = T.ASH; world.since[i] = world.tick; dirty.add(i); } }
@@ -3019,7 +3025,7 @@ function updateTip() {
   if (f) lines.push(`<div><span class="k">fuel:</span> ignites x${f.ignite}, burns ${f.burn[0]}-${f.burn[1]} ticks${f.spots ? ', throws embers' : ''}</div>`);
   else lines.push(`<div><span class="k">fuel:</span> none</div>`);
   if (t === T.ASH || t === T.STUMP || (t === T.DIRT && !world.road[i])) {
-    const wait = Math.round((REGROW_DELAY[0] + (i * 7919) % (REGROW_DELAY[1] - REGROW_DELAY[0])) / Math.max(0.25, params.regrow));
+    const wait = Math.round(regrowWait(i));
     const left = wait - (world.tick - world.since[i]);
     lines.push(`<div><span class="k">regrowth:</span> ${left > 0 ? `dormant for ${left} more ticks` : 'recovering'}</div>`);
   }
