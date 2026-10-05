@@ -1465,22 +1465,26 @@ function updateSettlers(force) {
   const n = world.n;
   const s = world.settlers;
   if (!s) {
-    if (!force && (world.tick < 150 || Math.random() > 0.0007)) return;
-    // Resettle a dead town, or found a new one if there is room.
     const dead = world.towns.filter(t => t.housesLeft === 0 || t.popLeft <= 0);
-    const alive = world.towns.length - dead.length;
+    const living = world.towns.filter(t => !(t.housesLeft === 0 || t.popLeft <= 0));
     const maxAlive = n >= 160 ? 4 : 3; // keeps the valley from turning into suburbia
+    // Wagons come often while there is room for a town, less once the valley is full.
+    const rate = living.length < maxAlive ? 0.004 : (dead.length ? 0.002 : 0.0006);
+    if (!force && (world.tick < 60 || Math.random() > rate)) return;
     let plan = null;
     if (dead.length && Math.random() < 0.6) {
       const t = dead[Math.floor(Math.random() * dead.length)];
       plan = { mode: 'resettle', town: t, tx: t.cx, ty: t.cy };
-    } else if (alive < maxAlive) {
+    } else if (living.length < maxAlive) {
       const R = 2 + Math.floor(Math.random() * 2);
       const site = findTownSite(R, Math.random);
       if (site) plan = { mode: 'found', R, tx: site[0], ty: site[1] };
-    } else if (dead.length) {
-      const t = dead[0];
-      plan = { mode: 'resettle', town: t, tx: t.cx, ty: t.cy };
+    }
+    if (!plan && dead.length) { const t = dead[0]; plan = { mode: 'resettle', town: t, tx: t.cx, ty: t.cy }; }
+    if (!plan && living.length) {
+      // Valley is full: newcomers join the smallest town.
+      const t = living.slice().sort((a, b) => a.popLeft - b.popLeft)[0];
+      plan = { mode: 'join', town: t, tx: t.cx, ty: t.cy };
     }
     if (!plan) return;
     // Enter from the nearest map edge.
@@ -1536,6 +1540,11 @@ function updateSettlers(force) {
       const [px, py] = cellCenter(s.ty * n + s.tx);
       popups.push({ x: px, y: py - town.R * cellPx, text: town.name.toUpperCase(), color: '#d9c48a', t0: performance.now(), dur: 2500 });
     } else log('The settlers found no good ground and moved on', 'weather');
+  } else if (s.mode === 'join') {
+    const t = s.town;
+    t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
+    t.growTimer = 1;
+    log(`${s.size} newcomers settle in ${t.name} (pop now ${t.popLeft})`, 'build');
   } else {
     const t = s.town;
     t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
