@@ -117,6 +117,34 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   world is around 30 KB) and still readable with any gunzip. Import file loads one back, paused,
   with every slider and toggle restored. Saves carry terrain, fire, wet cells, towns with
   their crews and engines, weather, wind, settlers, dragon, the log and your settings.
+## Towns have politics
+
+- **Alignment.** Every town rolls Lawful / Neutral / Chaotic and Good / Neutral / Evil at
+  founding. Lawful towns rally faster and raise stone walls (which also stop fire). Evil
+  towns breed more arsonists. Chaotic turnout swings wildly. Good towns get more people out
+  of burning homes and send fire crews to help allies.
+- **Militia** grows toward a share of population (higher for lawful and evil towns, and
+  with military tech). Soldiers are people, so losses are deaths.
+- **Relations** between every pair drift with compatibility and random diplomacy events
+  (trade pacts, weddings, grazing quarrels, insults). Fall far enough and an evil or chaotic
+  town declares war. Rise high enough and the towns are allies.
+- **Raids and war.** Warbands march along real paths. Winners torch homes and carry people
+  off; losers die at the wall. Wars end in truce when both sides are spent.
+- **Technology, bows to the bomb.** Research trickles in with population, split between a
+  military track (Bows, Steel, Siege engines, Gunpowder, Rifles, Artillery, The Bomb) and a
+  civil one (Buckets, Fire brigade, Waterworks, Lookout tower, Aviation) according to
+  temperament. Good towns stop at Rifles and never build the bomb. Artillery lets a town
+  shell an enemy from home. The bomb flattens a town, leaves fallout that kills slowly,
+  blocks regrowth and building, drifts downwind, and turns the sky to ashfall. The town
+  that drops it has no idea. Reaching the top takes a very long time.
+- **Dragon defense.** A big militia can drive a dragon off. With rifles or better it may
+  bring one down, and the hoard draws newcomers and a burst of research.
+- **Refugees.** Survivors of a destroyed town take to the road for the friendliest living
+  town.
+- **Organic towns.** Footprints are lumpy and growth hugs the streets. New roads get built
+  as towns grow.
+- **Settlements panel** shows alignment, militia, walls, tech, wars, allies and feuds.
+
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).

@@ -276,6 +276,10 @@
   .log li.arson, .log li:first-child.arson { color: #ff6ad5; }
   .log li.dragon, .log li:first-child.dragon { color: #ff4040; font-weight: 600; }
   .log li.war, .log li:first-child.war { color: #ffb08a; }
+  .log li.nuke, .log li:first-child.nuke { color: #fff; background: #5a0f0f; padding: 2px 4px; font-weight: 700; }
+  .log li.tech, .log li:first-child.tech { color: #9fe8d8; }
+  .towns .tech { font-size: 9px; color: #9fe8d8; }
+  .stat.weather.ashfall { --accent: #9a9a9a; }
   .log li.diplo, .log li:first-child.diplo { color: #c9b8ff; }
   .towns .al { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: #c9b8ff; margin-left: 6px; }
   .towns .al.evil { color: #ff8a73; }
@@ -855,17 +859,19 @@ const WEATHER = {
   drought: { label: 'Drought', spread: 1.45, spot: 2.2, regrow: 0.25, rainOut: 0,    lightning: 0,     tint: 'rgba(230,170,40,0.14)' },
   rain:    { label: 'Rain',    spread: 0.35, spot: 0,   regrow: 3.0,  rainOut: 0.06, lightning: 0,     tint: 'rgba(40,70,140,0.22)' },
   storm:   { label: 'Storm',   spread: 0.55, spot: 0.5, regrow: 2.0,  rainOut: 0.04, lightning: 0.02,  tint: 'rgba(20,30,70,0.32)' },
+  ashfall: { label: 'Ashfall', spread: 0.8,  spot: 0.3, regrow: 0.15, rainOut: 0,    lightning: 0,     tint: 'rgba(60,60,65,0.45)' },
 };
 const WEATHER_NEXT = {
   clear:   [['drought', 0.25], ['rain', 0.3], ['storm', 0.1], ['clear', 0.35]],
   drought: [['clear', 0.55], ['storm', 0.3], ['rain', 0.15]],
   rain:    [['clear', 0.6], ['storm', 0.2], ['rain', 0.2]],
   storm:   [['rain', 0.5], ['clear', 0.5]],
+  ashfall: [['rain', 0.6], ['clear', 0.4]],
 };
-const WEATHER_DUR = { clear: [140, 360], drought: [120, 300], rain: [50, 140], storm: [30, 70] };
+const WEATHER_DUR = { clear: [140, 360], drought: [120, 300], rain: [50, 140], storm: [30, 70], ashfall: [200, 400] };
 const WEATHER_MSG = {
   clear: 'Skies clear', drought: 'A dry spell sets in. Everything is tinder.',
-  rain: 'Rain moves in', storm: 'A thunderstorm rolls over the valley',
+  rain: 'Rain moves in', storm: 'A thunderstorm rolls over the valley', ashfall: 'Grey ash falls from a dead sky',
 };
 
 // Town names are assembled from parts: ~70 heads x ~45 tails, two joining styles, plus a few one-offs.
@@ -898,7 +904,7 @@ function makeTownName(rng) {
 const world = {
   n: 100,
   type: null, variant: null, burnLeft: null, glow: null,
-  wet: null, wetKind: null, residents: null, townOf: null, road: null, fert: null, since: null, intensity: null,
+  wet: null, wetKind: null, residents: null, townOf: null, road: null, fert: null, since: null, intensity: null, fallout: null, falloutList: [],
   burning: [], glowing: [], water: [], wetList: [],
   tick: 0,
   totalFuel: 0, burnedCount: 0, treeCount: 0,
@@ -933,6 +939,7 @@ function generate(n, seed) {
   world.fert = new Uint8Array(N); // 0 = meadow (trees never seed here), 1 = light, 2 = good forest ground
   world.since = new Int32Array(N).fill(-100000); // tick a cell last changed; regrowth waits REGROW_DELAY after that
   world.intensity = new Uint8Array(N); // 1 = crown fire
+  world.fallout = new Uint8Array(N); world.falloutList = []; // radiation, decays slowly
   // Regrowth visits cells in a scattered order (multiplication by a stride coprime to N) so it never looks like a band sweeping down.
   world.sweepStep = Math.floor(N * 0.6180339) | 1;
   const gcd = (a, b) => b ? gcd(b, a % b) : a;
@@ -1067,7 +1074,7 @@ function findTownSite(R, rng) {
       const i = (y + dy) * n + x + dx;
       const tt = type[i];
       if (tt !== T.WATER && tt !== T.ROCK) good++;
-      if (world.burnLeft[i] > 0 || tt === T.ASH) burning++;
+      if (world.burnLeft[i] > 0 || tt === T.ASH || world.fallout[i] > 20) burning++;
     }
     if (good >= total * 0.72 && burning === 0) return [x, y];
   }
@@ -1087,6 +1094,7 @@ function foundTown(cx, cy, R, opts) {
     deaths: 0, homesLost: 0, fires: 0, founded: world.tick,
     align: rollAlignment(rng), militia: 0, relations: {}, wars: {}, raidCooldown: 0, wallR: 0, raidsMade: 0, raidsSuffered: 0,
     shape: [0.25 + rng() * 0.3, rng() * 6.283, 0.15 + rng() * 0.25, rng() * 6.283, rng() * 0.15, rng() * 6.283],
+    mil: 0, civ: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
   };
   const stationWanted = rng() < opts.stationChance;
   let stationPlaced = false;
@@ -1333,6 +1341,7 @@ function step() {
   updateAir();
   updateDiplomacy();
   updateWarbands();
+  updateFallout();
   maybeDragon();
 }
 
@@ -1366,7 +1375,7 @@ function makePeace(a, b, why) {
 }
 
 function militiaRate(t) {
-  let r = 0.10 + 0.05 * t.align.order + 0.02 * (t.align.moral < 0 ? 1 : 0);
+  let r = 0.10 + 0.05 * t.align.order + 0.02 * (t.align.moral < 0 ? 1 : 0) + 0.015 * (t.mil || 0);
   return Math.max(0.05, r);
 }
 
@@ -1428,7 +1437,7 @@ function updateDiplomacy() {
       if (agg && Math.random() < 0.35) declareWar(agg, agg === a ? b : a, '');
     } else if (atWar(a, b)) {
       const since = world.tick - a.wars[b.id];
-      const exhausted = since > 500 || Math.min(a.popLeft, b.popLeft) < 15 || Math.min(a.militia, b.militia) < 3;
+      const exhausted = since > 700 || Math.min(a.popLeft, b.popLeft) < 12 || (a.militia < 3 && b.militia < 3);
       if ((exhausted && Math.random() < 0.3) || r > -30) makePeace(a, b, exhausted ? 'out of exhaustion' : '');
     } else if (r > 60 && Math.random() < 0.05) log(`${a.name} and ${b.name} renew their alliance`, 'diplo');
   }
@@ -1490,14 +1499,14 @@ function updateWarbands() {
 function resolveRaid(b, from, to) {
   const defenders = to.militia;
   const wallBonus = to.wallR ? 1.5 : 1, lawBonus = to.align.order > 0 ? 1.2 : 1;
-  const att = b.size * (0.7 + Math.random() * 0.6);
-  const def = Math.max(1, defenders) * (0.7 + Math.random() * 0.6) * wallBonus * lawBonus;
+  const att = b.size * (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil);
+  const def = Math.max(1, defenders) * (0.7 + Math.random() * 0.6) * wallBonus * lawBonus * (1 + 0.3 * to.mil);
   const [cx, cy] = cellCenter(to.cy * world.n + to.cx);
   to.raidsSuffered++;
   for (let k = 0; k < 14; k++) particles.push({ x: cx + (Math.random() - 0.5) * to.R * cellPx, y: cy + (Math.random() - 0.5) * to.R * cellPx, vx: (Math.random() - 0.5) * 90, vy: -30 - Math.random() * 60, life: 0, max: 500, color: Math.random() < 0.5 ? '#ffffff' : '#ffb08a', size: 2, grav: 150 });
   if (att > def) {
     const attLoss = Math.round(b.size * 0.2), defLoss = Math.round(defenders * 0.35);
-    const torch = Math.min(to.housesLeft, 1 + Math.floor(b.size / 4));
+    const torch = Math.min(to.housesLeft, (1 + Math.floor(b.size / 4)) * (from.mil >= 3 ? 2 : 1));
     const captives = Math.min(Math.max(0, to.popLeft - defLoss - 1), Math.floor(b.size / 2));
     world.raidfire = true;
     const houses = to.buildings.filter(i => world.type[i] === T.HOUSE && world.burnLeft[i] <= 0).sort(() => Math.random() - 0.5);
@@ -1539,6 +1548,151 @@ function maybeSendAid(town) {
     log(`${o.name} sends ${k} crew${k > 1 ? 's' : ''} to help ${town.name}`, 'good');
   }
 }
+
+/* ───────────────────────── Technology: bows to the bomb ───────────────────────── */
+
+const MIL_TECH = ['Bows', 'Steel', 'Siege engines', 'Gunpowder', 'Rifles', 'Artillery', 'The Bomb'];
+const CIV_TECH = ['Buckets', 'Fire brigade', 'Waterworks', 'Lookout tower', 'Aviation'];
+// Cumulative research needed for each level. Research trickles in at pop/1000 per tick, so the top takes a long time.
+const MIL_COST = [0, 300, 900, 2000, 4000, 7000, 11000];
+const CIV_COST = [0, 250, 700, 1500, 3000];
+
+function militarism(t) {
+  let m = 0.5;
+  if (t.align.moral < 0) m += 0.35; if (t.align.moral > 0) m -= 0.4;
+  if (t.align.order > 0) m += 0.15; if (t.align.order < 0) m += 0.05;
+  return Math.max(0.05, Math.min(1, m));
+}
+function milCap(t) { return t.align.moral > 0 ? 4 : (t.align.moral === 0 ? 5 : 6); } // good towns never build the bomb
+
+// Called from growTown (about every 16 ticks per town).
+function updateTech(t) {
+  if (!isAlive(t)) return;
+  let pts = 16 * (t.popLeft / 1000) * (t.align.order > 0 ? 1.25 : t.align.order < 0 ? (Math.random() < 0.3 ? 2.5 : 0.6) : 1);
+  const m = militarism(t);
+  t.research += pts;
+  // Split research between tracks by temperament.
+  const milShare = m, civShare = 1 - m;
+  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
+  if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {
+    t.mil++;
+    log(`${t.name} masters ${MIL_TECH[t.mil].toLowerCase()}`, t.mil >= 6 ? 'nuke' : 'tech');
+    if (t.mil === 6) { t.nukes = 1; log(`${t.name} has built a bomb. Nobody there knows what it will do to the land.`, 'nuke'); }
+    if (t.mil === 2 && t.align.order >= 0 && !t.wallR && t.popLeft >= 40) buildWall(t);
+  }
+  if (t.civ < 4 && t.civPts >= CIV_COST[t.civ + 1]) {
+    t.civ++;
+    log(`${t.name} learns ${CIV_TECH[t.civ].toLowerCase()}`, 'tech');
+    if (t.civ === 2) for (const tr of t.trucks) { tr.cap = 30; }
+  }
+  if (t.mil === 6 && t.nukes < 2 && Math.random() < 0.01) { t.nukes++; log(`${t.name} completes another bomb`, 'nuke'); }
+  if (t.shellCooldown > 0) t.shellCooldown--;
+  if (t.nukeCooldown > 0) t.nukeCooldown--;
+}
+
+// Detection radius bonus from a lookout tower.
+function detectBonus(t) { return t.civ >= 3 ? 8 : 0; }
+
+// Artillery: towns with tech 5 at war shell the enemy from home. Nukes: tech 6, war, and either desperation or plain evil.
+function maybeBombard(t) {
+  if (!isAlive(t) || t.mil < 5) return;
+  const enemies = world.towns.filter(o => o !== t && isAlive(o) && atWar(t, o));
+  if (!enemies.length) return;
+  const to = enemies[Math.floor(Math.random() * enemies.length)];
+  if (t.mil >= 6 && t.nukes > 0 && t.nukeCooldown <= 0) {
+    const desperate = t.popLeft < to.popLeft * 0.6 || t.housesLeft < 6;
+    const p = (t.align.moral < 0 ? 0.0012 : 0.0002) * (desperate ? 4 : 1);
+    if (Math.random() < p) { launchNuke(t, to); return; }
+  }
+  if (t.shellCooldown <= 0 && Math.random() < 0.012) {
+    t.shellCooldown = 10 + Math.floor(Math.random() * 20);
+    t.shellsFired = (t.shellsFired || 0) + 1;
+    const n = world.n;
+    const a = Math.random() * Math.PI * 2, d = Math.random() * to.R;
+    const x = Math.round(to.cx + Math.cos(a) * d), y = Math.round(to.cy + Math.sin(a) * d);
+    if (x < 0 || y < 0 || x >= n || y >= n) return;
+    launchShell(t.cx, t.cy, y * n + x, 1, false);
+    if (Math.random() < 0.15) log(`${t.name}'s guns shell ${to.name}`, 'war');
+  }
+}
+
+function launchShell(fromX, fromY, targetIdx, radius, nuke) {
+  const [sx, sy] = cellCenter(fromY * world.n + fromX);
+  const [tx, ty] = cellCenter(targetIdx);
+  const dist = Math.hypot(tx - sx, ty - sy);
+  missiles.push({ sx, sy, tx, ty, target: targetIdx, t0: performance.now(), dur: 500 + dist * 0.6, arc: Math.max(40, dist * (nuke ? 0.6 : 0.35)), lastSmoke: 0, radius, nuke });
+}
+
+function launchNuke(from, to) {
+  from.nukes--; from.nukeCooldown = 600;
+  const n = world.n;
+  launchShell(from.cx, from.cy, to.cy * n + to.cx, 9, true);
+  log(`${from.name} has launched THE BOMB at ${to.name}`, 'nuke');
+  for (const t of world.towns) if (t !== from && isAlive(t)) setRel(from, t, rel(from, t) - 40); // the whole valley recoils
+}
+
+function detonateNuke(targetIdx) {
+  const n = world.n, cx = targetIdx % n, cy = Math.floor(targetIdx / n);
+  strikeCell(cx, cy, 9);
+  // Fallout: a disc plus a plume downwind. It poisons people, blocks regrowth and building, and lingers for thousands of ticks.
+  const hasWind = params.windStrength > 0.05 && (params.windX !== 0 || params.windY !== 0);
+  const wl = Math.hypot(params.windX, params.windY) || 1;
+  const wx = hasWind ? params.windX / wl : 0, wy = hasWind ? params.windY / wl : 0;
+  const plume = 12 + Math.round(params.windStrength * 28);
+  for (let dy = -40; dy <= 40; dy++) for (let dx = -40; dx <= 40; dx++) {
+    const x = cx + dx, y = cy + dy;
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const d = Math.hypot(dx, dy);
+    let dose = 0;
+    if (d <= 14) dose = 255 * (1 - d / 14) * 0.9 + 25;
+    if (hasWind) {
+      const along = dx * wx + dy * wy, across = Math.abs(dx * wy - dy * wx);
+      if (along > 0 && along < plume && across < 2 + along * 0.35) dose = Math.max(dose, 200 * (1 - along / plume) * (1 - across / (2 + along * 0.35)));
+    }
+    if (dose > 8) addFallout(y * n + x, Math.min(255, Math.round(dose)));
+  }
+  const [px, py] = cellCenter(targetIdx);
+  popups.push({ x: px, y: py - 30, text: 'NUCLEAR', color: '#ffffff', t0: performance.now(), dur: 4000 });
+  explosions.push({ x: px, y: py, t0: performance.now(), dur: 2600, r: 11 * cellPx, nuke: true });
+  shake = 3;
+  setWeather('ashfall', true);
+  let nearTown = null, nd = Infinity;
+  for (const t of world.towns) { const dd = Math.hypot(t.cx - cx, t.cy - cy); if (dd < nd) { nd = dd; nearTown = t; } }
+  log(`The bomb falls on ${nearTown ? nearTown.name : 'the valley'}. The ground will not forget.`, 'nuke');
+}
+
+function addFallout(i, dose) {
+  if (world.fallout[i] === 0) world.falloutList.push(i);
+  world.fallout[i] = Math.max(world.fallout[i], dose);
+  if (world.wet[i] > 0) world.wet[i] = 0;
+  dirty.add(i);
+}
+
+// Fallout decay and radiation sickness. Runs every tick but does its work in slices.
+function updateFallout() {
+  if (!world.falloutList.length) return;
+  if (world.tick % 40 === 0) {
+    const keep = [];
+    for (const i of world.falloutList) { world.fallout[i] = Math.max(0, world.fallout[i] - 3); if (world.fallout[i] > 0) keep.push(i); else dirty.add(i); }
+    world.falloutList = keep;
+  }
+  if (world.tick % 10 === 0) {
+    const n = world.n;
+    for (const t of world.towns) {
+      if (!isAlive(t)) continue;
+      let dose = 0, cells = 0;
+      for (const i of t.buildings) if (isBuilding(world.type[i])) { dose += world.fallout[i]; cells++; }
+      if (!cells) continue;
+      dose /= cells;
+      if (dose < 10) { t.sick = 0; continue; }
+      const dead = Math.max(1, Math.round(t.popLeft * dose / 255 * 0.03));
+      applyLosses(t, Math.min(dead, t.popLeft));
+      if (!t.sick) { t.sick = 1; log(`A sickness no one can name spreads through ${t.name}`, 'loss'); }
+      if (t.popLeft <= 0) log(`${t.name} is empty. The land is poisoned.`, 'loss');
+    }
+  }
+}
+const poisoned = i => world.fallout[i] > 40;
 
 /* ───────────────────────── Dragon ───────────────────────── */
 
@@ -1618,7 +1772,9 @@ function flyDragon(dtSec) {
   d.breathT += dtSec;
   if (over && d.breathT > 0.08) { d.breathT = 0; breathe(d); }
   if (d.leg >= d.legs.length - 1) {
-    log(`The dragon leaves ${d.town.name} burning. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze.`, 'dragon');
+    if (d.slain) { /* already announced */ }
+    else if (d.driven) log(`The dragon limps away from ${d.town.name}. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze before the archers found their range.`, 'dragon');
+    else log(`The dragon leaves ${d.town.name} burning. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze.`, 'dragon');
     world.dragon = null;
   }
 }
@@ -1641,10 +1797,18 @@ function breathe(d) {
   }
   world.dragonfire = false;
   shake = Math.max(shake, 0.35);
-  if (d.town.militia >= 10 && Math.random() < Math.min(0.08, d.town.militia / 600)) {
+  if (d.town.militia >= 8 && Math.random() < Math.min(0.3, (d.town.militia / 250) * (1 + 0.6 * d.town.mil))) {
     d.legs = [d.legs[Math.min(d.leg, d.legs.length - 1)], d.legs[d.legs.length - 1]]; d.leg = 0; d.t = 0; d.driven = true;
     const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost); d.town.militia -= lost;
-    log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost`, 'win');
+    if (d.town.mil >= 4 && Math.random() < 0.35) {
+      // Rifles and up can bring it down. The hoard changes everything for the town.
+      d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
+      const boom = 20 + Math.floor(Math.random() * 30);
+      d.town.popLeft += boom; d.town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; d.town.research += 2000; d.town.civPts = (d.town.civPts || 0) + 1000; d.town.milPts = (d.town.milPts || 0) + 1000;
+      log(`${d.town.name} SLAYS THE ${(d.kind || 'crimson').toUpperCase()} DRAGON. Its hoard draws ${boom} newcomers.`, 'win');
+      const [px, py] = cellCenter(Math.round(d.y) * world.n + Math.round(d.x));
+      popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
+    } else log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost`, 'win');
   }
   const [px, py] = cellCenter(Math.max(0, Math.min(n - 1, cy)) * n + Math.max(0, Math.min(n - 1, cx)));
   for (let k = 0; k < 4; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py - cellPx * 1.5, vx: (Math.random() - 0.5) * 40, vy: 60 + Math.random() * 60, life: 0, max: 350, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.4), grav: 40 });
@@ -1688,7 +1852,7 @@ function naturalLightning() {
 
 /* ───────────────────────── Wind ───────────────────────── */
 
-const WIND_RANGE = { clear: [0.05, 0.5], drought: [0.3, 0.75], rain: [0.2, 0.6], storm: [0.6, 1.0] };
+const WIND_RANGE = { clear: [0.05, 0.5], drought: [0.3, 0.75], rain: [0.2, 0.6], storm: [0.6, 1.0], ashfall: [0.05, 0.3] };
 
 function updateWind() {
   if (params.windMode !== 'auto') return;
@@ -1743,6 +1907,7 @@ function regrowSweep() {
     const t = type[i];
     if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE) continue;
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
+    if (world.fallout[i] > 40) continue; // poisoned ground
     if (world.tick - world.since[i] < regrowWait(i)) continue;
     const r = Math.random();
     if (t === T.ASH) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
@@ -1852,7 +2017,7 @@ function updateSettlers(force) {
     const t = s.town;
     t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
     t.growTimer = 1;
-    log(`${s.size} newcomers settle in ${t.name} (pop now ${t.popLeft})`, 'build');
+    log(s.refugees ? `${t.name} takes in ${s.size} refugees from ${s.refugees}` : `${s.size} newcomers settle in ${t.name} (pop now ${t.popLeft})`, 'build');
   } else {
     const t = s.town;
     t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
@@ -2006,6 +2171,7 @@ function onBuildingDestroyed(i, cause) {
   if (town.housesLeft === 0 && !town.destroyed) {
     town.destroyed = true;
     log(`${town.name} is gone`, 'loss');
+    sendRefugees(town);
   }
 }
 
@@ -2038,7 +2204,7 @@ function updateTowns() {
       const d2 = dx * dx + dy * dy;
       if (d2 < minD2) { minD2 = d2; nearest = i; }
     }
-    const detect = town.R * 2 + 9;
+    const detect = town.R * 2 + 9 + detectBonus(town);
     const threatened = nearest >= 0 && minD2 < detect * detect;
     if (threatened) {
       town.lastThreat = world.tick;
@@ -2091,6 +2257,20 @@ function updateTowns() {
     growTown(town);
     maybeArson(town);
   }
+}
+
+// Survivors of a destroyed town take to the road for the friendliest living town.
+function sendRefugees(town) {
+  if (town.popLeft < 6 || world.settlers) return;
+  const hosts = world.towns.filter(o => o !== town && isAlive(o) && rel(town, o) > -20 && o.align.moral >= 0).sort((a, b) => rel(town, b) - rel(town, a));
+  if (!hosts.length) return;
+  const host = hosts[0];
+  const path = findPath(town.cx, town.cy, host.cx, host.cy);
+  if (!path) return;
+  const size = Math.max(1, Math.round(town.popLeft * 0.7));
+  town.popLeft -= size; town.popTotal -= size; world.popLeft -= size; world.popTotal -= size;
+  world.settlers = { mode: 'join', town: host, tx: host.cx, ty: host.cy, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, wait: 0, path, pi: 0, size, refugees: town.name };
+  log(`${size} refugees leave the ruins of ${town.name} for ${host.name}`, 'build');
 }
 
 /* ───────────────────────── Townspeople ───────────────────────── */
@@ -2162,9 +2342,11 @@ function rebuildAt(town, i) {
 
 function growTown(town) {
   maybeRaid(town);
+  maybeBombard(town);
   if (--town.growTimer > 0) return;
   town.growTimer = 16;
   updateMilitia(town);
+  updateTech(town);
   if (town.mobilized || world.tick - town.lastThreat < 40 || town.popLeft <= 0) return;
   const n = world.n, type = world.type;
 
@@ -2202,7 +2384,7 @@ function growTown(town) {
   }
 
   // Airstrip: one per map, and it has to be earned.
-  if (!world.air && world.tick > 300 && town.popLeft >= 70 && town.hasStation && Math.random() < 0.04) buildAirbase(town);
+  if (!world.air && world.tick > 300 && town.hasStation && ((town.popLeft >= 70 && Math.random() < 0.04) || (town.civ >= 4 && town.popLeft >= 40 && Math.random() < 0.15))) { if (buildAirbase(town) && town.civ >= 4) { world.air.max = 4; world.air.sorties = 2; } }
 }
 
 // Rebuild rubble first, then grow outward along the roads, up to the size cap.
@@ -2219,7 +2401,7 @@ function buildHouse(town, quiet) {
     if (d > ra + 0.3) continue;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
     const i = y * n + x, t = type[i];
-    if (world.road[i]) continue; // keep the roads clear
+    if (world.road[i] || poisoned(i)) continue; // keep the roads clear; nobody builds on poisoned ground
     if (t === T.WATER || t === T.ROCK || t === T.PAD || t === T.HANGAR || t === T.WALL || isBuilding(t)) continue;
     if (world.burnLeft[i] > 0) continue;
     let foreign = false;
@@ -2579,7 +2761,7 @@ function updateCrews(town) {
         } else {
           c.progress++;
           dust(c.target);
-          const need = isTree(type[c.target]) ? 3 : 2;
+          const need = (isTree(type[c.target]) ? 3 : 2) - (town.civ >= 1 ? 1 : 0);
           if (c.progress >= need) {
             if (isTree(type[c.target])) world.treeCount--;
             type[c.target] = T.DIRT;
@@ -2621,7 +2803,7 @@ function updateTrucks(town) {
       if (stepToward(tr, sx, sy, 2, false)) {
         if (!town.hasStation) { tr.state = 'idle'; continue; }
         tr.state = tr.water < tr.cap ? 'refill' : 'idle';
-        tr.refill = 6;
+        tr.refill = town.civ >= 2 ? 3 : 6;
       }
       continue;
     }
@@ -2853,6 +3035,16 @@ function render(now, tickFrac) {
     }
   }
 
+  if (world.falloutList.length) {
+    for (const i of world.falloutList) {
+      const x = i % n, y = (i - x) / n;
+      const a = world.fallout[i] / 255;
+      ctx.fillStyle = `rgba(150,170,60,${0.12 + 0.5 * a})`;
+      ctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx);
+      if (a > 0.5 && ((x * 7 + y * 13) % 5) === 0) { ctx.fillStyle = `rgba(0,0,0,${0.5 * a})`; ctx.fillRect(x * cellPx + cellPx * 0.3, y * cellPx + cellPx * 0.3, cellPx * 0.4, cellPx * 0.4); }
+    }
+  }
+
   const frames = [SPR.fire0, SPR.fire1, SPR.fire2];
   const crownFrames = [SPR.crown0, SPR.crown1, SPR.crown2];
   const burnLeft = world.burnLeft, intensity = world.intensity;
@@ -3055,10 +3247,12 @@ function missilePos(m, t) {
 }
 function detonate(m) {
   const n = world.n;
-  strikeCell(m.target % n, Math.floor(m.target / n), params.blast);
-  explosions.push({ x: m.tx, y: m.ty, t0: performance.now(), dur: 700, r: (params.blast + 1.5) * cellPx });
-  shake = 1;
-  const count = 24 + params.blast * 10;
+  if (m.nuke) { detonateNuke(m.target); return; }
+  const radius = m.radius !== undefined ? m.radius : params.blast;
+  strikeCell(m.target % n, Math.floor(m.target / n), radius);
+  explosions.push({ x: m.tx, y: m.ty, t0: performance.now(), dur: 700, r: (radius + 1.5) * cellPx });
+  shake = Math.max(shake, radius >= 2 ? 1 : 0.4);
+  const count = 24 + radius * 10;
   for (let k = 0; k < count; k++) {
     const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 160;
     particles.push({ x: m.tx, y: m.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0, max: 500 + Math.random() * 600,
@@ -3133,8 +3327,17 @@ function drawEffects(now) {
       ctx.beginPath(); ctx.arc(e.x, e.y, fr, 0, Math.PI * 2); ctx.fill();
     }
     if (t < 0.12) {
-      ctx.fillStyle = `rgba(255,240,200,${(0.12 - t) / 0.12 * 0.35})`;
+      ctx.fillStyle = `rgba(255,240,200,${(0.12 - t) / 0.12 * (e.nuke ? 1 : 0.35)})`;
       ctx.fillRect(-10, -10, canvas.width + 20, canvas.height + 20);
+    }
+    if (e.nuke) {
+      // Mushroom column and cap, rising.
+      const rise = ease * e.r * 2.2;
+      ctx.fillStyle = `rgba(90,70,60,${0.7 * (1 - t)})`;
+      ctx.fillRect(e.x - e.r * 0.25, e.y - rise, e.r * 0.5, rise);
+      ctx.beginPath(); ctx.arc(e.x, e.y - rise, e.r * (0.6 + ease * 0.9), 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = `rgba(255,170,80,${0.5 * (1 - t)})`;
+      ctx.beginPath(); ctx.arc(e.x, e.y - rise, e.r * (0.3 + ease * 0.5), 0, Math.PI * 2); ctx.fill();
     }
   }
 
@@ -3328,7 +3531,7 @@ function updateHud() {
       compassBtns.forEach(q => q.classList.toggle('auto', q.dataset.dir === dir8));
     }
   }
-  hudEls.tick.textContent = 't' + world.tick;
+  hudEls.tick.textContent = `Y${Math.floor(world.tick / 1200) + 1} · t${world.tick}`;
 }
 
 // Settlements panel.
@@ -3349,7 +3552,7 @@ function updateTownsPanel() {
     const foes = world.towns.filter(o => o !== t && isAlive(o) && rel(t, o) < -20 && !atWar(t, o)).map(o => o.name);
     const relLine = (wars.length ? ` · <span class="d">war: ${wars.join(', ')}</span>` : '') + (allies.length ? ` · allies: ${allies.join(', ')}` : '') + (foes.length ? ` · feuding: ${foes.join(', ')}` : '');
     return `<div class="row ${cls}"><span class="dot"></span><span class="name">${t.name}<span class="al ${alCls}">${al}</span></span><span class="st">${status}</span>` +
-      `<span class="sub">pop <b>${t.popLeft}</b> · homes <b>${t.housesLeft}</b> · r${t.R}` + (t.hasStation ? ` · <b>${eng}</b> eng` : '') + ` · militia <b>${t.militia}</b>` + (t.wallR ? ' · walled' : '') + air + relLine +
+      `<span class="sub">pop <b>${t.popLeft}</b> · homes <b>${t.housesLeft}</b> · r${t.R}` + (t.hasStation ? ` · <b>${eng}</b> eng` : '') + ` · militia <b>${t.militia}</b>` + (t.wallR ? ' · walled' : '') + air + relLine + `<br><span class="tech">${MIL_TECH[t.mil]}${t.nukes ? ' (' + t.nukes + ' bomb' + (t.nukes > 1 ? 's' : '') + ')' : ''} · ${CIV_TECH[t.civ]}</span>` +
       (t.deaths || t.homesLost ? ` · <span class="d">${t.deaths} dead, ${t.homesLost} homes lost</span>` : '') + (t.fires ? ` · ${t.fires} fire${t.fires === 1 ? '' : 's'}` : '') + (t.dragons ? ` · <span class="d">dragon x${t.dragons}</span>` : '') + `</span></div>`;
   });
   const html = rows.join('');
@@ -3381,6 +3584,7 @@ function updateTip() {
   lines.push(`<div class="h">${name} <span class="k">(${x}, ${y})</span></div>`);
   if (world.burnLeft[i] > 0) lines.push(`<div class="fire">${world.intensity[i] ? 'CROWN FIRE, spreading hard and throwing embers far' : 'Burning'}, ${world.burnLeft[i]} tick${world.burnLeft[i] === 1 ? '' : 's'} left</div>`);
   else if (world.glow[i] > 0) lines.push(`<div class="fire">Smoldering embers</div>`);
+  if (world.fallout[i] > 0) lines.push(`<div class="fire">Fallout ${Math.round(world.fallout[i] / 2.55)}%${world.fallout[i] > 40 ? ', nothing grows or builds here' : ', fading'}</div>`);
   if (world.wet[i] > 0) lines.push(world.wetKind[i] === 2 ? `<div class="ret">Retardant, ${world.wet[i]} ticks</div>` : `<div class="wet">Wet, ${world.wet[i]} ticks</div>`);
   const f = FUEL[t];
   if (f) lines.push(`<div><span class="k">fuel:</span> ignites x${f.ignite}, burns ${f.burn[0]}-${f.burn[1]} ticks${f.spots ? ', throws embers' : ''}</div>`);
@@ -3402,7 +3606,7 @@ function updateTip() {
     let extra = '';
     if (isBuilding(t) && owner) extra = `, about ${occupants(owner)} people inside`;
     if (t === T.RUBBLE && owner) extra = ', waiting to be rebuilt';
-    lines.push(`<div class="town">${tw.name} (${alignName(tw.align)}): pop ${tw.popLeft}, ${tw.housesLeft} homes, militia ${tw.militia}${tw.hasStation ? ', station' : ''}${tw.wallR ? ', walled' : ''}${tw.mobilized ? ', RALLIED' : ''}${extra}</div>`);
+    lines.push(`<div class="town">${tw.name} (${alignName(tw.align)}, ${MIL_TECH[tw.mil]} / ${CIV_TECH[tw.civ]}): pop ${tw.popLeft}, ${tw.housesLeft} homes, militia ${tw.militia}${tw.hasStation ? ', station' : ''}${tw.wallR ? ', walled' : ''}${tw.mobilized ? ', RALLIED' : ''}${extra}</div>`);
   }
   if (world.air && Math.abs(world.air.x - x) <= 1 && Math.abs(world.air.y - y) <= 1 && (t === T.PAD || t === T.HANGAR)) {
     lines.push(`<div class="town">${world.air.owner} airstrip: ${world.air.sorties}/${world.air.max} sorties${world.air.plane ? ', tanker airborne' : ''}</div>`);
@@ -3546,8 +3750,9 @@ function snapshot() {
     arrays: {
       type: packArr(world.type), variant: packArr(world.variant), burnLeft: packArr(world.burnLeft), glow: packArr(world.glow),
       wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
-      fert: packArr(world.fert), since: packArr(world.since), intensity: packArr(world.intensity),
+      fert: packArr(world.fert), since: packArr(world.since), intensity: packArr(world.intensity), fallout: packArr(world.fallout),
     },
+    falloutList: world.falloutList,
     burning: world.burning, glowing: world.glowing, wetList: world.wetList,
     totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
     buildingsTotal: world.buildingsTotal, buildingsLeft: world.buildingsLeft, popTotal: world.popTotal, popLeft: world.popLeft,
@@ -3574,6 +3779,8 @@ function restore(d) {
   world.townOf = unpackArr(d.arrays.townOf, Int8Array); world.road = unpackArr(d.arrays.road, Uint8Array);
   world.fert = unpackArr(d.arrays.fert, Uint8Array); world.since = unpackArr(d.arrays.since, Int32Array);
   world.intensity = unpackArr(d.arrays.intensity, Uint8Array);
+  world.fallout = d.arrays.fallout ? unpackArr(d.arrays.fallout, Uint8Array) : new Uint8Array(N);
+  world.falloutList = (d.falloutList || []).slice();
   world.residents = new Uint8Array(N);
   world.burning = d.burning.slice(); world.glowing = d.glowing.slice(); world.wetList = d.wetList.slice();
   world.water = []; for (let i = 0; i < N; i++) if (world.type[i] === T.WATER) world.water.push(i);
@@ -3585,7 +3792,7 @@ function restore(d) {
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
   world.warbands = (d.warbands || []).slice(); world.diploTimer = d.diploTimer || 60;
-  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; }
+  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;
   Object.assign(params, d.params);
@@ -3710,7 +3917,7 @@ renderSlots();
 setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 100;
