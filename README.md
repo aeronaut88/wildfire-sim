@@ -247,6 +247,23 @@ uranium. Allied wagons carry whatever the other town is short of. A sacked town 
 an annexed one pays tribute. A militaristic town that cannot reach a metal its neighbour
 digs comes to covet it, relations sour, and the war that follows is declared over the seam.
 
+## Trade
+
+Every town keeps a chest of coin, fed by taxes and market days. Now and then a trader's caravan
+with an amber canopy appears on a map edge, walks in to a town, holds a market day, and leaves.
+It sells what the town is short of (iron, oil, even a little uranium) for coin, and buys the
+surplus. An evil town with enough militia sometimes just seizes the caravan, and then no trader
+comes for a long while. Fishing boats land their catch at the nearest town; fish feeds people
+and sells.
+
+A town with geology and a university sends out geologists, who find oil fields and deep seams
+hidden under ordinary ground. A derrick or a shaft on a surveyed pocket pulls it up without
+anyone walking, as long as the town has power. Oil is what fuels the modern age: tanks and
+bombers run on it, the air tanker burns two per sortie and is grounded without it, and
+aviation itself cannot be learned without hydrocarbons. Roads between allied towns are built by
+a crew that walks the route laying it cell by cell, paid in stone and bridge timber; work halts
+when the stockpiles run dry, and wagons only roll once the road is finished.
+
 ## Seasons and snow
 
 The year is 1,200 ticks long and every tile wears the season. Spring is fresh green with
