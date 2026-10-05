@@ -4446,10 +4446,10 @@ function updateHunter(town, w) {
   const n = world.n;
   if (w.phase === 'out') {
     let herd = w.herd !== undefined ? (world.herds || [])[w.herd] : null;
-    if (!herd || herd.size <= 0) { let best = -1, bd = town.R + 18; (world.herds || []).forEach((h, k) => { const d = Math.hypot(h.x - w.x, h.y - w.y); if (h.size >= 3 && d < bd) { bd = d; best = k; } }); /* small herds are left to recover */ if (best < 0) { w.idle = (w.idle || 0) + 1; return w.idle < 40; } w.herd = best; herd = world.herds[best]; }
+    if (!herd || herd.size <= 0) { let best = -1, bd = town.R + 18; (world.herds || []).forEach((h, k) => { if (w.badHerd === k && world.tick < (w.badUntil || 0)) return; const d = Math.hypot(h.x - w.x, h.y - w.y); if (h.size >= 3 && d < bd) { bd = d; best = k; } }); /* small herds are left to recover; a herd across the water is left for a while */ if (best < 0) { w.idle = (w.idle || 0) + 1; return w.idle < 40; } w.herd = best; herd = world.herds[best]; }
     if (Math.hypot(herd.x - w.x, herd.y - w.y) <= 2.5) { w.phase = 'work'; w.work = 0; w.stall = 0; return true; }
     stepToward(w, herd.x, herd.y, 1, false);
-    if (w.stall > 4 || ++w.stuck > 120) { w.herd = undefined; w.stuck = 0; w.stall = 0; w.lastCell = -1; }
+    if (w.stall > 4 || ++w.stuck > 120) { w.badHerd = w.herd; w.badUntil = world.tick + 300; w.herd = undefined; w.stuck = 0; w.stall = 0; w.lastCell = -1; }
     return true;
   }
   if (w.phase === 'work') {

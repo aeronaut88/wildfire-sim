@@ -1,0 +1,29 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Built page matches the sources
+        run: python build.py --check
+      - name: Script parses
+        run: sed -n '/^<script>/,/^<\/script>/p' index.html | sed '1d;$d' | node --check -
+      - name: Headless boot and soak
+        run: |
+          npx --yes playwright@1.47.2 install chromium
+          export WILDFIRE_CHROME=$(find ~/.cache/ms-playwright -name 'chrome' -type f | head -1)
+          node tests/boot.mjs
+          node tests/soak.mjs ci 20
+          node tests/save.mjs

@@ -436,6 +436,34 @@ says so. Save files are the only untrusted input: every file is checked for shap
 before it is loaded, every string in it that could be shown is stripped of anything that could
 be markup, and only known settings within their ranges are taken from it.
 
+## Development
+
+The game ships as one page, but it is written as source files:
+
+- `src/head.html` and `src/tail.html` are the page around the script (styles, markup, fonts).
+- `src/js/NN-section.js` are the script's sections in order: sprites, seasons, noise, world,
+  herds, ledger, biomes, hydrology, beavers, towns, folk, simulation, diplomacy, battles,
+  technology, boats, trade roads, dragon, weather, snow, wind, regrowth, settlers, town
+  response, townspeople, resources, traders, construction, town growth, arson and accidents,
+  air tanker, log and achievements, rendering, view, effects, loop, UI, town card, tabs,
+  history, save and load. They share one closure, so a file can use what earlier files define.
+- `python build.py` writes `index.html`; `python build.py --check` fails if it is stale.
+  Commit the built page with the sources: Pages serves it as is.
+
+Headless checks live in `tests/` and drive the built page over the Chrome DevTools Protocol
+(set `WILDFIRE_CHROME` to a Chromium binary, or install Playwright's):
+
+- `node tests/boot.mjs` loads the page and reports any startup error.
+- `node tests/soak.mjs <label> <seconds>` runs the valley at 240 ticks a second and reports
+  stats, the log and every error.
+- `node tests/save.mjs` snapshots, restores, and checks the world comes back byte for byte.
+- `node tests/stuck.mjs` measures walkers shuffling between two cells; it should be near zero.
+
+A GitHub Action runs the build check, a parse check, and the boot, soak and save tests on
+every push. In the browser, `window.__wildfire` exposes the world, the parameters, step,
+reset, forced events (dragon, war, nuke, bomber, meteor, beavers, flood, tech) and
+`profileTicks(n)`, which times the pieces of a tick.
+
 ## Host it on GitHub Pages
 
 1. Create a repository and push this folder to it.
