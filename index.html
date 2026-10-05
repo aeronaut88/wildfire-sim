@@ -163,7 +163,7 @@
   .readout { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; position: relative; }
   .stage .log { min-height: 96px; max-height: 150px; }
   .tabs { display: flex; gap: 4px; position: sticky; top: -14px; z-index: 3; background: var(--panel); padding: 2px 0 8px; margin: -4px 0 -6px; border-bottom: 1px solid var(--panel-edge); }
-  .tabs button { flex: 1; font-family: var(--pixel); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 7px 4px; background: #1a1512; color: var(--ink-dim); border: 1px solid var(--panel-edge); cursor: pointer; }
+  .tabs button { flex: 1; min-width: 0; font-family: var(--pixel); font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; padding: 7px 2px; overflow: hidden; text-overflow: clip; background: #1a1512; color: var(--ink-dim); border: 1px solid var(--panel-edge); cursor: pointer; }
   .tabs button:hover { color: var(--ink); }
   .tabs button.on { color: var(--ember-hot); background: #241c17; border-color: var(--ember-hot); }
   .tabpane { display: none; flex-direction: column; gap: 14px; }
@@ -1131,6 +1131,18 @@ SPRITES.chicken = [
 SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
+SPRITES.sand = [
+  'cccccccccccccccc','ccCcccccccccccCc','cccccccccCcccccc','cccccccccccccccc',
+  'cCcccccccccccccc','ccccccCccccccccc','ccccccccccccCccc','cccccccccccccccc',
+  'cccccccccCcccccc','ccCccccccccccccc','cccccccccccccccc','cccccCcccccccCcc',
+  'cccccccccccccccc','ccccccccccCccccc','cCcccccccccccccc','cccccccccccccccc',
+];
+SPRITES.reeds = [
+  'gggggggggggggggg','ggEgggggggEggggg','ggqgggEgggqggggg','ggqgggqgggqggEgg',
+  'gEqggEqgggqggqgg','gqqggqqgEgqggqgg','gqqgEqqgqgqgEqgg','gqqgqqqgqgqgqqgg',
+  'gqqgqqqgqgqqqqgg','qqqqqqqqqqqqqqqq','qqqqqqqqqqqqqqqq','gqqgqqggqqgqqgqg',
+  'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
+];
 SPRITES.solar = [
   'gggggggggggggggg','gggggggggggggggg','g55555555555555g','g5uuu5uuu5uuu55g',
   'g5uuu5uuu5uuu55g','g55555555555555g','g5uuu5uuu5uuu55g','g5uuu5uuu5uuu55g',
@@ -1145,7 +1157,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'reeds', 'sand']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1200,6 +1212,7 @@ const SNOW16 = snowStamps(false); // drifts on ice only; land uses the snowed ti
 // shadow dither, and the first pixel of anything standing up gets a white cap. Roads stay
 // a little darker, as if the town keeps them trodden.
 const SNOW_GROUND = { g: 1, G: 1, h: 1, b: 1, B: 1, a: 1, z: 1, Z: 1, '6': 1, '1': 2, '2': 2, '3': 2 };
+const SAND_SNOW = { c: 1, C: 1 }; // sand whitens too, but house walls use the same colours, so only the sand tile gets it
 function snowedRows(name, rows, ground) {
   const out = rows.map(r => r.split(''));
   for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
@@ -1224,7 +1237,7 @@ const SNOW_GROUND_FRAC = [0, 0.4, 0.75, 1.01];
 const SNOWED16 = SNOW_GROUND_FRAC.map(frac => {
   const pal = { ...PAL, ...SEASON_PAL[3], '%': '#dde5f2' };
   const set = {};
-  for (const k in SPRITES) set[k] = buildSprite16(snowedRows(k, seasonRows(k, SPRITES[k], 3), frac), pal);
+  for (const k in SPRITES) set[k] = buildSprite16(snowedRows(k, k === 'sand' ? SPRITES[k].map(r => r.replace(/[cC]/g, 'g')) : seasonRows(k, SPRITES[k], 3), frac), pal);
   return set;
 });
 const SEASON_TINT = [null, 'rgba(255,225,140,0.035)', 'rgba(255,165,70,0.05)', 'rgba(185,200,240,0.07)'];
@@ -1264,7 +1277,12 @@ function rescaleSprites(px) {
 /* ───────────────────────── Noise & RNG ───────────────────────── */
 
 let rngState = 1;
-function seedRng(s) { rngState = (s >>> 0) || 1; }
+function seedRng(s) { // mix the seed first: xorshift's early draws are tiny for small seeds like 42
+  let x = (s >>> 0) || 1;
+  x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x = Math.imul(x ^ (x >>> 16), 0x45d9f3b); x ^= x >>> 16;
+  rngState = (x >>> 0) || 1;
+  for (let k = 0; k < 3; k++) rand();
+}
 function rand() {
   let x = rngState;
   x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
@@ -1298,7 +1316,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1331,6 +1349,7 @@ const FUEL = {
   [T.DERRICK]:    { ignite: 0.9,  burn: [10, 18], after: T.RUBBLE, spots: true },
   [T.SHAFT]:      { ignite: 0.4,  burn: [5, 9],   after: T.RUBBLE, spots: false },
   [T.PASTURE]:    { ignite: 0.9,  burn: [2, 4],   after: T.ASH,    spots: false },
+  [T.REEDS]:      { ignite: 0.85, burn: [2, 3],   after: T.ASH,    spots: false },
   [T.SILO]:       { ignite: 0.2,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
@@ -1484,13 +1503,13 @@ const LIVESTOCK = ['cattle', 'pigs', 'sheep', 'chickens'];
 const LIVESTOCK_FOOD = { cattle: 3, pigs: 2, sheep: 1.5, chickens: 0.5 };
 const LIVESTOCK_SPRITE = { cattle: 'cow', pigs: 'pig', sheep: 'sheep', chickens: 'chicken' };
 function herdKind() { let r = rand ? Math.random() : Math.random(); for (const k of HERD_KINDS) { r -= k[1]; if (r <= 0) return k; } return HERD_KINDS[0]; }
-function herdCell(i) { const t = world.type[i]; return (t === T.GRASS || t === T.SCRUB || isTree(t) || t === T.ASH || t === T.MUD || t === T.STUMP) && !world.road[i] && world.townOf[i] < 0 && world.burnLeft[i] <= 0; }
+function herdCell(i) { const t = world.type[i]; return (t === T.GRASS || t === T.SCRUB || t === T.REEDS || t === T.SAND || isTree(t) || t === T.ASH || t === T.MUD || t === T.STUMP) && !world.road[i] && world.townOf[i] < 0 && world.burnLeft[i] <= 0; }
 function seedHerds(n) {
   const N = n * n, want = Math.max(2, Math.round(N / 2200));
   for (let k = 0; k < want; k++) {
     let i = -1; for (let tries = 0; tries < 200 && i < 0; tries++) { const c = Math.floor(rand() * N); if (herdCell(c)) i = c; }
     if (i < 0) break;
-    const kind = herdKind();
+    const kind = herdKindFor(world.biome[i]);
     world.herds.push({ kind: kind[0], x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: kind[0] === 'fowl' ? 6 + Math.floor(rand() * 6) : 3 + Math.floor(rand() * 5), wx: -1, wy: -1, rest: 0, t0: 0, breedT: 0 });
   }
 }
@@ -1501,7 +1520,7 @@ function updateHerds() {
   if (herds.length < maxHerds && Math.random() < 0.012) { // a new herd wanders in from the edge
     const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
     if (edge === 0) y = 0; else if (edge === 1) y = n - 1; else if (edge === 2) x = 0; else x = n - 1;
-    if (herdCell(y * n + x)) { const kind = herdKind(); herds.push({ kind: kind[0], x, y, px: x, py: y, face: 1, size: 2 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, breedT: 0 }); }
+    if (herdCell(y * n + x)) { const kind = herdKindFor(world.biome[y * n + x]); herds.push({ kind: kind[0], x, y, px: x, py: y, face: 1, size: 2 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, breedT: 0 }); }
   }
   for (const h of herds) {
     if (h.size <= 0) continue; // hunted out
@@ -1560,6 +1579,36 @@ function stat(group, key, n) {
   g[key] = (g[key] || 0) + (n === undefined ? 1 : n);
 }
 
+/* ───────────────────────── Biomes ─────────────────────────
+   The valley is not one forest. High ground is pine highland, wet low ground is broadleaf
+   lowland or marsh, the dry side is scrubland, and the rest is the mixed forest. Each has its
+   own trees, its own regrowth, its own fire, its own harvest and its own beasts. */
+const BIOME_NAMES = ['Mixed forest', 'Pine highland', 'Broadleaf lowland', 'Dry scrubland', 'Marsh', 'Desert'];
+const BIOME_FIRE = [1, 1.1, 0.8, 1.35, 0.55, 1.5];
+const BIOME_YIELD = [1, 0.8, 1.25, 0.7, 0.9, 0.5];
+const BIOME_TINT = [null, 'rgba(190,205,235,0.09)', 'rgba(110,200,90,0.07)', 'rgba(225,190,90,0.13)', 'rgba(30,90,85,0.15)', 'rgba(240,205,110,0.12)'];
+const BIOME_HERDS = [null, ['sheep', 'boar', 'deer'], ['deer', 'boar', 'fowl'], ['deer', 'aurochs', 'fowl'], ['fowl', 'boar', 'deer'], ['sheep', 'fowl', 'aurochs']];
+// Climates: most valleys are varied; some are one country end to end.
+const CLIMATES = [['temperate', 0, 0, 0.30], ['dry', -0.22, 0, 0.12], ['wet', 0.2, 0, 0.12], ['cold', 0, 0.18, 0.10], ['forest', 0.08, 0, 0.08], ['desert', -0.42, 0, 0.08], ['split', 0, 0, 0.12], ['ridge', 0, 0, 0.08]];
+// 'split' runs a moisture gradient across the map (desert one side, forest the other); 'ridge' runs a cold one (highland on one side).
+function nearWater(i, r) {
+  const n = world.n, x = i % n, y = (i - x) / n;
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue; if (world.type[yy * n + xx] === T.WATER) return true; }
+  return false;
+}
+function plantable(i) { // a plot can be farmed unless it is desert with no water to irrigate it
+  const t = world.type[i];
+  if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD || t === T.REEDS || t === T.SAND)) return false;
+  if (world.biome && world.biome[i] === 5) return nearWater(i, 4);
+  return t !== T.SAND;
+}
+function biomeAt(x, y) { const n = world.n; if (!world.biome || x < 0 || y < 0 || x >= n || y >= n) return 0; return world.biome[y * n + x]; }
+function herdKindFor(B) {
+  if (!B || Math.random() < 0.35) return herdKind();
+  const nm = BIOME_HERDS[B][Math.floor(Math.random() * BIOME_HERDS[B].length)];
+  return HERD_KINDS.find(k => k[0] === nm) || HERD_KINDS[0];
+}
+
 function generate(n, seed) {
   world.n = n;
   const N = n * n;
@@ -1580,6 +1629,7 @@ function generate(n, seed) {
   world.snow = new Uint8Array(N); world.snowLv = new Uint8Array(N); world.snowCells = 0; world.snowCover = 0; // snow depth per cell and the drawn level
   world.look = new Uint8Array(N); world.lookSeason = 0; world.lookLeft = 0; world.lookPos = 0; // which season each tile currently wears
   world.oreKind = new Uint8Array(N); world.ore = new Uint16Array(N); // seams in the rock: kind and units left
+  world.biome = new Uint8Array(N); // 0 mixed forest, 1 pine highland, 2 broadleaf lowland, 3 dry scrubland, 4 marsh
   world.deep = new Uint8Array(N); world.deepAmt = new Uint16Array(N); world.surveyed = new Uint8Array(N); // what lies under the ground, found only by geologists
   world.trader = null; world.nextTrader = 0; world.traderWary = 0; world.roadProjects = [];
   world.stats = newStats();
@@ -1605,6 +1655,10 @@ function generate(n, seed) {
   seedRng(seed);
   const sE = seed ^ 0x9e3779b9, sM = seed ^ 0x85ebca6b, sB = seed ^ 0xc2b2ae35;
   const scale = 7 / n;
+  { let r = rand(); world.climate = { name: 'temperate', moist: 0, cold: 0 }; for (const [name, moist, cold, pr] of CLIMATES) { r -= pr; if (r <= 0) { world.climate = { name, moist, cold }; break; } } }
+  const CL = world.climate;
+  CL.axis = rand() < 0.5 ? 'x' : 'y'; CL.dir = rand() < 0.5 ? 1 : -1; // which way a gradient runs
+  const grad = (x, y) => ((CL.axis === 'x' ? x : y) / n - 0.5) * CL.dir;
 
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
@@ -1614,19 +1668,37 @@ function generate(n, seed) {
       const m = fbm(x * scale * 1.7 + 50, y * scale * 1.7 + 50, sM, 3);
       const big = fbm(x * scale * 3 + 200, y * scale * 3 + 200, sB, 2);
       world.variant[i] = (hash2(x, y, seed) < 0.5) ? 0 : 1;
+      // Biome from height, moisture and a slow-varying noise so regions are broad and blobby.
+      const bio = fbm(x * scale * 0.35 + 900, y * scale * 0.35 + 900, seed ^ 0x51a7, 3), moist = fbm(x * scale * 0.7 + 300, y * scale * 0.7 + 300, seed ^ 0x2f3d, 3) + CL.moist + (CL.name === 'split' ? grad(x, y) * 0.7 : 0);
+      let B = 0;
+      const dryness = moist + (bio - 0.5) * 0.5, cold = CL.cold + (CL.name === 'ridge' ? Math.max(0, grad(x, y)) * 0.5 : 0);
+      if (e > 0.62 + (bio - 0.5) * 0.1 - cold) B = 1;
+      else if (CL.name !== 'forest') { if (dryness < 0.17) B = 5; else if (e < 0.34 && moist > 0.48) B = 4; else if (dryness < 0.36) B = 3; else if (moist > 0.56 && e < 0.52) B = 2; }
+      world.biome[i] = B;
       let t;
       if (e < 0.27) t = T.WATER;
-      else if (e > 0.78) t = T.ROCK;
+      else if (e > (B === 1 ? 0.74 : 0.78)) t = T.ROCK;
       else {
         const forest = Math.min(1, Math.max(0, (m - 0.28) * 2.6));
         const shore = e < 0.31 ? 0.35 : 1;
-        world.fert[i] = forest < 0.12 ? 0 : (forest < 0.45 ? 1 : 2);
-        const treeP = Math.min(0.97, params.density * (0.08 + 1.35 * forest) * shore);
-        if (rand() < treeP) {
-          if (e < 0.37 && rand() < 0.7) t = T.BIRCH; // damp ground by the water
-          else if (big > 0.5) { const r = rand(); t = r < 0.5 ? T.OAK : (r < 0.8 ? T.BIGPINE : T.PINE); }
+        world.fert[i] = B === 4 ? 1 : B === 5 ? (e < 0.33 ? 1 : 0) : forest < 0.12 ? 0 : (forest < 0.45 ? 1 : 2);
+        const treeP = Math.min(0.97, params.density * (0.08 + 1.35 * forest) * shore * [1, 0.9, 1.1, 0.35, 0.5, 0.06][B]);
+        if (B === 4 && e < 0.305 && rand() < 0.5) t = T.WATER; // pools in the marsh
+        else if (B === 5 && e >= 0.33 && rand() < 0.995) { const r = rand(); t = r < 0.78 ? T.SAND : r < 0.95 ? T.SCRUB : T.GRASS; } // open desert: sand, a little scrub
+        else if (rand() < treeP) {
+          const r = rand();
+          if (B === 5) t = r < 0.6 ? T.OAK : T.PINE; // the odd tree where there is a little water
+          else if (B === 1) t = r < 0.7 ? T.PINE : T.BIGPINE;
+          else if (B === 2) t = r < 0.45 ? T.OAK : r < 0.7 ? T.BIRCH : r < 0.9 ? T.PINE : T.BIGPINE;
+          else if (B === 3) t = r < 0.6 ? T.PINE : T.OAK;
+          else if (B === 4) t = r < 0.8 ? T.BIRCH : T.OAK;
+          else if (e < 0.37 && rand() < 0.7) t = T.BIRCH; // damp ground by the water
+          else if (big > 0.5) t = r < 0.5 ? T.OAK : (r < 0.8 ? T.BIGPINE : T.PINE);
           else t = rand() < 0.12 ? T.BIGPINE : T.PINE;
         }
+        else if (B === 4) t = rand() < 0.5 ? T.REEDS : T.GRASS;
+        else if (B === 5) t = rand() < 0.6 ? T.GRASS : T.SCRUB; // a wet hollow in the desert
+        else if (B === 3) t = rand() < 0.5 ? T.SCRUB : T.GRASS;
         else t = (forest < 0.2 && m < 0.35 && rand() < 0.35) ? T.SCRUB : T.GRASS; // dry scrub on thin ground
       }
       world.type[i] = t;
@@ -2162,7 +2234,7 @@ function step() {
   const current = world.burning;
   const count = current.length;
   const next = [];
-  const type = world.type, burnLeft = world.burnLeft, wet = world.wet, snow = world.snow;
+  const type = world.type, burnLeft = world.burnLeft, wet = world.wet, snow = world.snow, biome = world.biome;
   const hasWind = params.windStrength > 0 && (params.windX !== 0 || params.windY !== 0);
   const W = WEATHER[world.weather.kind];
   const spreadMul = params.spread * W.spread;
@@ -2183,7 +2255,7 @@ function step() {
       const j = ny * n + nx;
       const tj = type[j];
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
-      let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat;
+      let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat * BIOME_FIRE[biome[j]];
       if (wet[j] > 0) p *= crown ? 0.3 : 0.1;
       if (snow[j] > 10) p *= crown ? 0.2 : 0.06; // fuel under snow barely takes
       if (Math.random() < p) ignite(j);
@@ -3394,12 +3466,13 @@ function regrowSweep() {
     const i = (k0++ * step + (world.sweepOffset || 0)) % N; // exact: well below 2^53 for any map size here
     const t = type[i];
     if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE && t !== T.BIGPINE && t !== T.OAK && t !== T.MUD) continue;
+    const B = world.biome[i];
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
     if (world.fallout[i] > 40) continue; // poisoned ground
     if (world.snow[i] > 20) continue; // nothing grows under snow
     if (world.tick - world.since[i] < regrowWait(i)) continue;
     const r = Math.random();
-    if (t === T.ASH || t === T.MUD) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
+    if (t === T.ASH || t === T.MUD) { if (r < mul / GROW.ashToGrass) { type[i] = B === 5 && !nearWater(i, 3) ? T.SAND : B === 4 && Math.random() < 0.6 ? T.REEDS : T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.STUMP) { if (r < mul / GROW.stumpToAsh) { type[i] = T.ASH; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.DIRT) { if (!world.road[i] && r < mul / GROW.breakToGrass) { type[i] = T.GRASS; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.GRASS) {
@@ -3416,8 +3489,9 @@ function regrowSweep() {
       if (fert === 1 && r < 0.6 * mul / GROW.ashToGrass) { type[i] = T.SCRUB; world.since[i] = world.tick; dirty.add(i); continue; }
       // Birch likes wet feet: grass beside water comes back as birch.
       if (((x > 0 && type[i - 1] === T.WATER) || (x < n - 1 && type[i + 1] === T.WATER) || (y > 0 && type[i - n] === T.WATER) || (y < n - 1 && type[i + n] === T.WATER)) && r < mul / GROW.grassToPine) { type[i] = T.BIRCH; world.treeCount++; world.since[i] = world.tick; dirty.add(i); continue; }
-      if (oaks && r < fm * mul / GROW.grassToOak) { type[i] = T.OAK; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
-      else if (r < fm * mul / (trees ? GROW.grassToPine / Math.min(trees, 3) : GROW.grassToPineLonely)) { type[i] = T.PINE; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
+      if (oaks && B !== 1 && r < fm * mul * (B === 2 ? 2 : B === 3 ? 0.5 : 1) / GROW.grassToOak) { type[i] = T.OAK; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
+      else if (B === 4 && r < fm * mul / GROW.grassToPine) { type[i] = T.BIRCH; world.treeCount++; world.since[i] = world.tick; dirty.add(i); } // marsh comes back as birch
+      else if (r < fm * mul * (B === 1 ? 1.5 : B === 3 ? 0.5 : B === 4 ? 0.3 : 1) / (trees ? GROW.grassToPine / Math.min(trees, 3) : GROW.grassToPineLonely)) { type[i] = T.PINE; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
     }
     else if (t === T.PINE) { if (r < mul / GROW.pineToBig) { type[i] = T.BIGPINE; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.BIGPINE || t === T.OAK) { if (r < mul / 70000) { type[i] = T.SNAG; dirty.add(i); } } // old giants die standing, rarely
@@ -3953,7 +4027,7 @@ function placeSite(town, type, maxD, okNeighbor) {
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
     const d = Math.hypot(dx, dy); if (d > maxD) continue;
     const i = y * n + x, t = wt[i];
-    if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD || t === T.STUMP || (t === T.DIRT && !world.road[i]))) continue;
+    if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD || t === T.STUMP || t === T.SAND || (t === T.DIRT && !world.road[i]))) continue;
     if (world.burnLeft[i] > 0 || poisoned(i)) continue;
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
     if (foreign) continue;
@@ -4358,6 +4432,12 @@ function growTown(town) {
     else if (world.tick % 200 < 16) { const sent = []; for (const k of RES_KINDS) { const amt = Math.floor(town.res[k] * 0.25); if (amt > 0) { town.res[k] -= amt; addRes(m, k, amt); sent.push(`${amt} ${k}`); } } if (sent.length && Math.random() < 0.5) log(`${town.name} sends tribute to ${m.name}: ${sent.join(', ')}`, 'war'); }
   }
   const capacity = Math.min(housingCapacity(town), foodSupply(town), town.water ? Infinity : 40);
+  // Drought withers fields that have no water near them, fastest in the desert.
+  if (world.weather.kind === 'drought' && Math.random() < 0.5) {
+    let lost = 0;
+    for (const i of town.buildings) if (world.type[i] === T.FARM && Math.random() < (world.biome[i] === 5 ? 0.06 : 0.02) && !nearWater(i, 3)) { world.type[i] = T.SCRUB; world.since[i] = world.tick; dirty.add(i); lost++; }
+    if (lost) { town.farms = Math.max(0, (town.farms || 0) - lost); town.buildings = town.buildings.filter(i => world.type[i] !== T.SCRUB); stat('ev', 'fieldsWithered', lost); if (Math.random() < 0.5) log(`The drought withers ${lost} of ${town.name}'s fields`, 'loss'); }
+  }
   // Hungry towns clear fields; well-fed ones grow.
   if (town.popLeft > foodSupply(town) * 0.85 && Math.random() < 0.6) buildFarm(town);
   if (town.popLeft > foodSupply(town) * 1.15) {
@@ -4437,7 +4517,7 @@ function foodSupply(town) {
   const sea = season();
   const seasonMul = sea === 2 ? 1.3 : sea === 3 ? 0.7 : 1; // harvest, then the stored half of it through winter
   const yieldMul = (wk === 'drought' || wk === 'drystorm' ? 0.55 : wk === 'rain' ? 1.2 : wk === 'ashfall' ? 0.3 : 1) * seasonMul;
-  let food = 25 + farms * 12 * yieldMul;
+  let food = 25 + farms * 12 * yieldMul * BIOME_YIELD[biomeAt(town.cx, town.cy)];
   food += Math.min(town.res ? town.res.fish || 0 : 0, 40) + Math.min(town.res ? town.res.game || 0 : 0, 40); // the smokehouse
   if (town.livestock) for (const k of LIVESTOCK) food += (town.livestock[k] || 0) * LIVESTOCK_FOOD[k]; // the herd
   if (town.tradeFood && town.tradeFood > world.tick) food += 30;
@@ -4453,7 +4533,7 @@ function buildField(town, fieldType) {
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
     const i = y * n + x, t = type[i];
-    if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD)) continue;
+    if (!plantable(i)) continue;
     if (world.road[i] || poisoned(i) || world.burnLeft[i] > 0 || world.elev[i] > 0.7) continue;
     const d = Math.hypot(dx, dy);
     if (d > R) continue;
@@ -4508,7 +4588,7 @@ function placeCivic(town, type, nearCentre) {
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || !inFootprint(town, x, y, 0.3)) continue;
     const i = y * n + x, t = wt[i];
     if (world.road[i] || poisoned(i) || world.burnLeft[i] > 0) continue;
-    const ok = t === T.GRASS || t === T.ASH || t === T.RUBBLE || t === T.DIRT || (t === T.HOUSE && Math.random() < 0.3);
+    const ok = t === T.GRASS || t === T.ASH || t === T.RUBBLE || t === T.DIRT || t === T.SAND || t === T.SCRUB || (t === T.HOUSE && Math.random() < 0.3);
     if (!ok || !touchesRoad(x, y)) continue;
     const d = Math.hypot(dx, dy);
     const score = (nearCentre ? d : -d) + Math.random() * 2 + (t === T.HOUSE ? 3 : 0);
@@ -5284,6 +5364,8 @@ function spriteKey(i) {
     case T.DERRICK: return 'derrick';
     case T.SHAFT: return 'shaft';
     case T.PASTURE: return 'pasture';
+    case T.REEDS: return 'reeds';
+    case T.SAND: return 'sand';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
   }
@@ -5322,6 +5404,7 @@ function blitCell(i) {
   }
   // Snow is drawn as the tile itself: caps at a dusting, patchy ground, mostly white, all white.
   tctx.drawImage(lv ? SNOWED[Math.min(3, lv - 1)][spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx);
+  if (world.biome && world.biome[i] && lv < 4) { tctx.fillStyle = BIOME_TINT[world.biome[i]]; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); } // the region's cast
   if (world.surveyed && world.surveyed[i] && world.deep[i] && !isBuilding(t)) tctx.drawImage(SPR.survey, x * cellPx, y * cellPx);
   if (world.elev) {
     const e = world.elev[i];
@@ -5915,7 +5998,7 @@ function statTipHtml(kind) {
     const kept = {}; for (const t of world.towns) if (t.livestock) for (const k of LIVESTOCK) if (t.livestock[k]) kept[`${t.name}: ${LIVESTOCK.filter(q => t.livestock[q]).map(q => `${t.livestock[q]} ${q}`).join(', ')}`] = 1;
     return `<h4>wild, by kind</h4>${tipRows(byKind, 8)}${row('herds', (world.herds || []).length)}<h4>kept</h4>${Object.keys(kept).length ? Object.keys(kept).map(k => `<div>${k}</div>`).join('') : '<div class="dim">no livestock yet</div>'}<h4>the tally</h4>${row('hunted', ev.hunted || 0)}${row('brought home alive', ev.tamed || 0)}${row('born on pastures', ev.animalsBorn || 0)}${row('lost to fire', ev.animalsBurned || 0)}`;
   }
-  if (kind === 'trees') return `<h4>the forest</h4>${row('standing', world.treeCount)}${row('felled by loggers', ev.felled || 0)}${row('cells burned', world.burnedCount)}`;
+  if (kind === 'trees') { const share = {}; const N = world.n * world.n; for (let i = 0; i < N; i++) if (world.type[i] !== T.WATER) share[BIOME_NAMES[world.biome[i]]] = (share[BIOME_NAMES[world.biome[i]]] || 0) + 1; return `<h4>the forest</h4>${row('standing', world.treeCount)}${row('felled by loggers', ev.felled || 0)}${row('cells burned', world.burnedCount)}<h4>biomes</h4>${tipRows(share, 5, N)}`; }
   if (kind === 'burned' || kind === 'burning') return `<h4>fire</h4>${row('burning now', world.burning.filter(i => world.burnLeft[i] > 0).length)}${row('cells burned', world.burnedCount)}${row('fire alarms', ev.alarms || 0)}${row('lightning strikes', ev.lightning || 0)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}`;
   if (kind === 'weather') return `<h4>${WEATHER[world.weather.kind].label}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('wind', params.windStrength.toFixed(2))}${row('fire danger', fireDanger())}${row('snow cover', Math.round((world.snowCover || 0) * 100) + '%')}${row('floods', ev.floods || 0)}${world.dryWinter && season() === 3 ? '<div class="dim">a hard dry winter</div>' : ''}`;
   return '';
@@ -5979,9 +6062,7 @@ function frame(now) {
       if (steps > 60) steps = 60;
       for (let k = 0; k < steps; k++) step();
     }
-    flyPlane(dt);
-    flyDragon(dt);
-    flyBombers(dt);
+    if (running) { flyPlane(dt); flyDragon(dt); flyBombers(dt); } // paused means paused, dragons included
 
     if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
     if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
@@ -6150,7 +6231,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture' });
+Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -6165,6 +6246,7 @@ function updateTip() {
   if (world.elev) lines.push(`<div><span class="k">elevation:</span> ${Math.round(world.elev[i] * 100)}${world.flow && world.flow[i] >= 0 ? (world.flow[i] === i ? ', river mouth' : ', river, flows ' + (() => { const j = world.flow[i]; const dx = j % n - x, dy = Math.floor(j / n) - y; return dy < 0 ? 'north' : dy > 0 ? 'south' : dx > 0 ? 'east' : 'west'; })()) : ''}${world.flooded.includes(i) ? ', flood water' : ''}</div>`);
   if (t === T.FARM && world.townOf[i] >= 0) lines.push(`<div class="town">Fields of ${world.towns[world.townOf[i]].name}, feeds 12</div>`);
   if (world.fallout[i] > 0) lines.push(`<div class="fire">Fallout ${Math.round(world.fallout[i] / 2.55)}%${world.fallout[i] > 40 ? ', nothing grows or builds here' : ', fading'}</div>`);
+  if (world.biome) lines.push(`<div class="dim">${BIOME_NAMES[world.biome[i]]}${world.biome[i] === 5 ? (nearWater(i, 4) ? ', irrigable' : ', nothing will grow here') : ''}</div>`);
   if (world.type[i] === T.ROCK && world.oreKind[i]) lines.push(`<div>${ORE_NAMES[world.oreKind[i]][0].toUpperCase() + ORE_NAMES[world.oreKind[i]].slice(1)} seam · ${world.ore[i]} left</div>`);
   if (world.surveyed[i] && world.deep[i]) lines.push(`<div>${world.deep[i] === 5 ? 'Oil field' : 'Deep ' + ORE_NAMES[world.deep[i]] + ' seam'} (surveyed) · ${world.deepAmt[i]} left</div>`);
   if (world.type[i] === T.MINE) { const tn = world.towns[world.townOf[i]]; if (tn && tn.mineKind) lines.push(`<div>${ORE_NAMES[tn.mineKind[i] || 0] || 'ore'} mine${tn.spent && tn.spent[i] ? ', worked out' : ''}</div>`); }
@@ -6402,7 +6484,7 @@ function renderHistFacts() {
   let livestock = 0; for (const t of world.towns) if (t.livestock) for (const k of LIVESTOCK) livestock += t.livestock[k] || 0;
   const yrs = Math.floor(world.tick / YEAR);
   el.innerHTML = `<h4>the valley</h4>` +
-    row('years', yrs) + row('towns founded', world.towns.length) + row('standing', alive.length) +
+    row('climate', world.climate ? world.climate.name : 'temperate') + row('years', yrs) + row('towns founded', world.towns.length) + row('standing', alive.length) +
     (oldestTown ? row('oldest standing', `${oldestTown.name}, ${Math.floor((world.tick - oldestTown.founded) / YEAR)}y`) : '') +
     (st.max ? row('biggest ever', `${st.max.name}, ${st.max.pop}`) : '') + (richest && richest.res ? row('wealthiest', `${richest.name}, ${richest.res.coin} coin`) : '') +
     (mostFires && mostFires.fires ? row('most fires', `${mostFires.name}, ${mostFires.fires}`) : '') +
@@ -6416,7 +6498,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0);
 }
 function renderHistControls() {
   renderHistFacts();
@@ -6537,7 +6619,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
     ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
-    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'],
+    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'], ['reeds', 'marsh reeds'], ['sand', 'desert sand'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],
   ];
   const leg = $('legend');
@@ -6570,11 +6652,11 @@ function snapshot() {
       wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
       fert: packArr(world.fert), since: packArr(world.since), intensity: packArr(world.intensity), fallout: packArr(world.fallout),
       elev: packArr(world.elev), flow: packArr(world.flow), snow: packArr(world.snow), look: packArr(world.look), oreKind: packArr(world.oreKind), ore: packArr(world.ore),
-      deep: packArr(world.deep), deepAmt: packArr(world.deepAmt), surveyed: packArr(world.surveyed),
+      deep: packArr(world.deep), deepAmt: packArr(world.deepAmt), surveyed: packArr(world.surveyed), biome: packArr(world.biome),
     },
     river: world.river, flooded: world.flooded, floodOrig: [...world.floodOrig], floodUntil: world.floodUntil,
     beavers: world.beavers ? { ...world.beavers, pond: [...world.beavers.pond] } : null,
-    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
+    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, climate: world.climate || null, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
     falloutList: world.falloutList,
     burning: world.burning, glowing: world.glowing, wetList: world.wetList,
     totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
@@ -6615,7 +6697,8 @@ function restore(d) {
   world.deep = d.arrays.deep ? unpackArr(d.arrays.deep, Uint8Array) : new Uint8Array(N);
   world.deepAmt = d.arrays.deepAmt ? unpackArr(d.arrays.deepAmt, Uint16Array) : new Uint16Array(N);
   world.surveyed = d.arrays.surveyed ? unpackArr(d.arrays.surveyed, Uint8Array) : new Uint8Array(N);
-  world.trader = d.trader || null; world.nextTrader = d.nextTrader || 0; world.traderWary = d.traderWary || 0; world.roadProjects = (d.roadProjects || []).slice(); world.stats = d.stats || newStats(); world.herds = (d.herds || []).slice(); world.history = d.history || { ticks: [], towns: {} }; histLastLen = -1;
+  world.biome = d.arrays.biome ? unpackArr(d.arrays.biome, Uint8Array) : new Uint8Array(N);
+  world.climate = d.climate || { name: 'temperate', moist: 0, cold: 0 }; world.trader = d.trader || null; world.nextTrader = d.nextTrader || 0; world.traderWary = d.traderWary || 0; world.roadProjects = (d.roadProjects || []).slice(); world.stats = d.stats || newStats(); world.herds = (d.herds || []).slice(); world.history = d.history || { ticks: [], towns: {} }; histLastLen = -1;
   world.snowLv = new Uint8Array(N); world.snowCells = 0;
   for (let i = 0; i < N; i++) { world.snowLv[i] = snowLevel(world.snow[i]); if (world.snow[i]) world.snowCells++; }
   world.snowCover = 0;

@@ -285,6 +285,23 @@ the season and the weather: almost nothing in a clear winter, fast in spring rai
 ground holds its snow longest. Ground that has just thawed is damp for a while, which is why
 early spring fires fizzle. Shift+hover a cell to see its snow.
 
+## Biomes and climate
+
+The valley is not one forest. High ground is pine highland, wet low ground is broadleaf lowland
+or marsh with reeds and pools, the dry side is scrubland, the driest is desert, and the rest is
+mixed forest. Each has its own trees, its own regrowth (marsh comes back as reeds and birch,
+desert ash goes back to sand unless water is near), its own fire (scrub and desert brush burn
+fast, marsh barely), its own harvest, and its own beasts. Every tile carries a faint cast of its
+region, and Shift+hover names it.
+
+Each valley also rolls a climate first. Most are temperate and varied; some are dry, wet, cold
+or all forest; some are desert end to end; and a split valley runs a moisture gradient across
+the map so one side is desert and the other forest, while a ridge valley runs a cold one. In
+desert country a plot is only plantable where there is water within reach to irrigate it, so
+towns cling to the river and the watering holes, and nothing grows on open sand. In a drought,
+fields with no water within reach wither back to scrub, three times as fast in the desert. The History
+facts block names the climate, and the trees tile shows the biome shares.
+
 ## Beasts
 
 Herds of deer, wild boar, wild sheep, grouse and the odd aurochs roam the open ground, run
