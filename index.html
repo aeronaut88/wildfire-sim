@@ -1647,6 +1647,7 @@ function step() {
   for (let k = 0; k < count; k++) {
     const i = current[k];
     if (burnLeft[i] <= 0) continue; // put out by someone
+    if (!isFuel(type[i])) { burnLeft[i] = 0; world.intensity[i] = 0; dirty.add(i); continue; } // became rubble, road or water mid-burn
     if (W.rainOut > 0 && Math.random() < W.rainOut) { burnLeft[i] = 0; dirty.add(i); continue; } // doused by rain
     const x = i % n, y = (i - x) / n;
     if (!world.intensity[i]) maybeCrown(i, x, y, hasWind, W);
@@ -1974,7 +1975,7 @@ function finishBattle(bt, from, to) {
     const homes = to.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0).sort(() => Math.random() - 0.5);
     for (let k = 0; k < torch && k < homes.length; k++) ignite(homes[k]);
     let wrecked = 0;
-    for (const i of to.buildings) { const tt = world.type[i]; if ((tt === T.BARRACKS || tt === T.FORGE || tt === T.FACTORY || tt === T.UNIVERSITY || tt === T.SILO || tt === T.STATION) && Math.random() < 0.5) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; dirty.add(i); wrecked++; } }
+    for (const i of to.buildings) { const tt = world.type[i]; if ((tt === T.BARRACKS || tt === T.FORGE || tt === T.FACTORY || tt === T.UNIVERSITY || tt === T.SILO || tt === T.STATION) && Math.random() < 0.5) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); wrecked++; } }
     world.raidfire = false;
     to.popLeft -= captives; from.popLeft += captives; from.popTotal += captives;
     let sword = 0;
@@ -1983,7 +1984,7 @@ function finishBattle(bt, from, to) {
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'SACKED', color: '#ff4040', t0: performance.now(), dur: 2500 });
     log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
     if (to.popLeft < 10 || to.housesLeft - torch < 2) { // razed
-      for (const i of to.buildings) if (isBuilding(world.type[i])) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; dirty.add(i); }
+      for (const i of to.buildings) if (isBuilding(world.type[i])) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); }
       to.housesLeft = 0;
       log(`${to.name} is razed to the ground by ${from.name}`, 'war');
     }
@@ -2008,7 +2009,7 @@ function annex(from, to) {
   to.align = { ...from.align };
   to.relations = {}; to.wars = {};
   for (const o of world.towns) { if (o !== to) { delete o.wars[to.id]; o.relations[to.id] = o === from ? 100 : rel(o, from); to.relations[o.id] = o === from ? 100 : rel(o, from); } }
-  to.name = `${to.name} (${from.name})`;
+  to.name = `${to.name.replace(/\s*\(.*\)$/, '')} (${from.name.replace(/\s*\(.*\)$/, '')})`; // a town taken twice shows only its newest master
   to.mil = Math.max(to.mil, from.mil - 1); to.civ = Math.max(to.civ, from.civ - 1);
   log(`${from.name} annexes ${to.name}. Its people now answer to new masters.`, 'war');
 }
@@ -2248,7 +2249,7 @@ function updateBoats() {
   }
   const keep = [];
   for (const b of world.boats) {
-    b.px = b.x; b.py = b.y;
+    b.px = b.x; b.py = b.y; b.t0 = world.tick;
     if (b.fire) {
       const t = world.towns[b.town];
       if (!t || !isAlive(t)) continue;
@@ -2258,24 +2259,47 @@ function updateBoats() {
       if (best >= 0 && bd > 2.2) waterStep(b, best % n, Math.floor(best / n));
       else if (best >= 0) {
         for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) { const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const j = y * n + x; if (world.burnLeft[j] > 0 && Math.random() < 0.6) { extinguish(j, 25, 1); spray(j); } else if (isFuel(type[j]) && world.wet[j] <= 0 && Math.random() < 0.3) extinguish(j, 20, 1); }
-      } else if (Math.random() < 0.3) waterStep(b, b.x + Math.floor(Math.random() * 3) - 1, b.y + Math.floor(Math.random() * 3) - 1);
-    } else {
-      if (Math.random() < 0.35) waterStep(b, b.x + Math.floor(Math.random() * 5) - 2, b.y + Math.floor(Math.random() * 5) - 2);
-    }
+      } else wander(b, 4, 0.12);
+    } else wander(b, 10, 0.5);
     keep.push(b);
   }
   world.boats = keep;
 }
+// One cell of water travel toward (tx, ty): take the neighbouring water cell that closes the most
+// distance, never the cell just left, and only move if it is no worse than holding station.
+// Drift: pick a water cell within `reach` as a destination, cruise there, then rest a while.
+function wander(b, reach, pace) {
+  if (b.wx === undefined || (b.wx === b.x && b.wy === b.y) || Math.random() < 0.01) {
+    if (b.rest === undefined) b.rest = 2 + Math.floor(Math.random() * 10);
+    if (b.rest-- > 0) return;
+    b.rest = undefined;
+    const n = world.n;
+    for (let k = 0; k < 12; k++) {
+      const x = b.x + Math.floor(Math.random() * (2 * reach + 1)) - reach, y = b.y + Math.floor(Math.random() * (2 * reach + 1)) - reach;
+      if (x < 0 || y < 0 || x >= n || y >= n || world.type[y * n + x] !== T.WATER) continue;
+      b.wx = x; b.wy = y; break;
+    }
+    if (b.wx === undefined) return;
+  }
+  if (Math.random() < pace && !waterStep(b, b.wx, b.wy)) { b.wx = undefined; } // blocked: pick somewhere else
+}
 function waterStep(b, tx, ty) {
   const n = world.n, type = world.type;
-  const dx = Math.sign(tx - b.x), dy = Math.sign(ty - b.y);
-  for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [dx, -dy], [-dx, dy]]) {
+  const here = Math.hypot(tx - b.x, ty - b.y);
+  let bx = -1, by = -1, bd = here + 0.3; // a small allowance lets it slide along a bank
+  for (let my = -1; my <= 1; my++) for (let mx = -1; mx <= 1; mx++) {
     if (!mx && !my) continue;
     const nx = b.x + mx, ny = b.y + my;
     if (nx < 0 || ny < 0 || nx >= n || ny >= n || type[ny * n + nx] !== T.WATER) continue;
-    b.x = nx; b.y = ny; if (mx) b.face = mx; return true;
+    if (nx === b.lx && ny === b.ly) continue; // no shuffling back and forth
+    const d = Math.hypot(tx - nx, ty - ny) + (mx && mx !== b.face ? 0.15 : 0); // mild preference to keep heading
+    if (d < bd) { bd = d; bx = nx; by = ny; }
   }
-  return false;
+  if (bx < 0) return false;
+  b.lx = b.x; b.ly = b.y;
+  if (bx !== b.x) b.face = bx > b.x ? 1 : -1;
+  b.x = bx; b.y = by;
+  return true;
 }
 
 /* ───────────────────────── Trade roads ───────────────────────── */
@@ -4168,7 +4192,8 @@ function render(now, tickFrac) {
   }
 
   for (const b of world.boats) {
-    const x = (b.px + (b.x - b.px) * tickFrac) * cellPx, y = (b.py + (b.y - b.py) * tickFrac) * cellPx;
+    const u = Math.min(1, (world.tick - (b.t0 === undefined ? world.tick : b.t0) + tickFrac) / 5); // boats step every 5 ticks
+    const x = (b.px + (b.x - b.px) * u) * cellPx, y = (b.py + (b.y - b.py) * u) * cellPx;
     const spr = b.fire ? SPR.fireboat : SPR.boat;
     if (b.face < 0) { ctx.save(); ctx.translate(x + cellPx, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, x, y);
   }
@@ -4549,30 +4574,39 @@ function updateStats() {
   }
 }
 
+let frameErrors = 0;
 function frame(now) {
-  if (!lastT) lastT = now;
-  const dt = Math.min(0.1, (now - lastT) / 1000);
-  lastT = now;
+  // Whatever happens inside a tick, the page must keep animating: an uncaught error here would
+  // otherwise end the animation loop and leave the valley frozen at its last tick.
+  try {
+    if (!lastT) lastT = now;
+    const dt = Math.min(0.1, (now - lastT) / 1000);
+    lastT = now;
 
-  if (running) {
-    tickAcc += dt * params.speed;
-    let steps = Math.floor(tickAcc);
-    tickAcc -= steps;
-    if (steps > 60) steps = 60;
-    for (let k = 0; k < steps; k++) step();
+    if (running) {
+      tickAcc += dt * params.speed;
+      let steps = Math.floor(tickAcc);
+      tickAcc -= steps;
+      if (steps > 60) steps = 60;
+      for (let k = 0; k < steps; k++) step();
+    }
+    flyPlane(dt);
+    flyDragon(dt);
+    flyBombers(dt);
+
+    if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
+    if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
+
+    render(now, Math.min(1, tickAcc));
+    updateStats();
+    updateHud();
+    updateTip();
+    if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); }
+  } catch (e) {
+    console.error(e);
+    if (++frameErrors <= 3) log(`A hiccup in the simulation (${(e && e.message || String(e)).slice(0, 80)}); carrying on`, 'loss');
+    if (frameErrors > 200) { running = false; frameErrors = 0; log('Too many errors; the valley is paused. Save the world file and send it in.', 'loss'); }
   }
-  flyPlane(dt);
-  flyDragon(dt);
-  flyBombers(dt);
-
-  if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
-  if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
-
-  render(now, Math.min(1, tickAcc));
-  updateStats();
-  updateHud();
-  updateTip();
-  if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); }
   requestAnimationFrame(frame);
 }
 
@@ -5081,7 +5115,7 @@ renderSlots();
 setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000);
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
 let bootSeed, bootSize = 100;
