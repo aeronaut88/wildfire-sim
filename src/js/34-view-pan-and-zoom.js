@@ -33,6 +33,7 @@ function render(now, tickFrac) {
   // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
   const cull = view.zoom > 1.05, vx0 = view.x - cellPx * 3, vy0 = view.y - cellPx * 3, vx1 = view.x + canvas.width / view.zoom + cellPx * 3, vy1 = view.y + canvas.height / view.zoom + cellPx * 3;
   const vis = (px, py) => !cull || (px >= vx0 && px <= vx1 && py >= vy0 && py <= vy1);
+  const tiny = cellPx * view.zoom * ((parseFloat(canvas.style.width) || canvas.width) / canvas.width) < 3; // a worker would be a speck smaller than three pixels
 
   if (world.wetList.length) {
     for (const i of world.wetList) {
@@ -88,7 +89,7 @@ function render(now, tickFrac) {
   }
 
   for (const t of world.towns) {
-    if (t.workers) for (const w of t.workers) {
+    if (t.workers && !tiny) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
       if (!vis(x, y)) continue;
       ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
