@@ -19,9 +19,9 @@ P(ignite) = spread probability x fuel factor x wind factor
 
 | Fuel  | Ignition factor | Burn duration (ticks) |
 |-------|-----------------|-----------------------|
-| Grass | 1.00            | 1 to 2                |
-| Pine  | 0.75            | 4 to 7                |
-| Oak   | 0.55            | 8 to 13               |
+| Grass | 1.00            | 2 to 4                |
+| Pine  | 0.75            | 6 to 10               |
+| Oak   | 0.55            | 12 to 20              |
 
 Water and rock never burn. Burnt cells leave ash (grass) or a charred stump (trees), with
 embers that glow for a few ticks.
@@ -53,7 +53,7 @@ The `.nojekyll` file keeps GitHub from running the page through Jekyll.
 
 ## Things to try
 
-- Drop spread probability to around 0.3 and watch the fire fizzle. Nudge it up a hair and
+- Drop spread probability to around 0.2 and watch the fire fizzle. Nudge it up a hair and
   it percolates across the whole map. That threshold is the classic result from the
   original assignment.
 - Point the wind east at full strength and strike the west edge.

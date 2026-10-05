@@ -285,7 +285,7 @@
       </div>
       <div class="control">
         <label for="speed">Speed</label><output id="speedOut">30 t/s</output>
-        <input type="range" id="speed" min="1" max="240" value="15">
+        <input type="range" id="speed" min="1" max="240" value="4">
       </div>
     </div>
 
@@ -305,7 +305,7 @@
       <div class="title">Fire</div>
       <div class="control">
         <label for="spread">Spread probability</label><output id="spreadOut">0.45</output>
-        <input type="range" id="spread" min="0" max="1" step="0.01" value="0.42">
+        <input type="range" id="spread" min="0" max="1" step="0.01" value="0.30">
       </div>
       <div class="control">
         <label>Neighbors</label><output></output>
@@ -703,9 +703,9 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6 };
 const FUEL = {
-  [T.GRASS]: { ignite: 1.0, burn: [1, 2], after: T.ASH },
-  [T.PINE]:  { ignite: 0.75, burn: [4, 7], after: T.STUMP },
-  [T.OAK]:   { ignite: 0.55, burn: [8, 13], after: T.STUMP },
+  [T.GRASS]: { ignite: 1.0, burn: [2, 4], after: T.ASH },
+  [T.PINE]:  { ignite: 0.75, burn: [6, 10], after: T.STUMP },
+  [T.OAK]:   { ignite: 0.55, burn: [12, 20], after: T.STUMP },
 };
 const isFuel = t => t === T.GRASS || t === T.PINE || t === T.OAK;
 
@@ -725,8 +725,8 @@ const world = {
 };
 
 const params = {
-  speed: 15,
-  spread: 0.42,
+  speed: 4,
+  spread: 0.30,
   neighbors: 4,
   windX: 0, windY: 0,
   windStrength: 0.5,
