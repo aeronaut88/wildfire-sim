@@ -759,6 +759,16 @@ for (let f = 0; f < 3; f++) {
 }
 const SPR16 = {};
 for (const k in SPRITES) SPR16[k] = buildSprite16(SPRITES[k]);
+// Black silhouettes for shadows that match the sprite's shape.
+const SIL16 = {};
+for (const k of ['dragon0', 'dragon1', 'plane']) {
+  const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+  const x = c.getContext('2d');
+  x.drawImage(SPR16[k], 0, 0);
+  x.globalCompositeOperation = 'source-in';
+  x.fillStyle = '#000'; x.fillRect(0, 0, 16, 16);
+  SIL16[k] = c;
+}
 
 let SPR = {};
 function rescaleSprites(px) {
@@ -1292,6 +1302,31 @@ function step() {
 }
 
 /* ───────────────────────── Dragon ───────────────────────── */
+
+// Dragon kinds: hide colours (body, shade, eye) and the colour of what comes out of its mouth.
+const DRAGON_KINDS = [
+  { name: 'crimson',  d: '#b5392c', D: '#6e1a12', E: '#f5a623', flame: ['#ffffff', '#ffe866', '#ff6a1f'] },
+  { name: 'obsidian', d: '#2b2630', D: '#0d0b10', E: '#ff3b3b', flame: ['#ffffff', '#ff8a3b', '#7a1f1f'] },
+  { name: 'emerald',  d: '#2e8b4a', D: '#145229', E: '#ffe866', flame: ['#ffffff', '#b8ff7a', '#2fbf5f'] },
+  { name: 'gold',     d: '#d4a52a', D: '#8a6410', E: '#5a2a00', flame: ['#ffffff', '#fff1a8', '#ffb627'] },
+  { name: 'frost',    d: '#9fd3ef', D: '#4f8fb5', E: '#1a2f6b', flame: ['#ffffff', '#cfefff', '#7fb8ff'] },
+  { name: 'violet',   d: '#7a3fa8', D: '#3f1f5e', E: '#ffd166', flame: ['#ffffff', '#e0a8ff', '#a855f7'] },
+  { name: 'bone',     d: '#e9e2cf', D: '#9c927a', E: '#1a1a1a', flame: ['#ffffff', '#dfe8ff', '#8fd3ff'] },
+];
+function tintDragonFrames(kind) {
+  return ['dragon0', 'dragon1'].map(k => {
+    const c = document.createElement('canvas'); c.width = 16; c.height = 16;
+    const x = c.getContext('2d');
+    const rows = SPRITES[k];
+    for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
+      const ch = rows[j][i];
+      const col = ch === 'd' ? kind.d : ch === 'D' ? kind.D : ch === 'E' ? kind.E : PAL[ch];
+      if (!col) continue;
+      x.fillStyle = col; x.fillRect(i, j, 1, 1);
+    }
+    return c;
+  });
+}
 // Nobody summons it. It is drawn to prosperity, and it just happens sometimes. Sorry.
 
 function maybeDragon(force) {
@@ -1314,9 +1349,10 @@ function maybeDragon(force) {
     legs.push([town.cx + Math.cos(a) * d, town.cy + Math.sin(a) * d]);
   }
   legs.push(edgePoint());
-  world.dragon = { legs, leg: 0, t: 0, x: legs[0][0], y: legs[0][1], heading: 0, town, lit: 0, flap: 0, breathT: 0 };
+  const kind = DRAGON_KINDS[Math.floor(Math.random() * DRAGON_KINDS.length)];
+  world.dragon = { legs, leg: 0, t: 0, x: legs[0][0], y: legs[0][1], heading: 0, town, lit: 0, flap: 0, breathT: 0, kind: kind.name, frames: tintDragonFrames(kind), flame: kind.flame };
   town.dragons = (town.dragons || 0) + 1;
-  log(`A DRAGON has been sighted, making for ${town.name}`, 'dragon');
+  log(`A ${kind.name.toUpperCase()} DRAGON has been sighted, making for ${town.name}`, 'dragon');
   const [px, py] = cellCenter(town.cy * n + town.cx);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'DRAGON', color: '#ff4040', t0: performance.now(), dur: 3000 });
 }
@@ -2618,8 +2654,9 @@ function render(now, tickFrac) {
     ctx.save();
     ctx.translate((p.x + 0.5) * cellPx, (p.y + 0.5) * cellPx);
     ctx.rotate(p.heading + Math.PI / 2);
-    ctx.fillStyle = 'rgba(0,0,0,0.25)';
-    ctx.fillRect(-s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s);
+    ctx.globalAlpha = 0.3;
+    ctx.drawImage(SIL16.plane, -s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s);
+    ctx.globalAlpha = 1;
     ctx.drawImage(SPR.plane, -s / 2, -s / 2, s, s);
     ctx.restore();
   }
@@ -2627,14 +2664,17 @@ function render(now, tickFrac) {
   if (world.dragon) {
     const d = world.dragon;
     const sz = Math.max(40, cellPx * 5.5);
-    const frame = Math.floor(now / 140) % 2 ? SPR16.dragon1 : SPR16.dragon0;
+    const flap = Math.floor(now / 140) % 2;
+    if (!d.frames) { const k = DRAGON_KINDS.find(q => q.name === d.kind) || DRAGON_KINDS[0]; d.frames = tintDragonFrames(k); d.flame = k.flame; }
+    const frame = d.frames[flap];
     const px = (d.x + 0.5) * cellPx, py = (d.y + 0.5) * cellPx;
-    // Shadow on the ground, offset for altitude, then the beast.
+    // Shadow on the ground: the dragon's own silhouette, offset for altitude.
     ctx.save();
     ctx.translate(px + sz * 0.22, py + sz * 0.3);
     ctx.rotate(d.heading + Math.PI / 2);
-    ctx.globalAlpha = 0.35; ctx.fillStyle = '#000';
-    ctx.beginPath(); ctx.ellipse(0, 0, sz * 0.48, sz * 0.3, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.38;
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(flap ? SIL16.dragon1 : SIL16.dragon0, -sz / 2, -sz / 2, sz, sz);
     ctx.restore();
     ctx.save();
     ctx.translate(px, py);
@@ -2649,7 +2689,7 @@ function render(now, tickFrac) {
         const spread = (Math.random() - 0.5) * 0.9;
         const vx = Math.cos(d.heading + spread) * (120 + Math.random() * 80), vy = Math.sin(d.heading + spread) * (120 + Math.random() * 80);
         particles.push({ x: px + hx * sz * 0.45, y: py + hy * sz * 0.45, vx, vy, life: 0, max: 260 + Math.random() * 160,
-          color: Math.random() < 0.35 ? '#ffffff' : (Math.random() < 0.5 ? '#ffe866' : '#ff6a1f'), size: Math.max(2.5, cellPx * 0.55), grav: 30 });
+          color: d.flame[Math.random() < 0.35 ? 0 : (Math.random() < 0.5 ? 1 : 2)], size: Math.max(2.5, cellPx * 0.55), grav: 30 });
       }
     }
   }
@@ -3232,7 +3272,7 @@ function snapshot() {
     towns: world.towns.map(t => ({ ...t, ring: undefined, claimed: [...t.claimed] })),
     air: world.air ? { ...world.air, plane: null } : null,
     settlers: world.settlers ? { ...world.settlers, town: townToId(world.settlers.town) } : null,
-    dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town) } : null,
+    dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town), frames: undefined } : null,
     params: { ...params },
     log: logEntries.slice(),
   };
