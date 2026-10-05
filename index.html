@@ -1413,7 +1413,7 @@ function updateWind() {
 // Mean ticks for each succession step at regrowth rate 1 in clear weather.
 const GROW = { ashToGrass: 45, stumpToAsh: 70, breakToGrass: 100, grassToPine: 170, grassToPineLonely: 1400, grassToOak: 520, pineToBig: 380 };
 // Nothing regrows until this many ticks after the cell last changed (burn, greening, seeding). Varies per cell.
-const REGROW_DELAY = [120, 220];
+const REGROW_DELAY = [50, 110];
 const SWEEP_DIV = 16;
 
 function inAnyTown(x, y) {

@@ -89,7 +89,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   far more readily in wind or drought. Crown fire burns white-hot, spreads harder, shrugs
   off wet ground, runs along the tree line, and showers embers two to three times farther
   ahead of the front. Crews bail when it is next to them and engines struggle with it.
-- **Regrowth waits.** Burnt ground stays black for 120 to 220 ticks before anything
+- **Regrowth waits.** Burnt ground stays black for 50 to 110 ticks before anything
   greens, and each succession step waits its own delay. Meadows from the original terrain
   never grow trees.
 - **Settlers find their way.** Wagons use real pathfinding, wait for fire to clear, and turn
