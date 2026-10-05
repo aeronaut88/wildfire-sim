@@ -30,6 +30,9 @@ function render(now, tickFrac) {
   }
   ctx.drawImage(terrain, 0, 0);
   const n = world.n;
+  // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
+  const cull = view.zoom > 1.05, vx0 = view.x - cellPx * 3, vy0 = view.y - cellPx * 3, vx1 = view.x + canvas.width / view.zoom + cellPx * 3, vy1 = view.y + canvas.height / view.zoom + cellPx * 3;
+  const vis = (px, py) => !cull || (px >= vx0 && px <= vx1 && py >= vy0 && py <= vy1);
 
   if (world.wetList.length) {
     for (const i of world.wetList) {
@@ -57,6 +60,7 @@ function render(now, tickFrac) {
   for (const i of world.burning) {
     if (burnLeft[i] <= 0) continue;
     const x = i % n, y = (i - x) / n;
+    if (!vis(x * cellPx, y * cellPx)) continue;
     ctx.drawImage((intensity[i] ? crownFrames : frames)[(fireFrame + i) % 3], x * cellPx, y * cellPx);
   }
 
@@ -86,12 +90,14 @@ function render(now, tickFrac) {
   for (const t of world.towns) {
     if (t.workers) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
+      if (!vis(x, y)) continue;
       ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
     for (const c of t.crews) {
       const x = (c.px + (c.x - c.px) * tickFrac) * cellPx, y = (c.py + (c.y - c.py) * tickFrac) * cellPx;
+      if (!vis(x, y)) continue;
       ctx.drawImage(SPR.crew, x, y);
     }
     for (const tr of t.trucks) {
@@ -145,6 +151,7 @@ function render(now, tickFrac) {
   for (const h of world.herds || []) {
     const u = Math.min(1, (world.tick - (h.t0 || world.tick) + tickFrac) / 3);
     const hx = (h.px + (h.x - h.px) * u) * cellPx, hy = (h.py + (h.y - h.py) * u) * cellPx;
+    if (!vis(hx, hy)) continue;
     const spr = SPR[h.kind] || SPR.deer, shown = Math.min(h.size, 7);
     for (let k = 0; k < shown; k++) {
       const ox = (hash2(k, 1, 5) - 0.5) * cellPx * 3.2, oy = (hash2(k, 2, 5) - 0.5) * cellPx * 2.6;
@@ -165,6 +172,7 @@ function render(now, tickFrac) {
   for (const b of world.boats) {
     const u = Math.min(1, (world.tick - (b.t0 === undefined ? world.tick : b.t0) + tickFrac) / 5); // boats step every 5 ticks
     const x = (b.px + (b.x - b.px) * u) * cellPx, y = (b.py + (b.y - b.py) * u) * cellPx;
+    if (!vis(x, y)) continue;
     const spr = b.fire ? SPR.fireboat : SPR.boat;
     if (b.face < 0) { ctx.save(); ctx.translate(x + cellPx, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, x, y);
   }

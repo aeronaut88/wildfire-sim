@@ -26,6 +26,7 @@ function onBuildingIgnite(i) {
 function onBuildingDestroyed(i, cause) {
   const town = world.towns[world.townOf[i]];
   if (!town) return;
+  forgetCounts(town);
   const t = world.type[i];
   if (cause === 'blast') {
     const res = Math.min(occupants(town), town.popLeft);

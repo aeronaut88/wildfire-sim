@@ -176,7 +176,18 @@ function housingCapacity(town) {
   for (const i of town.buildings) { const t = world.type[i]; if (CAPACITY[t]) c += CAPACITY[t]; }
   return c;
 }
-function countType(town, type) { let c = 0; for (const i of town.buildings) if (world.type[i] === type) c++; return c; }
+// Building counts are asked for dozens of times a town-tick; count once per tick and forget whenever a building changes.
+const countCache = new WeakMap();
+function countType(town, type) {
+  let e = countCache.get(town);
+  if (!e || e.tick !== world.tick || e.len !== town.buildings.length) {
+    const m = new Map();
+    for (const i of town.buildings) { const t = world.type[i]; m.set(t, (m.get(t) || 0) + 1); }
+    e = { tick: world.tick, len: town.buildings.length, m }; countCache.set(town, e);
+  }
+  return e.m.get(type) || 0;
+}
+function forgetCounts(town) { countCache.delete(town); }
 function hasType(town, type) { return countType(town, type) > 0; }
 
 // Upgrade a house near the centre into a tenement.

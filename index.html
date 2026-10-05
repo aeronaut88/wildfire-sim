@@ -1277,7 +1277,6 @@ const SNOW16 = snowStamps(false); // drifts on ice only; land uses the snowed ti
 // shadow dither, and the first pixel of anything standing up gets a white cap. Roads stay
 // a little darker, as if the town keeps them trodden.
 const SNOW_GROUND = { g: 1, G: 1, h: 1, b: 1, B: 1, a: 1, z: 1, Z: 1, '6': 1, '1': 2, '2': 2, '3': 2 };
-const SAND_SNOW = { c: 1, C: 1 }; // sand whitens too, but house walls use the same colours, so only the sand tile gets it
 function snowedRows(name, rows, ground) {
   const out = rows.map(r => r.split(''));
   for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {
@@ -3605,7 +3604,6 @@ function naturalLightning() {
 /* ───────────────────────── Wind ───────────────────────── */
 
 const WIND_RANGE = { clear: [0.05, 0.5], drought: [0.3, 0.75], rain: [0.2, 0.6], storm: [0.6, 1.0], ashfall: [0.05, 0.3], drystorm: [0.5, 0.95], snow: [0.1, 0.5] };
-const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const YEAR = 2400; // a year is 2,400 ticks: 600 a season, so a season lasts a while even at speed
 function season() { return Math.floor((world.tick % YEAR) / (YEAR / 4)); }
 
@@ -3933,6 +3931,7 @@ function onBuildingIgnite(i) {
 function onBuildingDestroyed(i, cause) {
   const town = world.towns[world.townOf[i]];
   if (!town) return;
+  forgetCounts(town);
   const t = world.type[i];
   if (cause === 'blast') {
     const res = Math.min(occupants(town), town.popLeft);
@@ -4203,7 +4202,6 @@ function waterCellNear(t, from) {
   for (const i of world.water) { const x = i % n, y = (i - x) / n; if (Math.abs(x - t.cx) > R || Math.abs(y - t.cy) > R) continue; if (world.type[i] !== T.WATER || world.snow[i] >= ICE_AT) continue; const d = Math.hypot(x - fx, y - fy); if (d < bd) { bd = d; best = i; } }
   return best;
 }
-function hasWater(t) { return (t.res && t.res.water > 0) || hasType(t, T.WELL) || waterCellNear(t) >= 0; }
 function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 150 + Math.floor(Math.random() * 150) : 400 + Math.floor(Math.random() * 400); }
 // Wells draw on a finite aquifer that recharges a little in rain and a trickle otherwise; carriers
 // bring the rest from the river. People drink, and a dry cistern means thirst.
@@ -4683,12 +4681,12 @@ function toSite(town, i, finalType, counted) {
   }
   town.sites = town.sites || {};
   town.sites[i] = { type: finalType, need: BUILD_TIME[finalType] || 20, progress: 0, variant: world.variant[i] };
-  world.type[i] = T.SITE; dirty.add(i);
+  world.type[i] = T.SITE; dirty.add(i); forgetCounts(town);
 }
 function finishSite(town, i) {
   const st = town.sites[i]; if (!st) return;
   delete town.sites[i];
-  world.type[i] = st.type; world.variant[i] = st.variant || 0; dirty.add(i);
+  world.type[i] = st.type; world.variant[i] = st.variant || 0; dirty.add(i); forgetCounts(town);
   if (isHome(st.type)) { town.housesTotal++; town.housesLeft++; }
   if (st.type === T.FARM) { town.farms = (town.farms || 0) + 1; world.crop[i] = 0; }
   else { world.buildingsTotal++; world.buildingsLeft++; }
@@ -4948,7 +4946,18 @@ function housingCapacity(town) {
   for (const i of town.buildings) { const t = world.type[i]; if (CAPACITY[t]) c += CAPACITY[t]; }
   return c;
 }
-function countType(town, type) { let c = 0; for (const i of town.buildings) if (world.type[i] === type) c++; return c; }
+// Building counts are asked for dozens of times a town-tick; count once per tick and forget whenever a building changes.
+const countCache = new WeakMap();
+function countType(town, type) {
+  let e = countCache.get(town);
+  if (!e || e.tick !== world.tick || e.len !== town.buildings.length) {
+    const m = new Map();
+    for (const i of town.buildings) { const t = world.type[i]; m.set(t, (m.get(t) || 0) + 1); }
+    e = { tick: world.tick, len: town.buildings.length, m }; countCache.set(town, e);
+  }
+  return e.m.get(type) || 0;
+}
+function forgetCounts(town) { countCache.delete(town); }
 function hasType(town, type) { return countType(town, type) > 0; }
 
 // Upgrade a house near the centre into a tenement.
@@ -5879,6 +5888,9 @@ function render(now, tickFrac) {
   }
   ctx.drawImage(terrain, 0, 0);
   const n = world.n;
+  // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
+  const cull = view.zoom > 1.05, vx0 = view.x - cellPx * 3, vy0 = view.y - cellPx * 3, vx1 = view.x + canvas.width / view.zoom + cellPx * 3, vy1 = view.y + canvas.height / view.zoom + cellPx * 3;
+  const vis = (px, py) => !cull || (px >= vx0 && px <= vx1 && py >= vy0 && py <= vy1);
 
   if (world.wetList.length) {
     for (const i of world.wetList) {
@@ -5906,6 +5918,7 @@ function render(now, tickFrac) {
   for (const i of world.burning) {
     if (burnLeft[i] <= 0) continue;
     const x = i % n, y = (i - x) / n;
+    if (!vis(x * cellPx, y * cellPx)) continue;
     ctx.drawImage((intensity[i] ? crownFrames : frames)[(fireFrame + i) % 3], x * cellPx, y * cellPx);
   }
 
@@ -5935,12 +5948,14 @@ function render(now, tickFrac) {
   for (const t of world.towns) {
     if (t.workers) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
+      if (!vis(x, y)) continue;
       ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
     for (const c of t.crews) {
       const x = (c.px + (c.x - c.px) * tickFrac) * cellPx, y = (c.py + (c.y - c.py) * tickFrac) * cellPx;
+      if (!vis(x, y)) continue;
       ctx.drawImage(SPR.crew, x, y);
     }
     for (const tr of t.trucks) {
@@ -5994,6 +6009,7 @@ function render(now, tickFrac) {
   for (const h of world.herds || []) {
     const u = Math.min(1, (world.tick - (h.t0 || world.tick) + tickFrac) / 3);
     const hx = (h.px + (h.x - h.px) * u) * cellPx, hy = (h.py + (h.y - h.py) * u) * cellPx;
+    if (!vis(hx, hy)) continue;
     const spr = SPR[h.kind] || SPR.deer, shown = Math.min(h.size, 7);
     for (let k = 0; k < shown; k++) {
       const ox = (hash2(k, 1, 5) - 0.5) * cellPx * 3.2, oy = (hash2(k, 2, 5) - 0.5) * cellPx * 2.6;
@@ -6014,6 +6030,7 @@ function render(now, tickFrac) {
   for (const b of world.boats) {
     const u = Math.min(1, (world.tick - (b.t0 === undefined ? world.tick : b.t0) + tickFrac) / 5); // boats step every 5 ticks
     const x = (b.px + (b.x - b.px) * u) * cellPx, y = (b.py + (b.y - b.py) * u) * cellPx;
+    if (!vis(x, y)) continue;
     const spr = b.fire ? SPR.fireboat : SPR.boat;
     if (b.face < 0) { ctx.save(); ctx.translate(x + cellPx, y); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, x, y);
   }

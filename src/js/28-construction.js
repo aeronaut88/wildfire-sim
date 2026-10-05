@@ -13,12 +13,12 @@ function toSite(town, i, finalType, counted) {
   }
   town.sites = town.sites || {};
   town.sites[i] = { type: finalType, need: BUILD_TIME[finalType] || 20, progress: 0, variant: world.variant[i] };
-  world.type[i] = T.SITE; dirty.add(i);
+  world.type[i] = T.SITE; dirty.add(i); forgetCounts(town);
 }
 function finishSite(town, i) {
   const st = town.sites[i]; if (!st) return;
   delete town.sites[i];
-  world.type[i] = st.type; world.variant[i] = st.variant || 0; dirty.add(i);
+  world.type[i] = st.type; world.variant[i] = st.variant || 0; dirty.add(i); forgetCounts(town);
   if (isHome(st.type)) { town.housesTotal++; town.housesLeft++; }
   if (st.type === T.FARM) { town.farms = (town.farms || 0) + 1; world.crop[i] = 0; }
   else { world.buildingsTotal++; world.buildingsLeft++; }

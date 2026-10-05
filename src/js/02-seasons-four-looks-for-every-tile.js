@@ -52,7 +52,6 @@ const SNOW16 = snowStamps(false); // drifts on ice only; land uses the snowed ti
 // shadow dither, and the first pixel of anything standing up gets a white cap. Roads stay
 // a little darker, as if the town keeps them trodden.
 const SNOW_GROUND = { g: 1, G: 1, h: 1, b: 1, B: 1, a: 1, z: 1, Z: 1, '6': 1, '1': 2, '2': 2, '3': 2 };
-const SAND_SNOW = { c: 1, C: 1 }; // sand whitens too, but house walls use the same colours, so only the sand tile gets it
 function snowedRows(name, rows, ground) {
   const out = rows.map(r => r.split(''));
   for (let j = 0; j < 16; j++) for (let i = 0; i < 16; i++) {

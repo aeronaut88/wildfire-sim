@@ -45,7 +45,6 @@ function waterCellNear(t, from) {
   for (const i of world.water) { const x = i % n, y = (i - x) / n; if (Math.abs(x - t.cx) > R || Math.abs(y - t.cy) > R) continue; if (world.type[i] !== T.WATER || world.snow[i] >= ICE_AT) continue; const d = Math.hypot(x - fx, y - fy); if (d < bd) { bd = d; best = i; } }
   return best;
 }
-function hasWater(t) { return (t.res && t.res.water > 0) || hasType(t, T.WELL) || waterCellNear(t) >= 0; }
 function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 150 + Math.floor(Math.random() * 150) : 400 + Math.floor(Math.random() * 400); }
 // Wells draw on a finite aquifer that recharges a little in rain and a trickle otherwise; carriers
 // bring the rest from the river. People drink, and a dry cistern means thirst.

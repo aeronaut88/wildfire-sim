@@ -1,7 +1,6 @@
 /* ───────────────────────── Wind ───────────────────────── */
 
 const WIND_RANGE = { clear: [0.05, 0.5], drought: [0.3, 0.75], rain: [0.2, 0.6], storm: [0.6, 1.0], ashfall: [0.05, 0.3], drystorm: [0.5, 0.95], snow: [0.1, 0.5] };
-const SEASONS = ['Spring', 'Summer', 'Autumn', 'Winter'];
 const YEAR = 2400; // a year is 2,400 ticks: 600 a season, so a season lasts a while even at speed
 function season() { return Math.floor((world.tick % YEAR) / (YEAR / 4)); }
 
