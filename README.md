@@ -294,12 +294,27 @@ town, burn with the pasture, and are driven off in a sack.
 
 ## The ledger
 
-Hover any tile in the readout under the map. Population shows who died and of what (fire,
+Hover any tile in the readout under the map; the breakdown opens upward. Beasts lists the
+wild herds by kind and every town's livestock. Population shows who died and of what (fire,
 famine, battle, plague, thirst, fallout, dragon fire, put to the sword) and in which town.
 Buildings shows what was lost and why. Tick shows the whole history of the valley: lightning
 strikes (natural and yours), missiles, meteors, floods, beaver colonies, dragon visits, wars,
 battles, sacks, annexations, bombers, nukes, meltdowns, famines, plagues, caravans, and the
 beasts.
+
+## The folk
+
+Every town has named people: an elder, a fire chief, a hunter, and that one person. Each has
+an age and a one-line backstory, and the log remembers what they do: the elder signs the war
+order and shakes on the truce, the chief leads the crews, the hunter brings home the first
+pigs, the geologist finds the oil, and whoever strikes the last blow on a dragon is named for
+it. The firebug is anonymous until the third fire, when the town may run them out. People die
+of what kills everyone else, and of old age, and the town chooses someone new. Click a town
+in the Towns tab to meet them. The History tab's facts block lists the oldest living
+resident, the unique dragons seen by name, the biggest town ever, the deadliest cause, and
+the counts of everything from beaver dams to caravans robbed.
+
+A year is now 2,400 ticks, so a season lasts a while even at speed.
 
 ## The sidebar
 
