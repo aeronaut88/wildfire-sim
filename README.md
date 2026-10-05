@@ -227,7 +227,7 @@ in wood, stone, iron, copper, coal or uranium, and so is every rebuild after a f
 what paces a town's recovery.
 
 - **Wood** comes from the forest. Loggers in red walk out to the nearest tree, fell it (the
-  tree really goes, leaving a stump that regrows), and carry the timber home. A lumberyard
+  tree really goes, leaving a fresh-cut stump that rots back to grass and regrows), and carry the timber home. A lumberyard
   raises the storage cap and fields more loggers, and the clear-cut around a busy town is
   visible on the map.
 - **Stone** comes from a quarry opened at a rock face, worked by quarriers. On big maps towns
@@ -238,7 +238,8 @@ what paces a town's recovery.
   and only a town that knows what it is will dig for it.
 - **Water.** A town needs a river, a lake or a well. Without one it stays small, and a drought
   kills.
-- **Power.** Water wheels, coal plants that eat coal, hydroelectric dams on the river (weaker
+- **Power.** Water wheels, boilers that burn coal or, failing that, timber (an early and easy
+  road to electricity: a powered town learns faster and can open a factory sooner), hydroelectric dams on the river (weaker
   in drought and hard frost), solar arrays that follow the sky, and reactors that burn uranium
   feed factories, universities, waterworks and silos. A brownout slows research. A reactor
   that burns down or falls to an army melts down and poisons the land around it for years.
@@ -330,7 +331,8 @@ beasts.
 
 ## The folk
 
-Every town has named people: an elder, a fire chief, a hunter, and that one person. Each has
+Every town has named people: an elder with a trait (see Leaders), a fire chief, a hunter, and
+that one person. Each has
 an age and a one-line backstory, and the log remembers what they do: the elder signs the war
 order and shakes on the truce, the chief leads the crews, the hunter brings home the first
 pigs, the geologist finds the oil, and whoever strikes the last blow on a dragon is named for
@@ -341,6 +343,41 @@ resident, the unique dragons seen by name, the biggest town ever, the deadliest 
 the counts of everything from beaver dams to caravans robbed.
 
 A year is now 2,400 ticks, so a season lasts a while even at speed.
+
+## Leaders and unrest
+
+Every elder has a trait, and the trait steers the town, right or wrong: a warmonger declares
+war readily and raids twice as often, a peacemaker talks instead and settles wars early, a
+builder raises frames faster, a fiscal conservative buys almost nothing at market, a hoarder
+keeps the gold where the dragons can see it and draws them (and dragons are hoarders too: every
+pass over a town takes a share of its coin and all its gold for the hoard, which the town that
+finally slays one wins), a merchant gets caravans and trade
+roads sooner, a scholar researches faster, a hermit wants nothing from the neighbours and sends
+no aid, a tyrant skims the chest and raises unrest, a madman empties the granary for a feast or
+sets a field alight or declares war over an insult nobody heard, a green thumb grows crops half
+again as fast, a fire warden turns out more crews and sees fire further off, a beastmaster
+breeds and hunts more, a prophet refuses the new learning but builds towers, and a drunkard is
+beloved and sometimes falls asleep with the lamp lit. Traits are weighted by the town's
+alignment, so evil towns get tyrants and warmongers, chaotic ones madmen.
+
+The people answer. Famine, thirst, war, deaths and tyranny raise unrest; bread, peace and a
+loved elder lower it. Past seventy percent the town revolts: the elder is run out or hanged, the
+militia breaks up, a house may burn, and a new elder with a different trait takes over. The
+Towns tab shows each elder and the mood.
+
+Granaries are buildings now: a town stores sixty grain and each granary adds a hundred and
+twenty, and a town that outgrows its stores raises another before it builds more houses.
+Anything above what a town can store rots. There is no artificial cap on how big a town
+grows; timber, food, water, plague and sprawl fires are the limits.
+
+## The town card
+
+Click a town on the map (or its row in the Towns tab) for the whole picture: who runs it and
+what they are like, population alive, dead and ever, homes and housing, militia and unrest,
+whether it is fed and what it eats, fields and granaries, water and wells, every store with
+its capacity, coin, its workshops, power, arms and learning, who it is at war or allied with,
+every named resident with a bio and last deed, and its latest chronicle. Buttons fire a
+missile or a lightning strike at it, or jump to its line in the history. Escape closes it.
 
 ## The sidebar
 
@@ -355,7 +392,8 @@ militia, coin, food or stockpile; click a town to hide it, double-click to see i
 "hide dead towns", and hover the chart to read the numbers at any tick. Press H to jump there.
 
 Hotkeys: `[` and `]` step the speed down and up, `-` and `=` zoom, `0` shows the whole map,
-and the arrow keys or WASD pan around it.
+the arrow keys or WASD pan around it, and `Ctrl` swaps what a click does between a missile and
+a lightning strike (the HUD shows which, and tapping it swaps on a phone).
 
 ## Looking closer
 
