@@ -94,7 +94,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   never grow trees.
 - **Settlers find their way.** Wagons use real pathfinding, wait for fire to clear, and turn
   back if there is no route. Crews and engines give up on targets they cannot reach.
-- **Three living towns** at a time on the default map, four on big maps. Dead towns do not
+- **Up to eight living towns** at a time by default (the slider goes to twelve). Dead towns do not
   count, and settlers prefer to resettle them.
 - **Settlements panel** lists every town with population, homes, radius, engines, deaths,
   homes lost and fires survived. The same numbers sit under each town's name on the map.
@@ -111,10 +111,12 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   Type a number or any words and press Enter (or Load) to rebuild that exact valley, towns
   and all. Copy link puts `?seed=...&size=...` on the clipboard, and the address bar always
   carries the current one. Same seed, same map. What happens next is still up to the dice.
-- **Save and load.** The Save / Load group has three browser slots plus an autosave that
+- **Save and load.** Slots are kept in the browser's IndexedDB on this device (older localStorage
+  saves are migrated in), so they survive reloads but not clearing site data, and they do not
+  follow you to another device or browser; export a file for that. The Save / Load group has three browser slots plus an autosave that
   writes itself every minute while running. Export file downloads the whole world as
   `wildfire-<seed>-t<tick>.json.gz`: plain JSON inside gzip, so it is small (about 7 to 1, a 100 x 100
-  world is around 30 KB) and still readable with any gunzip. Import file loads one back, paused,
+  world is around 30 KB, the default 200 x 200 about four times that) and still readable with any gunzip. Import file loads one back, paused,
   with every slider and toggle restored. Saves carry terrain, fire, wet cells, towns with
   their crews and engines, weather, wind, settlers, dragon, the log and your settings.
 ## Towns have politics
@@ -195,7 +197,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
 
 ## More life
 
-- **More towns, softer cap.** The Max living towns slider (default 5, more on big maps)
+- **More towns, softer cap.** The Max living towns slider (default 8, more on big maps)
   replaces the hard limit of three. The radius slider is now a *comfortable* radius: towns
   can grow past it, but each extra ring is harder to add, and big cities pay: plague in the
   crowded streets without a waterworks, riots in sprawling chaotic cities, and kitchen
@@ -285,8 +287,8 @@ early spring fires fizzle. Shift+hover a cell to see its snow.
 
 ## Beasts
 
-Herds of deer, wild boar, wild sheep, grouse and the odd aurochs roam the open ground, flee
-fire, breed slowly, and drift in from the map edges. Hunters in green stalk the nearest herd,
+Herds of deer, wild boar, wild sheep, grouse and the odd aurochs roam the open ground, run
+from fire and die in it, breed slowly, and wander on and off the map over its edges. Hunters in green stalk the nearest herd,
 take an animal, and carry the game home; small herds are left to recover. Now and then the
 animal comes home alive, and that is how a town first gets pigs, sheep, chickens or cattle.
 Caravans sell livestock too. Beasts need a fenced pasture, breed when there is room, feed the
@@ -328,7 +330,8 @@ end, so a town that dies shows as a band that narrows to nothing. Pick populatio
 militia, coin, food or stockpile; click a town to hide it, double-click to see it alone, tick
 "hide dead towns", and hover the chart to read the numbers at any tick. Press H to jump there.
 
-Hotkeys: `[` and `]` step the speed down and up, `-` and `=` zoom, `0` shows the whole map.
+Hotkeys: `[` and `]` step the speed down and up, `-` and `=` zoom, `0` shows the whole map,
+and the arrow keys or WASD pan around it.
 
 ## Looking closer
 
@@ -353,7 +356,7 @@ rebuild with what they scavenge from the rubble.
 | New random forest   | New Forest button   | `N`     |
 
 Sliders: speed (ticks per second), blast radius, spread probability, wind strength,
-map size (30 to 300), and tree density. Changing size or density regenerates the map.
+map size (30 to 300, default 200), and tree density. Changing size or density regenerates the map.
 
 ## Host it on GitHub Pages
 

@@ -421,7 +421,7 @@
   <h1><span class="flame">&#9650;</span> WILDFIRE</h1>
   <div class="sub">probabilistic forest fire cellular automaton</div>
   <div class="hint">
-    click = missile &nbsp; right-click = lightning &nbsp; <kbd>shift</kbd>+hover = inspect &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>[</kbd> <kbd>]</kbd> speed &nbsp; <kbd>-</kbd> <kbd>=</kbd> zoom &nbsp; <kbd>.</kbd> step
+    click = missile &nbsp; right-click = lightning &nbsp; <kbd>shift</kbd>+hover = inspect &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>[</kbd> <kbd>]</kbd> speed &nbsp; <kbd>-</kbd> <kbd>=</kbd> zoom &nbsp; <kbd>WASD</kbd> / arrows pan &nbsp; <kbd>.</kbd> step
   </div>
 </header>
 
@@ -489,6 +489,7 @@
     <div class="group">
       <div class="title">Save / Load</div>
       <div class="slots" id="slots"></div>
+      <div class="foot">Saves live in this browser's storage on this device. Clearing site data removes them, and they do not follow you to another device or browser: export a file for that.</div>
       <div class="btnrow">
         <button id="exportBtn" title="Download this valley as a file">Export file</button>
         <button id="importBtn" title="Load a valley from a file">Import file</button>
@@ -563,8 +564,8 @@
         <input type="range" id="townCap" min="3" max="16" step="1" value="8">
       </div>
       <div class="control">
-        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">5</output>
-        <input type="range" id="maxTowns" min="1" max="10" step="1" value="5">
+        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">8</output>
+        <input type="range" id="maxTowns" min="1" max="12" step="1" value="8">
       </div>
     </div>
 
@@ -607,8 +608,8 @@
     <div class="group">
       <div class="title">Terrain</div>
       <div class="control">
-        <label for="size">Map size</label><output id="sizeOut">100 &times; 100</output>
-        <input type="range" id="size" min="30" max="300" step="10" value="100">
+        <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
+        <input type="range" id="size" min="30" max="300" step="10" value="200">
       </div>
       <div class="control">
         <label for="density">Tree density</label><output id="densityOut">0.65</output>
@@ -1413,7 +1414,7 @@ const params = {
   speed: 4, spread: 0.30, neighbors: 4, spotting: true,
   windX: 0, windY: 0, windStrength: 0.5,
   density: 0.65, blast: 2,
-  weatherMode: 'auto', regrow: 1, townCap: 8, maxTowns: 5,
+  weatherMode: 'auto', regrow: 1, townCap: 8, maxTowns: 8,
   windMode: 'auto',
 };
 
@@ -1510,22 +1511,38 @@ function updateHerds() {
     // Fire nearby: run the other way.
     let fx = 0, fy = 0, scared = false;
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = h.x + dx, y = h.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; if (world.burnLeft[y * n + x] > 0) { fx += dx; fy += dy; scared = true; } }
-    if (scared) { const tx = h.x - Math.sign(fx) * 6, ty = h.y - Math.sign(fy) * 6; h.wx = Math.max(0, Math.min(n - 1, tx)); h.wy = Math.max(0, Math.min(n - 1, ty)); h.rest = 0; }
+    if (scared) { const tx = h.x - Math.sign(fx) * 8, ty = h.y - Math.sign(fy) * 8; h.wx = Math.max(0, Math.min(n - 1, tx)); h.wy = Math.max(0, Math.min(n - 1, ty)); h.rest = 0; h.leaving = false; }
     else if (h.wx < 0 || (h.wx === h.x && h.wy === h.y)) {
+      if (h.leaving) { if (Math.random() < 0.3) log(`A herd of ${h.kind === 'fowl' ? 'grouse' : h.kind === 'boar' ? 'boar' : h.kind === 'sheep' ? 'wild sheep' : h.kind} leaves the valley`, 'weather'); continue; } // over the edge and gone
       if (h.rest > 0) { h.rest--; keep.push(h); continue; }
-      for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x)) continue; h.wx = x; h.wy = y; break; }
-      h.rest = 4 + Math.floor(Math.random() * 10);
+      const nearEdge = Math.min(h.x, h.y, n - 1 - h.x, n - 1 - h.y) <= 6;
+      if (nearEdge && Math.random() < 0.08) { // wander off the map
+        h.wx = h.x <= 6 ? 0 : n - 1 - h.x <= 6 ? n - 1 : h.x; h.wy = h.y <= 6 ? 0 : n - 1 - h.y <= 6 ? n - 1 : h.y; h.leaving = true;
+      } else {
+        for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x)) continue; h.wx = x; h.wy = y; break; }
+        h.rest = 4 + Math.floor(Math.random() * 10);
+      }
     }
     if (h.wx >= 0) {
-      const dx = Math.sign(h.wx - h.x), dy = Math.sign(h.wy - h.y);
-      let moved = false;
-      for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [-dx, dy], [dx, -dy]]) {
-        if (!mx && !my) continue;
-        const x = h.x + mx, y = h.y + my; if (x < 0 || y < 0 || x >= n || y >= n) continue;
-        const j = y * n + x; if (!passable(world.type[j]) || isBuilding(world.type[j]) || world.burnLeft[j] > 0) continue;
-        h.x = x; h.y = y; if (mx) h.face = mx; moved = true; break;
+      const steps = scared ? 2 : 1; // they run from fire
+      for (let st = 0; st < steps; st++) {
+        const dx = Math.sign(h.wx - h.x), dy = Math.sign(h.wy - h.y);
+        if (!dx && !dy) break;
+        const before = Math.max(Math.abs(h.wx - h.x), Math.abs(h.wy - h.y)), from = h.y * n + h.x;
+        let moved = false;
+        for (let pass = 0; pass < 2 && !moved; pass++) for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [-dx, dy], [dx, -dy]]) {
+          if (!mx && !my) continue;
+          const x = h.x + mx, y = h.y + my; if (x < 0 || y < 0 || x >= n || y >= n) continue;
+          const j = y * n + x; if (pass === 0 && j === h.last) continue; // no shuffling back into the cell just left
+          if (!passable(world.type[j]) || isBuilding(world.type[j]) || world.burnLeft[j] > 0) continue;
+          h.x = x; h.y = y; if (mx) h.face = mx; moved = true; break;
+        }
+        if (!moved) { h.wx = -1; h.leaving = false; break; }
+        h.last = from;
+        const after = Math.max(Math.abs(h.wx - h.x), Math.abs(h.wy - h.y));
+        h.stall = after < before ? 0 : (h.stall || 0) + 1;
+        if (h.stall > 2) { h.wx = -1; h.leaving = false; h.stall = 0; h.rest = 2; break; } // blocked: graze, then pick somewhere else
       }
-      if (!moved) h.wx = -1;
     }
     if (++h.breedT >= 50 && h.size < 12) { h.breedT = 0; if (Math.random() < 0.6) h.size++; } // a new animal every ~250 ticks
     keep.push(h);
@@ -6457,6 +6474,10 @@ window.addEventListener('keydown', ev => {
     case '-': case '_': zoomAt(1 / 1.5, canvas.width / 2, canvas.height / 2); break;
     case '=': case '+': zoomAt(1.5, canvas.width / 2, canvas.height / 2); break;
     case '0': resetView(); break;
+    case 'ArrowLeft': case 'a': case 'A': ev.preventDefault(); panBy(canvas.width * 0.08, 0); break;
+    case 'ArrowRight': case 'd': case 'D': ev.preventDefault(); panBy(-canvas.width * 0.08, 0); break;
+    case 'ArrowUp': case 'w': case 'W': ev.preventDefault(); panBy(0, canvas.height * 0.08); break;
+    case 'ArrowDown': case 's': case 'S': ev.preventDefault(); panBy(0, -canvas.height * 0.08); break;
     case 'h': case 'H': showTab('History'); break;
     case 'Escape': if (histFull) toggleHistFull(); break;
     case ' ': ev.preventDefault(); setRunning(!running); break;
@@ -6667,7 +6688,34 @@ async function decodeSave(text) {
 const slotsEl = $('slots');
 const slotKey = id => 'wildfire.save.' + id;
 const metaKey = id => 'wildfire.meta.' + id;
-function slotMeta(id) { try { const m = localStorage.getItem(metaKey(id)); return m ? JSON.parse(m) : null; } catch (e) { return null; } }
+// Saves live in IndexedDB: far more room than localStorage and less likely to be swept out. Older
+// localStorage saves are migrated in on first run, and localStorage stays as the fallback.
+const idb = {
+  db: undefined,
+  open() {
+    if (this.db !== undefined) return Promise.resolve(this.db);
+    return new Promise(res => {
+      if (!('indexedDB' in window)) { this.db = null; return res(null); }
+      let r; try { r = indexedDB.open('wildfire', 1); } catch (e) { this.db = null; return res(null); }
+      r.onupgradeneeded = () => r.result.createObjectStore('saves');
+      r.onsuccess = () => { this.db = r.result; res(this.db); };
+      r.onerror = r.onblocked = () => { this.db = null; res(null); };
+    });
+  },
+  async get(k) { const db = await this.open(); if (!db) return undefined; return new Promise(res => { const q = db.transaction('saves').objectStore('saves').get(k); q.onsuccess = () => res(q.result); q.onerror = () => res(undefined); }); },
+  async set(k, v) { const db = await this.open(); if (!db) return false; return new Promise(res => { const tx = db.transaction('saves', 'readwrite'); tx.objectStore('saves').put(v, k); tx.oncomplete = () => res(true); tx.onerror = tx.onabort = () => res(false); }); },
+};
+const slotMetas = {};
+function slotMeta(id) { return slotMetas[id] || null; }
+async function loadSlotMetas() {
+  for (const [id] of SLOTS) {
+    let m = await idb.get(metaKey(id));
+    if (!m) { try { const ls = localStorage.getItem(metaKey(id)), text = localStorage.getItem(slotKey(id)); if (ls && text) { m = JSON.parse(ls); await idb.set(slotKey(id), text); await idb.set(metaKey(id), m); } } catch (e) { /* ignore */ } }
+    if (m) slotMetas[id] = m;
+  }
+  renderSlots();
+  if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the browser not to sweep our saves
+}
 function ago(ms) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
 function renderSlots() {
   slotsEl.innerHTML = SLOTS.map(([id, name]) => {
@@ -6680,20 +6728,23 @@ function renderSlots() {
 async function saveToSlot(id) {
   const snap = snapshot();
   const text = await encodeSave(snap);
-  try {
-    localStorage.setItem(slotKey(id), text);
-    localStorage.setItem(metaKey(id), JSON.stringify({ savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n }));
-  } catch (e) { log('Could not save: browser storage is full or blocked', 'loss'); return false; }
+  const meta = { savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n };
+  let ok = (await idb.set(slotKey(id), text)) && (await idb.set(metaKey(id), meta));
+  if (!ok) { try { localStorage.setItem(slotKey(id), text); localStorage.setItem(metaKey(id), JSON.stringify(meta)); ok = true; } catch (e) { /* full or blocked */ } }
+  if (!ok) { log('Could not save: browser storage is full or blocked. Export a file instead.', 'loss'); return false; }
+  slotMetas[id] = meta;
   renderSlots();
   return true;
 }
 async function loadFromSlot(id) {
-  const text = localStorage.getItem(slotKey(id));
+  let text = await idb.get(slotKey(id));
+  if (!text) { try { text = localStorage.getItem(slotKey(id)); } catch (e) { text = null; } }
   if (!text) return false;
   try { restore(await decodeSave(text)); } catch (e) { log('That save could not be read', 'loss'); return false; }
   log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}. Paused.`, 'good');
   return true;
 }
+loadSlotMetas();
 slotsEl.addEventListener('click', async ev => {
   const b = ev.target.closest('button'); if (!b || b.disabled) return;
   const id = b.closest('.slot').dataset.slot;
@@ -6741,7 +6792,7 @@ setInterval(() => { if (running && world.tick > 0) saveToSlot('auto'); }, 60000)
 window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, T, ignite, isFuel, waterStep, setWeather, updateSnow, updateLook, view, cellFromPoint, zoomAt, resetView, missiles, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), debugWar: (a, b) => declareWar(world.towns[a], world.towns[b], '(forced)'), debugNuke: (a, b) => launchNuke(world.towns[a], world.towns[b]), debugBomber: (a, b) => launchBomber(world.towns[a], world.towns[b]), debugBeavers: () => { world.beavers = null; let k = 0; while (!world.beavers && k++ < 2000) { world.tick = Math.max(world.tick, 300); updateBeavers(); } return !!world.beavers; }, debugFlood: () => floodArea(world.river, 0.018, 3, false, 'Flood (forced)'), debugMeteor: () => { const i = randomFuelCell(); const [tx, ty] = cellCenter(i); missiles.push({ sx: tx - 200, sy: -60, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 4, nuke: false, meteor: true }); }, debugTech: (a, m, c) => { world.towns[a].mil = m; world.towns[a].civ = c; if (m >= 6) world.towns[a].nukes = 1; }, seed: () => world.seed, snapshot, restore, encodeSave, decodeSave, encodeFile, decodeFile, saveToSlot, loadFromSlot };
 
 // Boot: a shared link carries the valley.
-let bootSeed, bootSize = 100;
+let bootSeed, bootSize = 200;
 try {
   const q = new URL(location.href).searchParams;
   if (q.has('seed')) { const v = q.get('seed'); bootSeed = /^\d+$/.test(v) ? Number(v) >>> 0 : undefined; if (bootSeed === undefined) { let h = 2166136261; for (let k = 0; k < v.length; k++) { h ^= v.charCodeAt(k); h = Math.imul(h, 16777619); } bootSeed = h >>> 0; } }
