@@ -3553,14 +3553,19 @@ function render(now, tickFrac) {
   drawEffects(now);
 
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const stacks = new Map(); // popups near the same spot stack upward instead of overprinting
   for (let k = popups.length - 1; k >= 0; k--) {
     const p = popups[k];
     const t = (now - p.t0) / p.dur;
     if (t >= 1) { popups.splice(k, 1); continue; }
+    const key = Math.round(p.x / 40) + ':' + Math.round(p.y / 30);
+    const lift = (stacks.get(key) || 0); stacks.set(key, lift + 1);
+    const fs = Math.max(10, Math.round(cellPx * 1.6));
     ctx.globalAlpha = 1 - t * t;
-    ctx.font = `bold ${Math.max(10, Math.round(cellPx * 1.6))}px Silkscreen, monospace`;
-    ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x + 1, p.y - t * 24 + 1);
-    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - t * 24);
+    ctx.font = `bold ${fs}px Silkscreen, monospace`;
+    const yy = p.y - t * 24 - lift * (fs + 2);
+    ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x + 1, yy + 1);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, yy);
     ctx.globalAlpha = 1;
   }
 

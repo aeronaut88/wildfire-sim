@@ -153,6 +153,9 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   depending on tech. Soldiers fall. Siege engines and artillery lob fire into the town while
   the fight goes on. Outcomes are overrun (homes torched, captives taken), held, or
   withdrawn, and a lawful-evil conqueror with the numbers may annex the place outright.
+  Gunpowder towns march with field guns, artillery towns roll tanks that shell the
+  defenders' line, and at war they fly bombers over the enemy and drop a stick of bombs.
+  Columns that march into a wildfire take losses and re-route.
 - **Settlements panel** shows alignment, militia, walls, tech, buildings, wars, allies and feuds.
 
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
