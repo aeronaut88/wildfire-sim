@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wildfire Sim</title>
-<meta name="description" content="Probabilistic forest fire cellular automaton with pixel-art sprites, wind, and missile strikes.">
+<meta name="description" content="Probabilistic forest fire cellular automaton with pixel-art sprites, wind, towns that fight back, and missile strikes.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -21,6 +21,7 @@
     --leaf: #5fa347;
     --water: #5a97d6;
     --ash: #4b413b;
+    --brick: #b5392c;
     --mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
     --pixel: "Silkscreen", "IBM Plex Mono", monospace;
   }
@@ -40,7 +41,6 @@
     overflow-x: hidden;
   }
 
-  /* grain overlay */
   body::before {
     content: "";
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
@@ -64,15 +64,8 @@
     text-shadow: 0 0 18px var(--ember-glow), 0 0 2px rgba(0,0,0,0.6);
   }
   h1 .flame { color: var(--ember); }
-  header .sub {
-    color: var(--ink-dim);
-    font-size: 12px;
-  }
-  header .hint {
-    margin-left: auto;
-    color: var(--ink-dim);
-    font-size: 11px;
-  }
+  header .sub { color: var(--ink-dim); font-size: 12px; }
+  header .hint { margin-left: auto; color: var(--ink-dim); font-size: 11px; }
   header .hint kbd {
     font-family: var(--pixel);
     font-size: 9px;
@@ -93,11 +86,7 @@
     min-height: calc(100vh - 70px);
   }
 
-  .stage {
-    position: relative;
-    display: flex; flex-direction: column; gap: 10px;
-    min-width: 0;
-  }
+  .stage { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   .viewport {
     position: relative;
     flex: 1;
@@ -109,7 +98,6 @@
     overflow: hidden;
   }
   .viewport::after {
-    /* CRT scanlines */
     content: ""; position: absolute; inset: 0; pointer-events: none;
     background: repeating-linear-gradient(to bottom, rgba(0,0,0,0.12) 0 1px, transparent 1px 3px);
     mix-blend-mode: multiply;
@@ -123,11 +111,7 @@
     box-shadow: 0 0 0 1px #000;
   }
 
-  .readout {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-  }
+  .readout { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
   .stat {
     background: var(--panel);
     border: 1px solid var(--panel-edge);
@@ -139,21 +123,22 @@
     content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
     background: var(--accent, var(--ink-dim));
   }
-  .stat .label {
-    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
-    color: var(--ink-dim);
-  }
+  .stat .label { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink-dim); }
   .stat .value {
     font-family: var(--pixel);
-    font-size: 16px;
+    font-size: 15px;
     color: var(--ink);
     margin-top: 2px;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
+  .stat .value small { font-size: 9px; color: var(--ink-dim); }
   .stat.burning { --accent: var(--ember); }
   .stat.burned { --accent: var(--ash); }
   .stat.trees { --accent: var(--leaf); }
   .stat.tick { --accent: var(--ember-hot); }
+  .stat.buildings { --accent: var(--brick); }
+  .stat.people { --accent: #f2c94c; }
 
   .panel {
     background: var(--panel);
@@ -162,6 +147,10 @@
     display: flex; flex-direction: column; gap: 14px;
     align-self: start;
     position: sticky; top: 14px;
+    max-height: calc(100vh - 28px);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #3a2e27 transparent;
   }
   .group { display: flex; flex-direction: column; gap: 8px; }
   .group > .title {
@@ -172,9 +161,7 @@
     text-transform: uppercase;
     display: flex; align-items: center; gap: 8px;
   }
-  .group > .title::after {
-    content: ""; flex: 1; height: 1px; background: var(--panel-edge);
-  }
+  .group > .title::after { content: ""; flex: 1; height: 1px; background: var(--panel-edge); }
 
   .btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   button {
@@ -208,16 +195,9 @@
   }
   .control input[type=range] { grid-column: 1 / -1; width: 100%; }
 
-  input[type=range] {
-    -webkit-appearance: none; appearance: none;
-    height: 18px; background: transparent; margin: 0;
-  }
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 4px; background: #0b0807; border: 1px solid #332a24;
-  }
-  input[type=range]::-moz-range-track {
-    height: 4px; background: #0b0807; border: 1px solid #332a24;
-  }
+  input[type=range] { -webkit-appearance: none; appearance: none; height: 18px; background: transparent; margin: 0; }
+  input[type=range]::-webkit-slider-runnable-track { height: 4px; background: #0b0807; border: 1px solid #332a24; }
+  input[type=range]::-moz-range-track { height: 4px; background: #0b0807; border: 1px solid #332a24; }
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none; appearance: none;
     width: 12px; height: 16px; margin-top: -7px;
@@ -234,22 +214,50 @@
   .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
   .seg button { padding: 7px 4px 5px; font-size: 9px; }
   .seg button.on { background: #3a1d10; border-color: #8a3e1b; color: var(--ember-hot); }
+  .seg.two { grid-template-columns: 1fr 1fr; }
   .compass { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
   .compass button { padding: 7px 0 5px; font-size: 11px; }
   .compass button.on { background: #10233a; border-color: #2d6bb0; color: #a8d1ff; }
 
+  .forces {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+    font-size: 10px; color: var(--ink-dim);
+  }
+  .forces div { background: #120e0c; border: 1px solid var(--panel-edge); padding: 6px 8px 4px; }
+  .forces b { display: block; font-family: var(--pixel); font-size: 11px; color: var(--ink); font-weight: 400; margin-top: 2px; }
+
+  .log {
+    list-style: none; margin: 0; padding: 8px 10px;
+    background: #0b0807; border: 1px solid var(--panel-edge);
+    font-size: 11px; line-height: 1.5; min-height: 118px;
+    color: var(--ink-dim);
+  }
+  .log li { display: flex; gap: 8px; }
+  .log li .t { font-family: var(--pixel); font-size: 9px; color: #6a5c4e; min-width: 34px; padding-top: 2px; }
+  .log li.alarm { color: var(--ember-hot); }
+  .log li.loss { color: #ff8a73; }
+  .log li.good { color: #8fd3ff; }
+  .log li.win { color: #a7e36f; }
+  .log li:first-child { color: var(--ink); }
+  .log li:first-child.alarm { color: var(--ember-hot); }
+  .log li:first-child.loss { color: #ff8a73; }
+  .log li:first-child.good { color: #8fd3ff; }
+  .log li:first-child.win { color: #a7e36f; }
+  .log .empty { color: #4e4238; font-style: italic; }
+
   .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: var(--ink-dim); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend canvas { width: 16px; height: 16px; image-rendering: pixelated; border: 1px solid #000; }
+  .legend canvas { width: 16px; height: 16px; image-rendering: pixelated; border: 1px solid #000; background: #1d2a1a; }
 
   .foot { color: var(--ink-dim); font-size: 10px; line-height: 1.5; }
 
+  @media (max-width: 1100px) { .readout { grid-template-columns: repeat(3, 1fr); } }
   @media (max-width: 860px) {
     main { grid-template-columns: 1fr; padding: 12px 16px 24px; }
-    .panel { position: static; }
+    .panel { position: static; max-height: none; }
     header { padding: 14px 16px 8px; }
     header .hint { display: none; }
-    .readout { grid-template-columns: repeat(2, 1fr); }
+    .readout { grid-template-columns: repeat(3, 1fr); }
   }
 </style>
 </head>
@@ -258,7 +266,7 @@
   <h1><span class="flame">&#9650;</span> WILDFIRE</h1>
   <div class="sub">probabilistic forest fire cellular automaton</div>
   <div class="hint">
-    click map = missile &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>.</kbd> step
+    click = missile &nbsp; right-click = lightning &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>.</kbd> step
   </div>
 </header>
 
@@ -272,6 +280,8 @@
       <div class="stat burning"><div class="label">burning</div><div class="value" id="statBurning">0</div></div>
       <div class="stat burned"><div class="label">burned</div><div class="value" id="statBurned">0%</div></div>
       <div class="stat trees"><div class="label">trees left</div><div class="value" id="statTrees">0</div></div>
+      <div class="stat buildings"><div class="label">buildings</div><div class="value" id="statBuildings">0</div></div>
+      <div class="stat people"><div class="label">population</div><div class="value" id="statPeople">0</div></div>
     </div>
   </section>
 
@@ -284,7 +294,7 @@
         <button id="btnReset" class="wide">New Forest</button>
       </div>
       <div class="control">
-        <label for="speed">Speed</label><output id="speedOut">30 t/s</output>
+        <label for="speed">Speed</label><output id="speedOut">4 t/s</output>
         <input type="range" id="speed" min="1" max="240" value="4">
       </div>
     </div>
@@ -302,9 +312,19 @@
     </div>
 
     <div class="group">
+      <div class="title">Dispatch</div>
+      <div class="forces">
+        <div>crews<b id="fCrews">0</b></div>
+        <div>engines<b id="fTrucks">-</b></div>
+        <div>air sorties<b id="fAir">-</b></div>
+      </div>
+      <ul class="log" id="log"><li class="empty">all quiet</li></ul>
+    </div>
+
+    <div class="group">
       <div class="title">Fire</div>
       <div class="control">
-        <label for="spread">Spread probability</label><output id="spreadOut">0.45</output>
+        <label for="spread">Spread probability</label><output id="spreadOut">0.30</output>
         <input type="range" id="spread" min="0" max="1" step="0.01" value="0.30">
       </div>
       <div class="control">
@@ -312,6 +332,13 @@
         <div class="seg" style="grid-column:1/-1">
           <button data-nb="4" class="on">4 (von Neumann)</button>
           <button data-nb="8" style="grid-column: span 2">8 (Moore)</button>
+        </div>
+      </div>
+      <div class="control">
+        <label>Ember spotting</label><output></output>
+        <div class="seg two" id="spotSeg" style="grid-column:1/-1">
+          <button data-spot="1" class="on">On</button>
+          <button data-spot="0">Off</button>
         </div>
       </div>
     </div>
@@ -345,8 +372,10 @@
     <div class="foot">
       Each tick, every burning cell tries to ignite each neighbor with
       P = spread &times; fuel factor &times; wind factor. Grass catches fast and burns out
-      in a tick or two. Big trees resist ignition but burn for a long time.
-      Water and rock never burn.
+      quickly. Big trees resist ignition but burn for a long time. Burning trees
+      can throw embers downwind. Towns rally once fire comes within sight: crews dig
+      firebreaks, engines spray water, and a rare air tanker drops retardant. They
+      don't always win.
     </div>
   </aside>
 </main>
@@ -359,275 +388,167 @@
 
 const PAL = {
   '.': null,
-  // grass
   'g': '#4e8f3a', 'G': '#5fa347', 'h': '#3f7a2e',
-  // pine (small tree)
   'p': '#2f7a2f', 'P': '#45994a', 'q': '#1f5422', 't': '#5b3a1d',
-  // oak (large tree)
   'o': '#2c7d33', 'O': '#4ea955', 'n': '#1c5a26', 'T': '#4e2f16',
-  // water
   'w': '#2b5f9e', 'W': '#5a97d6', 'v': '#214b80',
-  // rock
   'r': '#73737d', 'R': '#9a9aa4', 's': '#4f4f58', 'S': '#eef0f6',
-  // burnt
   'b': '#2a211d', 'B': '#392e28', 'a': '#4b413b', 'k': '#120c09',
   'e': '#d9542b', 'E': '#f5a623',
-  // fire
   'f': '#ff4a1c', 'F': '#ffa726', 'y': '#ffe866', 'x': '#ffffff',
+  // town
+  'c': '#e8d9b5', 'C': '#c9b892', 'd': '#b5392c', 'D': '#7d2419',
+  'u': '#3d5a8a', 'U': '#26395a', 'm': '#5b3a1d', 'i': '#ffe9a8',
+  'z': '#8a6a3e', 'Z': '#6b4f2c', 'l': '#5a5a62', 'L': '#7a7a84', 'K': '#111111',
+  // people & vehicles
+  'j': '#f2c94c', 'J': '#e0a080', 'Y': '#c9a227', 'N': '#30405e',
 };
 
 const SPRITES = {
   grass0: [
-    'gggggggggggggggg',
-    'ggggGgggggggggGg',
-    'gggGGgggghggggGg',
-    'ggggggggghgggggg',
-    'gggggggggggggggg',
-    'gGggggggggggGggg',
-    'gGgggghgggggGggg',
-    'gggggghggggggggg',
-    'ggggggggggggggGg',
-    'ggggggggGgggggGg',
-    'gghgggggGggggggg',
-    'gghggggggggggggg',
-    'gggggggggggggggg',
-    'gggggGgggghggggg',
-    'gggggGgggghggggg',
-    'gggggggggggggggg',
+    'gggggggggggggggg','ggggGgggggggggGg','gggGGgggghggggGg','ggggggggghgggggg',
+    'gggggggggggggggg','gGggggggggggGggg','gGgggghgggggGggg','gggggghggggggggg',
+    'ggggggggggggggGg','ggggggggGgggggGg','gghgggggGggggggg','gghggggggggggggg',
+    'gggggggggggggggg','gggggGgggghggggg','gggggGgggghggggg','gggggggggggggggg',
   ],
   grass1: [
-    'gggggggggggggggg',
-    'gggggggggGgggggg',
-    'gGgggggggGgggggg',
-    'gGgggggggggggggg',
-    'ggggghgggggggGgg',
-    'ggggghgggggggGgg',
-    'gggggggggggggggg',
-    'ggggggggggghgggg',
-    'ggGgggggggghgggg',
-    'ggGggggggggggggg',
-    'ggggggGggggggggg',
-    'ggggggGggggghggg',
-    'gghggggggggggggg',
-    'gghgggggggGggggg',
-    'ggggggggggGggggg',
-    'gggggggggggggggg',
+    'gggggggggggggggg','gggggggggGgggggg','gGgggggggGgggggg','gGgggggggggggggg',
+    'ggggghgggggggGgg','ggggghgggggggGgg','gggggggggggggggg','ggggggggggghgggg',
+    'ggGgggggggghgggg','ggGggggggggggggg','ggggggGggggggggg','ggggggGggggghggg',
+    'gghggggggggggggg','gghgggggggGggggg','ggggggggggGggggg','gggggggggggggggg',
   ],
   pine: [
-    'gggggggggggggggg',
-    'gggggggPgggggggg',
-    'gggggggPgggggggg',
-    'ggggggPPPggggggg',
-    'ggggggpPpggggggg',
-    'gggggpPPPpgggggg',
-    'gggggqpPpqgggggg',
-    'ggggpPPPPPpggggg',
-    'ggggqppPppqggggg',
-    'gggpPPPPPPPpgggg',
-    'gggqpppPpppqgggg',
-    'ggpPPPPPPPPPpggg',
-    'ggqqpppPpppqqggg',
-    'gggggggtgggggggg',
-    'gggggghtthgggggg',
-    'gggggggggggggggg',
+    'gggggggggggggggg','gggggggPgggggggg','gggggggPgggggggg','ggggggPPPggggggg',
+    'ggggggpPpggggggg','gggggpPPPpgggggg','gggggqpPpqgggggg','ggggpPPPPPpggggg',
+    'ggggqppPppqggggg','gggpPPPPPPPpgggg','gggqpppPpppqgggg','ggpPPPPPPPPPpggg',
+    'ggqqpppPpppqqggg','gggggggtgggggggg','gggggghtthgggggg','gggggggggggggggg',
   ],
   oak: [
-    'gggggOOOOOOggggg',
-    'gggOOOOOoooOOggg',
-    'ggOOOOooooooOogg',
-    'gOOOooooooooooog',
-    'gOOoooooooooonng',
-    'OOoooooooooonnno',
-    'Ooooooooooonnnno',
-    'Oooooooooonnnnno',
-    'Ooooooooonnnnnnn',
-    'goooooonnnnnnnng',
-    'ggooonnnnnnnnngg',
-    'gggnnnnnnnnnnggg',
-    'gggggnTTTTnggggg',
-    'gggggggTTggggggg',
-    'gggggghTThgggggg',
-    'gggggggggggggggg',
+    'gggggOOOOOOggggg','gggOOOOOoooOOggg','ggOOOOooooooOogg','gOOOooooooooooog',
+    'gOOoooooooooonng','OOoooooooooonnno','Ooooooooooonnnno','Oooooooooonnnnno',
+    'Ooooooooonnnnnnn','goooooonnnnnnnng','ggooonnnnnnnnngg','gggnnnnnnnnnnggg',
+    'gggggnTTTTnggggg','gggggggTTggggggg','gggggghTThgggggg','gggggggggggggggg',
   ],
   water0: [
-    'wwwwwwwwwwwwwwww',
-    'wwWWwwwwwwwwwwww',
-    'wwwwwwwwwwWWWwww',
-    'wwwwwwwwwwwwwwww',
-    'wvvwwwwwwwwwwwww',
-    'wwwwwwWWwwwwwwww',
-    'wwwwwwwwwwwwwvvw',
-    'wwwwwwwwwwwwwwww',
-    'wwwwwwwwwwwwwwww',
-    'wWWWwwwwwwwwwwww',
-    'wwwwwwwwwvvwwwww',
-    'wwwwwwwwwwwwwwww',
-    'wwwwwWWwwwwwwwww',
-    'wwwwwwwwwwwwwWWw',
-    'wwvvwwwwwwwwwwww',
-    'wwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwww','wwWWwwwwwwwwwwww','wwwwwwwwwwWWWwww','wwwwwwwwwwwwwwww',
+    'wvvwwwwwwwwwwwww','wwwwwwWWwwwwwwww','wwwwwwwwwwwwwvvw','wwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwww','wWWWwwwwwwwwwwww','wwwwwwwwwvvwwwww','wwwwwwwwwwwwwwww',
+    'wwwwwWWwwwwwwwww','wwwwwwwwwwwwwWWw','wwvvwwwwwwwwwwww','wwwwwwwwwwwwwwww',
   ],
   water1: [
-    'wwwwwwwwwwwwwwww',
-    'wwwWWwwwwwwwwwww',
-    'wwwwwwwwwwwWWWww',
-    'wwwwwwwwwwwwwwww',
-    'wwvvwwwwwwwwwwww',
-    'wwwwwwwWWwwwwwww',
-    'wwwwwwwwwwwwvvww',
-    'wwwwwwwwwwwwwwww',
-    'wwwwwwwwwwwwwwww',
-    'wwWWWwwwwwwwwwww',
-    'wwwwwwwwwwvvwwww',
-    'wwwwwwwwwwwwwwww',
-    'wwwwwwWWwwwwwwww',
-    'wwwwwwwwwwwwWWww',
-    'wvvwwwwwwwwwwwww',
-    'wwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwww','wwwWWwwwwwwwwwww','wwwwwwwwwwwWWWww','wwwwwwwwwwwwwwww',
+    'wwvvwwwwwwwwwwww','wwwwwwwWWwwwwwww','wwwwwwwwwwwwvvww','wwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwww','wwWWWwwwwwwwwwww','wwwwwwwwwwvvwwww','wwwwwwwwwwwwwwww',
+    'wwwwwwWWwwwwwwww','wwwwwwwwwwwwWWww','wvvwwwwwwwwwwwww','wwwwwwwwwwwwwwww',
   ],
   rock: [
-    'gggggggggggggggg',
-    'gggggggSSggggggg',
-    'ggggggSSSSgggggg',
-    'gggggSSRRSSggggg',
-    'ggggRRRRrRRRgggg',
-    'gggRRRrrrrRRRggg',
-    'gggRrrrrrrrrRggg',
-    'ggRrrrrsrrrrrRgg',
-    'ggRrrrssrrrrrrRg',
-    'gRrrrsssrrrsrrRg',
-    'gRrrssssrrrssrRg',
-    'Rrrsssssrrsssrrr',
-    'rrssssssssssssrr',
-    'rsssssssssssssss',
-    'ssssssssssssssss',
-    'ssssssssssssssss',
+    'gggggggggggggggg','gggggggSSggggggg','ggggggSSSSgggggg','gggggSSRRSSggggg',
+    'ggggRRRRrRRRgggg','gggRRRrrrrRRRggg','gggRrrrrrrrrRggg','ggRrrrrsrrrrrRgg',
+    'ggRrrrssrrrrrrRg','gRrrrsssrrrsrrRg','gRrrssssrrrssrRg','Rrrsssssrrsssrrr',
+    'rrssssssssssssrr','rsssssssssssssss','ssssssssssssssss','ssssssssssssssss',
   ],
   ash: [
-    'bbbbbbbbbbbbbbbb',
-    'bbBbbbbbbbbabbbb',
-    'bbbbbbbabbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbBbbbbbbbbbb',
-    'bbbbbbbbbbbbBbbb',
-    'babbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbabbbbbbb',
-    'bbbBbbbbbbbbbbbb',
-    'bbbbbbbbbbbBbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbabbbbbbbbbb',
-    'bbbbbbbbbbbbbabb',
-    'bbBbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
+    'bbbbbbbbbbbbbbbb','bbBbbbbbbbbabbbb','bbbbbbbabbbbbbbb','bbbbbbbbbbbbbbbb',
+    'bbbbbBbbbbbbbbbb','bbbbbbbbbbbbBbbb','babbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
+    'bbbbbbbbabbbbbbb','bbbBbbbbbbbbbbbb','bbbbbbbbbbbBbbbb','bbbbbbbbbbbbbbbb',
+    'bbbbbabbbbbbbbbb','bbbbbbbbbbbbbabb','bbBbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
   ],
   ashGlow: [
-    'bbbbbbbbbbbbbbbb',
-    'bbBbbbbbbbbabbbb',
-    'bbbbbbbebbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbBbbbbbbEbbb',
-    'bbbbbbbbbbbbBbbb',
-    'bebbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbabbbbbbb',
-    'bbbBbbbbbbbbbebb',
-    'bbbbbbbbbbbBbbbb',
-    'bbbbbEbbbbbbbbbb',
-    'bbbbbabbbbbbbbbb',
-    'bbbbbbbbbbbbbabb',
-    'bbBbbbbbbbebbbbb',
-    'bbbbbbbbbbbbbbbb',
+    'bbbbbbbbbbbbbbbb','bbBbbbbbbbbabbbb','bbbbbbbebbbbbbbb','bbbbbbbbbbbbbbbb',
+    'bbbbbBbbbbbbEbbb','bbbbbbbbbbbbBbbb','bebbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
+    'bbbbbbbbabbbbbbb','bbbBbbbbbbbbbebb','bbbbbbbbbbbBbbbb','bbbbbEbbbbbbbbbb',
+    'bbbbbabbbbbbbbbb','bbbbbbbbbbbbbabb','bbBbbbbbbbebbbbb','bbbbbbbbbbbbbbbb',
   ],
   stump: [
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbkkbbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbkbkbkbbbbbb',
-    'bbbbbbkkkbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbbkkbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbkkkbbbbbbb',
-    'bbbbbbkkkbbbbbbb',
-    'bbbbbkkkkkbbbbbb',
-    'bbbbbkkkkkbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
+    'bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbkbbbbbbbb','bbbbbbkkbbbbbbbb',
+    'bbbbbbbkbbbbbbbb','bbbbbkbkbkbbbbbb','bbbbbbkkkbbbbbbb','bbbbbbbkbbbbbbbb',
+    'bbbbbbbkkbbbbbbb','bbbbbbbkbbbbbbbb','bbbbbbkkkbbbbbbb','bbbbbbkkkbbbbbbb',
+    'bbbbbkkkkkbbbbbb','bbbbbkkkkkbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
   ],
   stumpGlow: [
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbkkbbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbkbkbkbbbbbb',
-    'bbbbbbkkkbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbbkkbbbbbbb',
-    'bbbbbbbkbbbbbbbb',
-    'bbbbbbkekbbbbbbb',
-    'bbbbbbkkkbbbbbbb',
-    'bbbbbkkekkbbbbbb',
-    'bbbbbkkkkkbbbbbb',
-    'bbbbbbbbbbbbbbbb',
-    'bbbbbbbbbbbbbbbb',
+    'bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbkbbbbbbbb','bbbbbbkkbbbbbbbb',
+    'bbbbbbbkbbbbbbbb','bbbbbkbkbkbbbbbb','bbbbbbkkkbbbbbbb','bbbbbbbkbbbbbbbb',
+    'bbbbbbbkkbbbbbbb','bbbbbbbkbbbbbbbb','bbbbbbkekbbbbbbb','bbbbbbkkkbbbbbbb',
+    'bbbbbkkekkbbbbbb','bbbbbkkkkkbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
   ],
   fire0: [
-    'kkkkkkkkkkkkkkkk',
-    'kkkkkkkkkkkkkkkk',
-    'kkkkkkkkfkkkkkkk',
-    'kkkkkkkffkkkkkkk',
-    'kkkkkkkffkkkfkkk',
-    'kkkkkfkfFfkkfkkk',
-    'kkkkkffFFfkffkkk',
-    'kkkkkfFFFFffffkk',
-    'kkkkffFFyFFfffkk',
-    'kkkffFFyyyFFffkk',
-    'kkkffFyyyyyFFfkk',
-    'kkfffFyyyyyyFfkk',
-    'kkffFFyyyyyyFffk',
-    'kfffFFyyyyyyFfff',
-    'kfffFFFyyyyFFfff',
-    'ffffFFFFFFFFffff',
+    'kkkkkkkkkkkkkkkk','kkkkkkkkkkkkkkkk','kkkkkkkkfkkkkkkk','kkkkkkkffkkkkkkk',
+    'kkkkkkkffkkkfkkk','kkkkkfkfFfkkfkkk','kkkkkffFFfkffkkk','kkkkkfFFFFffffkk',
+    'kkkkffFFyFFfffkk','kkkffFFyyyFFffkk','kkkffFyyyyyFFfkk','kkfffFyyyyyyFfkk',
+    'kkffFFyyyyyyFffk','kfffFFyyyyyyFfff','kfffFFFyyyyFFfff','ffffFFFFFFFFffff',
   ],
   fire1: [
-    'kkkkkkkkkkkkkkkk',
-    'kkkkfkkkkkkkkkkk',
-    'kkkkfkkkkkkkkkkk',
-    'kkkkffkkkkkfkkkk',
-    'kkkkffkkkkffkkkk',
-    'kkkfFfkkkkffkkkk',
-    'kkkfFffkkfFffkkk',
-    'kkffFFfkffFFfkkk',
-    'kkffFFFffFFFffkk',
-    'kkfFFyFFFFyFFfkk',
-    'kkfFyyyFFyyyFfkk',
-    'kffFyyyyyyyyFffk',
-    'kffFyyyyyyyyFffk',
-    'fffFFyyyyyyFFfff',
-    'fffFFFyyyyFFFfff',
-    'ffffFFFFFFFFffff',
+    'kkkkkkkkkkkkkkkk','kkkkfkkkkkkkkkkk','kkkkfkkkkkkkkkkk','kkkkffkkkkkfkkkk',
+    'kkkkffkkkkffkkkk','kkkfFfkkkkffkkkk','kkkfFffkkfFffkkk','kkffFFfkffFFfkkk',
+    'kkffFFFffFFFffkk','kkfFFyFFFFyFFfkk','kkfFyyyFFyyyFfkk','kffFyyyyyyyyFffk',
+    'kffFyyyyyyyyFffk','fffFFyyyyyyFFfff','fffFFFyyyyFFFfff','ffffFFFFFFFFffff',
   ],
   fire2: [
-    'kkkkkkkkkkkkkkkk',
-    'kkkkkkkkkkkfkkkk',
-    'kkkkkkkkkkffkkkk',
-    'kkkfkkkkkkffkkkk',
-    'kkkfkkkkkfFfkkkk',
-    'kkffkkkkkfFfkkkk',
-    'kkffkkkkffFFfkkk',
-    'kkfFfkkffFFFfkkk',
-    'kffFffffFFyFffkk',
-    'kffFFFfFFyyyFfkk',
-    'kffFFFFFyyyyFfkk',
-    'kffFyyFFyyyyFffk',
-    'kfFFyyyyyyyyFffk',
-    'ffFFyyyyyyyyFfff',
-    'fffFFFyyyyyFFfff',
-    'ffffFFFFFFFFffff',
+    'kkkkkkkkkkkkkkkk','kkkkkkkkkkkfkkkk','kkkkkkkkkkffkkkk','kkkfkkkkkkffkkkk',
+    'kkkfkkkkkfFfkkkk','kkffkkkkkfFfkkkk','kkffkkkkffFFfkkk','kkfFfkkffFFFfkkk',
+    'kffFffffFFyFffkk','kffFFFfFFyyyFfkk','kffFFFFFyyyyFfkk','kffFyyFFyyyyFffk',
+    'kfFFyyyyyyyyFffk','ffFFyyyyyyyyFfff','fffFFFyyyyyFFfff','ffffFFFFFFFFffff',
+  ],
+  // ── town ──
+  house0: [
+    'gggggggggggggggg','ggggggDDDDgggggg','gggggDddddDggggg','ggggDddddddDgggg',
+    'gggDddddddddDggg','ggDddddddddddDgg','gDddddddddddddDg','DDDDDDDDDDDDDDDD',
+    'gccccccccccccccg','gcciiiccccmmmccg','gcciiiccccmmmccg','gcciiiccccmmmccg',
+    'gccccccccmmmmccg','gCCCCCCCCCCCCCCg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+  ],
+  house1: [
+    'gggggggggggggggg','ggggggUUUUgggggg','gggggUuuuuUggggg','ggggUuuuuuuUgggg',
+    'gggUuuuuuuuuUggg','ggUuuuuuuuuuuUgg','gUuuuuuuuuuuuuUg','UUUUUUUUUUUUUUUU',
+    'gccccccccccccccg','gccmmmccccciiicg','gccmmmccccciiicg','gccmmmccccciiicg',
+    'gcmmmmcccccccccg','gCCCCCCCCCCCCCCg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+  ],
+  station: [
+    'gggggggggggggggg','gKKKKKKKKKKKKKKg','gKddddddddddddKg','gKddxxxxxxxxddKg',
+    'gKddxdxxxxdxddKg','gKddxxxddxxxddKg','gKddxxxxxxxxddKg','gKddddddddddddKg',
+    'gKdxxxxxxxxxxdKg','gKdxxxxxxxxxxdKg','gKdxxKxxxxKxxdKg','gKdxxxxxxxxxxdKg',
+    'gKdxxxxxxxxxxdKg','gKKKKKKKKKKKKKKg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+  ],
+  rubble: [
+    'bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbbbbbabbbb','bbbaabbbbbbabbbb',
+    'bbaRabbbbbbbbbbb','bbaaabbbbRabbbbb','bbbbbbbbbaaabbbb','bbbbbcabbbaabbbb',
+    'bbbbaaabbbbbbbbb','bbbaaaaabbbcbbbb','bbbbbbbbbbaaabbb','bbbbRbbbbbaaabbb',
+    'bbbaaabbbbbbbbbb','bbbaaaabbbbbbbbb','bbbbbbbbbbbbbbbb','bbbbbbbbbbbbbbbb',
+  ],
+  dirt: [
+    'zzzzzzzzzzzzzzzz','zzZzzzzzzzzzZzzz','zzzzzzzZzzzzzzzz','zzzzzzzzzzzzzzzz',
+    'zZzzzzzzzzzZzzzz','zzzzzzzzzzzzzzzz','zzzzzZzzzzzzzzZz','zzzzzzzzzzzzzzzz',
+    'zzzzzzzzzZzzzzzz','zzZzzzzzzzzzzzzz','zzzzzzzzzzzzZzzz','zzzzzzZzzzzzzzzz',
+    'zzzzzzzzzzzzzzzz','zZzzzzzzzzZzzzzz','zzzzzzzzzzzzzzzz','zzzzzzzZzzzzzzzz',
+  ],
+  pad: [
+    'llllllllllllllll','lLllllllllllllLl','llllllllllllllll','llllllllllllllll',
+    'llllxxxxxxxxllll','llllxxxxxxxxllll','llllllllllllllll','llllllllllllllll',
+    'llllllllllllllll','llllllllllllllll','llllxxxxxxxxllll','llllxxxxxxxxllll',
+    'llllllllllllllll','llllllllllllllll','lLllllllllllllLl','llllllllllllllll',
+  ],
+  hangar: [
+    'llllllllllllllll','lRRRRRRRRRRRRRRl','lRrrrrrrrrrrrrRl','lRrrrrrrrrrrrrRl',
+    'lRrrrrrrrrrrrrRl','lRrrrddddddrrrRl','lRrrrdxxxxdrrrRl','lRrrrddddddrrrRl',
+    'lRrrrrrrrrrrrrRl','lRrsssssssssssRl','lRrsssssssssssRl','lRrsssssssssssRl',
+    'lRrsssssssssssRl','lRRRRRRRRRRRRRRl','llllllllllllllll','llllllllllllllll',
+  ],
+  crew: [
+    '................','................','......jjjj......','.....jjjjjj.....',
+    '.....jjjjjj.....','......JJJJ......','......JJJJ......','.....YYYYYY..t..',
+    '....YYxxxxYY.t..','....YYYYYYYY.t..','....JYYYYYYJ.t..','.....NNNNNN..t..',
+    '.....NNNNNN.sss.','.....NN..NN.sss.','.....KK..KK.....','................',
+  ],
+  truck: [
+    '................','................','................','................',
+    '..DDDDDDDDDDD...','..dddddddddddDD.','..dxxxxxxxxxdWD.','..dddddddddddWD.',
+    '..dddddddddddDD.','..DDDDDDDDDDDDD.','...KK.....KK....','...KK.....KK....',
+    '................','................','................','................',
+  ],
+  plane: [
+    '.......xx.......','.......xx.......','......xxxx......','......xddx......',
+    '......xxxx......','......xxxx......','.xxxxxxxxxxxxxx.','xxxxxxxxxxxxxxxx',
+    'xxxxxxxxxxxxxxxx','.lll..xxxx..lll.','......xxxx......','......xxxx......',
+    '......xddx......','....xxxxxxxx....','...xxxxxxxxxx...','................',
   ],
 };
 
@@ -650,7 +571,6 @@ function buildSprite16(rows) {
 const SPR16 = {};
 for (const k in SPRITES) SPR16[k] = buildSprite16(SPRITES[k]);
 
-// Scaled copies at the current cell pixel size, rebuilt on resize.
 let SPR = {};
 function rescaleSprites(px) {
   SPR = {};
@@ -669,13 +589,11 @@ function rescaleSprites(px) {
 let rngState = 1;
 function seedRng(s) { rngState = (s >>> 0) || 1; }
 function rand() {
-  // xorshift32
   let x = rngState;
   x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
   rngState = x >>> 0;
   return rngState / 4294967296;
 }
-
 function hash2(x, y, seed) {
   let h = Math.imul(x, 374761393) ^ Math.imul(y, 668265263) ^ Math.imul(seed, 1442695041);
   h = Math.imul(h ^ (h >>> 13), 1274126177);
@@ -701,37 +619,37 @@ function fbm(x, y, seed, octaves) {
 
 /* ───────────────────────── World ───────────────────────── */
 
-const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6 };
+const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12 };
 const FUEL = {
-  [T.GRASS]: { ignite: 1.0, burn: [2, 4], after: T.ASH },
-  [T.PINE]:  { ignite: 0.75, burn: [6, 10], after: T.STUMP },
-  [T.OAK]:   { ignite: 0.55, burn: [12, 20], after: T.STUMP },
+  [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
+  [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
+  [T.OAK]:     { ignite: 0.55, burn: [12, 20], after: T.STUMP,  spots: true },
+  [T.HOUSE]:   { ignite: 0.6,  burn: [6, 10],  after: T.RUBBLE, spots: true },
+  [T.STATION]: { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
 };
-const isFuel = t => t === T.GRASS || t === T.PINE || t === T.OAK;
+const isFuel = t => FUEL[t] !== undefined;
+const isBuilding = t => t === T.HOUSE || t === T.STATION;
+const isTree = t => t === T.PINE || t === T.OAK;
+const passable = t => t !== T.WATER && t !== T.ROCK;
+
+const TOWN_NAMES = ['Pinecrest', 'Oakridge', 'Cedar Falls', 'Ashford', 'Birchwood', 'Elk Hollow', 'Fox Run',
+  'Mill Creek', 'Stonebridge', 'Timberline', 'Red Pine', 'Larkspur', 'Deerfield', 'Coal Hill', 'Willow Bend', 'Hatchet Gap'];
 
 const world = {
   n: 100,
-  type: null,      // Uint8Array
-  variant: null,   // Uint8Array (grass variant)
-  burnLeft: null,  // Int16Array, >0 while burning
-  glow: null,      // Uint8Array ticks of ember glow after burnout
-  burning: [],     // indices
-  glowing: [],     // indices
-  water: [],       // indices
+  type: null, variant: null, burnLeft: null, glow: null,
+  wet: null, wetKind: null, residents: null, townOf: null,
+  burning: [], glowing: [], water: [], wetList: [],
   tick: 0,
-  totalFuel: 0,
-  burnedCount: 0,
-  treeCount: 0,
+  totalFuel: 0, burnedCount: 0, treeCount: 0,
+  towns: [], air: null,
+  buildingsTotal: 0, buildingsLeft: 0, popTotal: 0, popLeft: 0,
 };
 
 const params = {
-  speed: 4,
-  spread: 0.30,
-  neighbors: 4,
-  windX: 0, windY: 0,
-  windStrength: 0.5,
-  density: 0.65,
-  blast: 2,
+  speed: 4, spread: 0.30, neighbors: 4, spotting: true,
+  windX: 0, windY: 0, windStrength: 0.5,
+  density: 0.65, blast: 2,
 };
 
 function generate(n) {
@@ -741,16 +659,20 @@ function generate(n) {
   world.variant = new Uint8Array(N);
   world.burnLeft = new Int16Array(N);
   world.glow = new Uint8Array(N);
-  world.burning = [];
-  world.glowing = [];
-  world.water = [];
-  world.tick = 0;
-  world.burnedCount = 0;
+  world.wet = new Int16Array(N);
+  world.wetKind = new Uint8Array(N);
+  world.residents = new Uint8Array(N);
+  world.townOf = new Int8Array(N).fill(-1);
+  world.burning = []; world.glowing = []; world.water = []; world.wetList = [];
+  world.tick = 0; world.burnedCount = 0;
+  world.towns = []; world.air = null;
+  world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
+  logEntries.length = 0; renderLog();
 
   const seed = (Math.random() * 0xffffffff) >>> 0;
   seedRng(seed);
   const sE = seed ^ 0x9e3779b9, sM = seed ^ 0x85ebca6b, sB = seed ^ 0xc2b2ae35;
-  const scale = 7 / n; // keep feature size roughly constant relative to map
+  const scale = 7 / n;
 
   for (let y = 0; y < n; y++) {
     for (let x = 0; x < n; x++) {
@@ -759,12 +681,10 @@ function generate(n) {
       const m = fbm(x * scale * 1.7 + 50, y * scale * 1.7 + 50, sM, 3);
       const big = fbm(x * scale * 3 + 200, y * scale * 3 + 200, sB, 2);
       world.variant[i] = (hash2(x, y, seed) < 0.5) ? 0 : 1;
-
       let t;
       if (e < 0.27) t = T.WATER;
       else if (e > 0.78) t = T.ROCK;
       else {
-        // Moisture drives clustering: dry patches are open meadow, wet patches dense forest.
         const forest = Math.min(1, Math.max(0, (m - 0.28) * 2.6));
         const shore = e < 0.31 ? 0.35 : 1;
         const treeP = Math.min(0.97, params.density * (0.08 + 1.35 * forest) * shore);
@@ -775,14 +695,15 @@ function generate(n) {
     }
   }
 
-  // Carve a meandering river across the map.
   carveRiver(n, seed);
+  placeTowns(n);
+  placeAirbase(n);
 
   world.totalFuel = 0; world.treeCount = 0;
   for (let i = 0; i < N; i++) {
     const t = world.type[i];
     if (isFuel(t)) world.totalFuel++;
-    if (t === T.PINE || t === T.OAK) world.treeCount++;
+    if (isTree(t)) world.treeCount++;
     if (t === T.WATER) world.water.push(i);
   }
 }
@@ -792,26 +713,151 @@ function carveRiver(n, seed) {
   let pos = Math.floor(n * (0.2 + rand() * 0.6));
   const width = n >= 120 ? 2 : 1;
   const wobbleSeed = seed ^ 0x27d4eb2f;
+  // Occasionally the river forks around an island for a stretch.
+  const fork = rand() < 0.35;
+  const forkStart = Math.floor(n * (0.25 + rand() * 0.4)), forkLen = Math.floor(n * (0.12 + rand() * 0.15));
+  const forkGap = 4 + Math.floor(rand() * 5);
   for (let k = 0; k < n; k++) {
     const drift = (fbm(k * 0.08, 0, wobbleSeed, 2) - 0.5) * 3;
     pos += drift;
     pos = Math.max(1, Math.min(n - 2, pos));
     const p = Math.round(pos);
-    for (let w = -width; w <= width; w++) {
-      const q = p + w;
-      if (q < 0 || q >= n) continue;
-      const i = vertical ? k * n + q : q * n + k;
-      world.type[i] = T.WATER;
+    const branches = [p];
+    if (fork && k >= forkStart && k < forkStart + forkLen) {
+      const f = (k - forkStart) / forkLen;
+      const spreadNow = Math.round(Math.sin(f * Math.PI) * forkGap);
+      if (spreadNow > 0) branches.push(p + spreadNow + width * 2);
     }
-    // sandy/grassy bank: thin out trees near the river
-    for (let w = -width - 2; w <= width + 2; w++) {
-      const q = p + w;
-      if (q < 0 || q >= n) continue;
-      const i = vertical ? k * n + q : q * n + k;
-      if (world.type[i] === T.PINE || world.type[i] === T.OAK) {
-        if (rand() < 0.6) world.type[i] = T.GRASS;
+    for (const b of branches) {
+      for (let w = -width; w <= width; w++) {
+        const q = b + w;
+        if (q < 0 || q >= n) continue;
+        world.type[vertical ? k * n + q : q * n + k] = T.WATER;
+      }
+      for (let w = -width - 2; w <= width + 2; w++) {
+        const q = b + w;
+        if (q < 0 || q >= n) continue;
+        const i = vertical ? k * n + q : q * n + k;
+        if (isTree(world.type[i]) && rand() < 0.6) world.type[i] = T.GRASS;
       }
     }
+  }
+}
+
+/* ───────────────────────── Towns ───────────────────────── */
+
+function placeTowns(n) {
+  let count = 1 + (rand() < 0.55 ? 1 : 0) + (n >= 160 && rand() < 0.5 ? 1 : 0);
+  if (n < 50) count = 1;
+  const names = TOWN_NAMES.slice().sort(() => rand() - 0.5);
+  const type = world.type;
+
+  for (let t = 0; t < count; t++) {
+    const R = Math.min(9, Math.max(3, Math.round(n / 28 + (rand() - 0.5) * 2)));
+    let cx = -1, cy = -1;
+    for (let tries = 0; tries < 300; tries++) {
+      const x = R + 3 + Math.floor(rand() * (n - 2 * R - 6));
+      const y = R + 3 + Math.floor(rand() * (n - 2 * R - 6));
+      let ok = true;
+      for (const o of world.towns) if (Math.hypot(o.cx - x, o.cy - y) < o.R + R + 10) { ok = false; break; }
+      if (!ok || !passable(type[y * n + x])) continue;
+      let good = 0, total = 0;
+      for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+        total++;
+        const tt = type[(y + dy) * n + x + dx];
+        if (tt !== T.WATER && tt !== T.ROCK) good++;
+      }
+      // Loose enough that towns land on peninsulas and river islands now and then.
+      if (good >= total * 0.72) { cx = x; cy = y; break; }
+    }
+    if (cx < 0) continue;
+
+    const town = {
+      id: world.towns.length, name: names[t % names.length], cx, cy, R,
+      buildings: [], housesTotal: 0, housesLeft: 0, popTotal: 0, popLeft: 0,
+      hasStation: false, stationIdx: -1, trucks: [],
+      mobilized: false, rallyAt: 0, lastThreat: -1000, fireDir: 0, fireDist: Infinity, nearestFire: -1,
+      crews: [], crewsToSpawn: 0, ring: [], claimed: new Set(),
+      firstHit: false, destroyed: false, lostLogged: 0,
+    };
+    const stationWanted = rand() < 0.45;
+    let stationPlaced = false;
+
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+      const d = Math.hypot(dx, dy);
+      if (d > R + 0.3) continue;
+      const x = cx + dx, y = cy + dy, i = y * n + x;
+      const tt = type[i];
+      if (tt === T.WATER || tt === T.ROCK) continue;
+      if (isTree(tt) && rand() < 0.88) type[i] = T.GRASS;
+      const onRoad = (dx === 0 || dy === 0) && d <= R;
+      if (onRoad) { type[i] = T.DIRT; continue; }
+      if (stationWanted && !stationPlaced && dx === 1 && dy === -1) {
+        type[i] = T.STATION; stationPlaced = true;
+        town.hasStation = true; town.stationIdx = i;
+        town.buildings.push(i); world.townOf[i] = town.id;
+        continue;
+      }
+      const houseP = 0.78 * (1 - (d / R) * 0.65);
+      if (rand() < houseP) {
+        type[i] = T.HOUSE;
+        world.variant[i] = rand() < 0.6 ? 0 : 1;
+        world.residents[i] = 3 + Math.floor(rand() * 4);
+        world.townOf[i] = town.id;
+        town.buildings.push(i);
+        town.housesTotal++;
+        town.popTotal += world.residents[i];
+      }
+    }
+    if (town.housesTotal < 3) {
+      for (const i of town.buildings) { type[i] = T.GRASS; world.townOf[i] = -1; world.residents[i] = 0; }
+      continue;
+    }
+    town.housesLeft = town.housesTotal;
+    town.popLeft = town.popTotal;
+    if (town.hasStation) {
+      const nTrucks = 1 + Math.floor(rand() * 2) + (rand() < 0.3 ? 1 : 0);
+      const sx = town.stationIdx % n, sy = Math.floor(town.stationIdx / n);
+      for (let k = 0; k < nTrucks; k++) {
+        town.trucks.push({ id: k + 1, x: sx, y: sy, px: sx, py: sy, water: 20, cap: 20, state: 'idle', refill: 0, alive: true, face: 1 });
+      }
+    }
+    for (let dy = -R - 3; dy <= R + 3; dy++) for (let dx = -R - 3; dx <= R + 3; dx++) {
+      const d = Math.hypot(dx, dy);
+      if (d < R + 1.3 || d > R + 3.2) continue;
+      const x = cx + dx, y = cy + dy;
+      if (x < 0 || y < 0 || x >= n || y >= n) continue;
+      town.ring.push(y * n + x);
+    }
+    world.towns.push(town);
+    world.buildingsTotal += town.buildings.length;
+    world.popTotal += town.popTotal;
+  }
+  world.buildingsLeft = world.buildingsTotal;
+  world.popLeft = world.popTotal;
+}
+
+function placeAirbase(n) {
+  if (rand() > 0.28 || n < 60) return;
+  const type = world.type;
+  for (let tries = 0; tries < 200; tries++) {
+    const x = 3 + Math.floor(rand() * (n - 8)), y = 3 + Math.floor(rand() * (n - 8));
+    let ok = true;
+    for (const t of world.towns) if (Math.hypot(t.cx - x, t.cy - y) < t.R + 6) ok = false;
+    if (!ok) continue;
+    for (let dy = -1; dy <= 2 && ok; dy++) for (let dx = -1; dx <= 2; dx++) {
+      const tt = type[(y + dy) * n + x + dx];
+      if (tt === T.WATER || tt === T.ROCK || isBuilding(tt)) { ok = false; break; }
+    }
+    if (!ok) continue;
+    for (let dy = 0; dy < 2; dy++) for (let dx = 0; dx < 2; dx++) type[(y + dy) * n + x + dx] = T.PAD;
+    type[y * n + x] = T.HANGAR;
+    for (let dy = -1; dy <= 2; dy++) for (let dx = -1; dx <= 2; dx++) {
+      const i = (y + dy) * n + x + dx;
+      if (isTree(type[i])) type[i] = T.GRASS;
+    }
+    world.air = { x: x + 1, y: y + 1, sorties: 2 + Math.floor(rand() * 3), cooldown: 0, plane: null };
+    return;
   }
 }
 
@@ -826,32 +872,43 @@ function ignite(i) {
   const f = FUEL[t];
   world.burnLeft[i] = f.burn[0] + Math.floor(Math.random() * (f.burn[1] - f.burn[0] + 1));
   world.burning.push(i);
-  if (world.glow[i]) world.glow[i] = 0;
+  if (isBuilding(t)) onBuildingIgnite(i);
+  dirty.add(i);
   return true;
+}
+
+function extinguish(i, wetTicks, kind) {
+  if (world.burnLeft[i] > 0) world.burnLeft[i] = 0; // dropped from the burning list on the next step
+  if (isFuel(world.type[i]) && wetTicks > 0) {
+    if (world.wet[i] <= 0) world.wetList.push(i);
+    world.wet[i] = Math.max(world.wet[i], wetTicks);
+    world.wetKind[i] = kind;
+  }
+  dirty.add(i);
 }
 
 function windFactor(dx, dy) {
   if (params.windStrength === 0 || (params.windX === 0 && params.windY === 0)) return 1;
   const len = Math.hypot(dx, dy);
   const wl = Math.hypot(params.windX, params.windY);
-  const dot = (dx * params.windX + dy * params.windY) / (len * wl); // -1..1
-  // Downwind up to 1 + 1.2s, upwind down to 1 - 0.9s
+  const dot = (dx * params.windX + dy * params.windY) / (len * wl);
   return dot >= 0 ? 1 + dot * 1.2 * params.windStrength : 1 + dot * 0.9 * params.windStrength;
 }
 
 function step() {
   const n = world.n;
   const offs = params.neighbors === 8 ? OFFS8 : OFFS4;
-  // Precompute per-direction probability multipliers.
   const dirMult = offs.map(([dx, dy]) => (dx !== 0 && dy !== 0 ? 0.65 : 1) * windFactor(dx, dy));
-
   const current = world.burning;
-  const count = current.length; // snapshot: cells ignited this tick spread next tick
+  const count = current.length;
   const next = [];
-  const type = world.type, burnLeft = world.burnLeft;
+  const type = world.type, burnLeft = world.burnLeft, wet = world.wet;
+  const hasWind = params.windStrength > 0 && (params.windX !== 0 || params.windY !== 0);
+  const spotP = params.spotting ? 0.0025 * (1 + (hasWind ? 3 * params.windStrength : 0)) : 0;
 
   for (let k = 0; k < count; k++) {
     const i = current[k];
+    if (burnLeft[i] <= 0) continue; // put out by someone
     const x = i % n, y = (i - x) / n;
     for (let d = 0; d < offs.length; d++) {
       const nx = x + offs[d][0], ny = y + offs[d][1];
@@ -859,21 +916,18 @@ function step() {
       const j = ny * n + nx;
       const tj = type[j];
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
-      const p = params.spread * FUEL[tj].ignite * dirMult[d];
-      if (Math.random() < p) {
-        ignite(j);
-        dirty.add(j);
-      }
+      let p = params.spread * FUEL[tj].ignite * dirMult[d];
+      if (wet[j] > 0) p *= 0.1;
+      if (Math.random() < p) ignite(j);
     }
+    if (spotP > 0 && FUEL[type[i]].spots && Math.random() < spotP) throwEmber(x, y, hasWind);
     burnLeft[i]--;
     if (burnLeft[i] > 0) next.push(i);
     else burnout(i);
   }
-  // Newly ignited cells were appended to world.burning during the loop.
   for (let k = count; k < world.burning.length; k++) next.push(world.burning[k]);
   world.burning = next;
 
-  // ember glow decay
   if (world.glowing.length) {
     const keep = [];
     for (const i of world.glowing) {
@@ -882,13 +936,48 @@ function step() {
     }
     world.glowing = keep;
   }
+  if (world.wetList.length) {
+    const keep = [];
+    for (const i of world.wetList) {
+      if (--world.wet[i] > 0) keep.push(i);
+      else { world.wetKind[i] = 0; dirty.add(i); }
+    }
+    world.wetList = keep;
+  }
 
   world.tick++;
+  updateTowns();
+  updateAir();
+}
+
+function throwEmber(x, y, hasWind) {
+  const n = world.n;
+  let dx, dy;
+  if (hasWind) {
+    const dist = 2 + Math.random() * (3 + 4 * params.windStrength);
+    const base = Math.atan2(params.windY, params.windX) + (Math.random() - 0.5) * 0.9;
+    dx = Math.round(Math.cos(base) * dist); dy = Math.round(Math.sin(base) * dist);
+  } else {
+    const a = Math.random() * Math.PI * 2, dist = 2 + Math.random() * 2.5;
+    dx = Math.round(Math.cos(a) * dist); dy = Math.round(Math.sin(a) * dist);
+  }
+  const tx = x + dx, ty = y + dy;
+  if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
+  const j = ty * n + tx;
+  if (!isFuel(world.type[j]) || world.burnLeft[j] > 0) return;
+  let p = FUEL[world.type[j]].ignite * 0.8;
+  if (world.wet[j] > 0) p *= 0.1;
+  if (Math.random() < p) {
+    ignite(j);
+    const [ax, ay] = cellCenter(y * n + x), [bx, by] = cellCenter(j);
+    particles.push({ x: ax, y: ay, vx: (bx - ax) * 2.2, vy: (by - ay) * 2.2 - 25, life: 0, max: 450, color: '#ffb627', size: Math.max(1.5, cellPx * 0.3), grav: 110 });
+  }
 }
 
 function burnout(i) {
   const t = world.type[i];
-  if (t === T.PINE || t === T.OAK) world.treeCount--;
+  if (isTree(t)) world.treeCount--;
+  if (isBuilding(t)) onBuildingDestroyed(i, 'fire');
   world.type[i] = FUEL[t] ? FUEL[t].after : T.ASH;
   world.burnLeft[i] = 0;
   world.glow[i] = 4 + Math.floor(Math.random() * 5);
@@ -907,18 +996,413 @@ function strikeCell(cx, cy, radius) {
       if (x < 0 || y < 0 || x >= n || y >= n) continue;
       const i = y * n + x;
       const t = world.type[i];
-      if (isFuel(t)) {
-        // Inner blast scorches; edge ignites.
-        const inner = dx * dx + dy * dy <= Math.max(0, radius - 1.5) ** 2;
-        if (inner && radius >= 2) {
-          if (t === T.PINE || t === T.OAK) world.treeCount--;
-          world.type[i] = T.ASH; world.burnedCount++;
-          world.glow[i] = 6; world.glowing.push(i);
-        } else ignite(i);
-        dirty.add(i);
+      if (!isFuel(t)) continue;
+      const inner = dx * dx + dy * dy <= Math.max(0, radius - 1.5) ** 2;
+      if (inner && radius >= 2) {
+        if (isTree(t)) world.treeCount--;
+        if (isBuilding(t)) onBuildingDestroyed(i, 'blast');
+        if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
+        world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH;
+        world.burnedCount++;
+        world.glow[i] = 6; world.glowing.push(i);
+      } else ignite(i);
+      dirty.add(i);
+    }
+  }
+  for (const town of world.towns) {
+    town.crews = town.crews.filter(c => {
+      if (Math.hypot(c.x - cx, c.y - cy) <= radius) { loseCrew(town, c, 'caught in the blast'); return false; }
+      return true;
+    });
+    for (const tr of town.trucks) if (tr.alive && Math.hypot(tr.x - cx, tr.y - cy) <= radius) loseTruck(town, tr, 'destroyed in the blast');
+  }
+}
+
+/* ───────────────────────── Town response ───────────────────────── */
+
+function onBuildingIgnite(i) {
+  const town = world.towns[world.townOf[i]];
+  if (!town) return;
+  if (!town.firstHit) { town.firstHit = true; log(`Fire reaches ${town.name}`, 'loss'); }
+  const res = world.residents[i];
+  if (res > 0) {
+    const survive = town.mobilized ? 0.92 : 0.6;
+    let lost = 0;
+    for (let k = 0; k < res; k++) if (Math.random() > survive) lost++;
+    world.residents[i] = 0;
+    if (lost > 0) {
+      town.popLeft -= lost; world.popLeft -= lost;
+      town.lostLogged += lost;
+      if (town.lostLogged >= 5 || Math.random() < 0.3) {
+        log(`${town.name}: ${town.lostLogged} ${town.lostLogged === 1 ? 'person' : 'people'} could not get out`, 'loss');
+        town.lostLogged = 0;
       }
     }
   }
+}
+
+function onBuildingDestroyed(i, cause) {
+  const town = world.towns[world.townOf[i]];
+  if (!town) return;
+  const t = world.type[i];
+  if (cause === 'blast') {
+    const res = world.residents[i];
+    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.residents[i] = 0; log(`${town.name}: ${res} killed by the blast`, 'loss'); }
+    town.firstHit = true;
+  }
+  world.buildingsLeft--;
+  if (t === T.HOUSE) town.housesLeft--;
+  if (t === T.STATION) {
+    town.hasStation = false;
+    for (const tr of town.trucks) if (tr.alive && (tr.state === 'idle' || tr.state === 'refill')) loseTruck(town, tr, 'lost with the station');
+    log(`${town.name} fire station burns down`, 'loss');
+  }
+  if (town.housesLeft === 0 && !town.destroyed) {
+    town.destroyed = true;
+    log(`${town.name} is gone`, 'loss');
+  }
+}
+
+function loseCrew(town, crew, why) {
+  const people = crew.size;
+  town.popLeft -= people; world.popLeft -= people;
+  town.claimed.delete(crew.target);
+  log(`${town.name}: crew of ${people} ${why}`, 'loss');
+  const [x, y] = cellCenter(crew.y * world.n + crew.x);
+  popups.push({ x, y, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
+}
+function loseTruck(town, truck, why) {
+  truck.alive = false; truck.state = 'dead';
+  log(`${town.name} engine ${truck.id} ${why}`, 'loss');
+}
+
+function updateTowns() {
+  const n = world.n;
+  const burning = world.burning;
+  for (const town of world.towns) {
+    let minD2 = Infinity, nearest = -1;
+    for (let k = 0; k < burning.length; k++) {
+      const i = burning[k];
+      if (world.burnLeft[i] <= 0) continue;
+      const dx = (i % n) - town.cx, dy = ((i - (i % n)) / n) - town.cy;
+      const d2 = dx * dx + dy * dy;
+      if (d2 < minD2) { minD2 = d2; nearest = i; }
+    }
+    const detect = town.R * 2 + 9;
+    const threatened = nearest >= 0 && minD2 < detect * detect;
+    if (threatened) {
+      town.lastThreat = world.tick;
+      town.nearestFire = nearest;
+      town.fireDist = Math.sqrt(minD2);
+      town.fireDir = Math.atan2(Math.floor(nearest / n) - town.cy, (nearest % n) - town.cx);
+      if (!town.mobilized && town.popLeft > 0) {
+        town.mobilized = true;
+        town.rallyAt = world.tick + 1 + Math.floor(Math.random() * 3);
+        // Turnout is a dice roll: sometimes a handful show up, sometimes the whole town.
+        const base = town.popLeft / 12;
+        town.crewsToSpawn = Math.min(8, Math.max(1, Math.round(base * (0.35 + Math.random() * 1.4))));
+        const c = town.crewsToSpawn;
+        log(`${town.name} sounds the alarm, ${c === 1 ? 'a single crew' : c + ' crews'} rally`, 'alarm');
+        const [x, y] = cellCenter(town.cy * n + town.cx);
+        popups.push({ x, y: y - town.R * cellPx, text: 'RALLY!', color: '#ffb627', t0: performance.now(), dur: 1800 });
+        const live = town.trucks.filter(tr => tr.alive);
+        for (const tr of live) tr.state = 'out';
+        if (live.length) log(`${town.name} station rolls ${live.length} engine${live.length > 1 ? 's' : ''}`, 'good');
+      }
+    } else if (town.mobilized && world.tick - town.lastThreat > 25) {
+      town.mobilized = false;
+      town.claimed.clear();
+      town.crewsToSpawn = 0;
+      town.fireDist = Infinity; town.nearestFire = -1;
+      if (town.housesLeft > 0) log(`${town.name} stands down, ${town.housesLeft}/${town.housesTotal} homes standing`, town.housesLeft === town.housesTotal ? 'win' : 'good');
+      else log(`${town.name} survivors stand down`, 'loss');
+      for (const tr of town.trucks) if (tr.alive) tr.state = 'return';
+    }
+
+    if (town.mobilized && town.crewsToSpawn > 0 && world.tick >= town.rallyAt) {
+      town.crewsToSpawn--;
+      const size = 3 + Math.floor(Math.random() * 3);
+      town.crews.push({ x: town.cx, y: town.cy, px: town.cx, py: town.cy, size, target: -1, progress: 0, mode: 'dig', face: 1 });
+    }
+
+    updateCrews(town);
+    updateTrucks(town);
+  }
+}
+
+function stepToward(a, tx, ty, speed, allowBurning) {
+  const n = world.n, type = world.type;
+  for (let s = 0; s < speed; s++) {
+    if (a.x === tx && a.y === ty) return true;
+    const dx = Math.sign(tx - a.x), dy = Math.sign(ty - a.y);
+    const cands = Math.abs(tx - a.x) >= Math.abs(ty - a.y)
+      ? [[dx, 0], [dx, dy], [0, dy], [dx, -dy], [-dx, dy]]
+      : [[0, dy], [dx, dy], [dx, 0], [-dx, dy], [dx, -dy]];
+    let moved = false;
+    for (const [mx, my] of cands) {
+      if (mx === 0 && my === 0) continue;
+      const nx = a.x + mx, ny = a.y + my;
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (!passable(type[j])) continue;
+      if (!allowBurning && world.burnLeft[j] > 0) continue;
+      a.x = nx; a.y = ny; moved = true;
+      if (mx !== 0) a.face = mx;
+      break;
+    }
+    if (!moved) return false;
+  }
+  return a.x === tx && a.y === ty;
+}
+
+function angleDiff(a, b) {
+  let d = a - b;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return Math.abs(d);
+}
+
+function updateCrews(town) {
+  const n = world.n, type = world.type, burnLeft = world.burnLeft;
+  const fireInside = town.fireDist < town.R + 2.5;
+  const keep = [];
+  for (const c of town.crews) {
+    c.px = c.x; c.py = c.y;
+    const here = c.y * n + c.x;
+
+    if (burnLeft[here] > 0) {
+      if (Math.random() < 0.5) { loseCrew(town, c, 'overrun by the fire'); continue; }
+      town.claimed.delete(c.target); c.target = -1; c.progress = 0;
+      stepToward(c, town.cx, town.cy, 2, false);
+      keep.push(c);
+      continue;
+    }
+
+    if (!town.mobilized) {
+      if (stepToward(c, town.cx, town.cy, 1, false) || Math.hypot(c.x - town.cx, c.y - town.cy) < 1.5) continue;
+      keep.push(c);
+      continue;
+    }
+
+    if (fireInside) {
+      c.mode = 'douse';
+      if (c.target >= 0) { town.claimed.delete(c.target); c.target = -1; c.progress = 0; }
+      let best = -1, bestD = Infinity;
+      for (const i of world.burning) {
+        if (burnLeft[i] <= 0) continue;
+        const x = i % n, y = (i - x) / n;
+        if (Math.hypot(x - town.cx, y - town.cy) > town.R + 3) continue;
+        const d = Math.hypot(x - c.x, y - c.y);
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      if (best >= 0) {
+        const bx = best % n, by = (best - bx) / n;
+        if (Math.max(Math.abs(bx - c.x), Math.abs(by - c.y)) <= 1) {
+          const t = type[best];
+          const pDouse = t === T.GRASS ? 0.6 : (isTree(t) ? 0.3 : 0.2);
+          if (Math.random() < pDouse) { extinguish(best, 12, 1); dust(best); }
+          else if (Math.random() < 0.08) stepToward(c, town.cx, town.cy, 1, false);
+        } else stepToward(c, bx, by, 1, false);
+      }
+      keep.push(c);
+      continue;
+    }
+
+    c.mode = 'dig';
+    if (c.target >= 0 && !isFuel(type[c.target])) { town.claimed.delete(c.target); c.target = -1; c.progress = 0; }
+    if (c.target < 0) {
+      let best = -1, bestD = Infinity;
+      for (const i of town.ring) {
+        if (!isFuel(type[i]) || town.claimed.has(i) || burnLeft[i] > 0) continue;
+        const x = i % n, y = (i - x) / n;
+        const bearing = Math.atan2(y - town.cy, x - town.cx);
+        const off = angleDiff(bearing, town.fireDir);
+        if (off > 1.25) continue;
+        const d = Math.hypot(x - c.x, y - c.y) + off * 6;
+        if (d < bestD) { bestD = d; best = i; }
+      }
+      if (best >= 0) { c.target = best; town.claimed.add(best); c.progress = 0; }
+    }
+    if (c.target >= 0) {
+      const tx = c.target % n, ty = (c.target - tx) / n;
+      if (c.x === tx && c.y === ty) {
+        let hot = false;
+        for (const [ox, oy] of OFFS8) {
+          const nx = tx + ox, ny = ty + oy;
+          if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+          if (burnLeft[ny * n + nx] > 0) { hot = true; break; }
+        }
+        if (hot && Math.random() < 0.35) {
+          town.claimed.delete(c.target); c.target = -1; c.progress = 0;
+          stepToward(c, town.cx, town.cy, 1, false);
+        } else {
+          c.progress++;
+          dust(c.target);
+          const need = isTree(type[c.target]) ? 3 : 2;
+          if (c.progress >= need) {
+            if (isTree(type[c.target])) world.treeCount--;
+            type[c.target] = T.DIRT;
+            dirty.add(c.target);
+            town.claimed.delete(c.target);
+            c.target = -1; c.progress = 0;
+          }
+        }
+      } else stepToward(c, tx, ty, 1, false);
+    } else {
+      const hx = Math.round(town.cx + Math.cos(town.fireDir) * (town.R + 1));
+      const hy = Math.round(town.cy + Math.sin(town.fireDir) * (town.R + 1));
+      stepToward(c, Math.max(0, Math.min(n - 1, hx)), Math.max(0, Math.min(n - 1, hy)), 1, false);
+    }
+    keep.push(c);
+  }
+  town.crews = keep;
+}
+
+function updateTrucks(town) {
+  const n = world.n, burnLeft = world.burnLeft;
+  for (const tr of town.trucks) {
+    if (!tr.alive) continue;
+    tr.px = tr.x; tr.py = tr.y;
+    const here = tr.y * n + tr.x;
+    if (burnLeft[here] > 0) {
+      if (Math.random() < 0.4) { loseTruck(town, tr, 'burned out on the line'); continue; }
+      stepToward(tr, town.cx, town.cy, 2, false);
+      continue;
+    }
+    const sx = town.stationIdx % n, sy = Math.floor(town.stationIdx / n);
+    if (tr.state === 'idle') continue;
+    if (tr.state === 'refill') {
+      if (--tr.refill <= 0) { tr.water = tr.cap; tr.state = town.mobilized ? 'out' : 'idle'; }
+      continue;
+    }
+    if (tr.state === 'return') {
+      if (stepToward(tr, sx, sy, 2, false)) {
+        if (!town.hasStation) { tr.state = 'idle'; continue; }
+        tr.state = tr.water < tr.cap ? 'refill' : 'idle';
+        tr.refill = 6;
+      }
+      continue;
+    }
+    if (tr.water <= 0) { tr.state = town.hasStation ? 'return' : 'idle'; continue; }
+    const defend = town.R + 14;
+    let best = -1, bestD = Infinity;
+    for (const i of world.burning) {
+      if (burnLeft[i] <= 0) continue;
+      const x = i % n, y = (i - x) / n;
+      if (Math.hypot(x - town.cx, y - town.cy) > defend) continue;
+      const d = Math.hypot(x - tr.x, y - tr.y);
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    if (best < 0) { if (!town.mobilized) tr.state = 'return'; continue; }
+    const bx = best % n, by = (best - bx) / n;
+    if (bestD <= 1.5) {
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const x = tr.x + dx, y = tr.y + dy;
+        if (x < 0 || y < 0 || x >= n || y >= n) continue;
+        const j = y * n + x;
+        if (burnLeft[j] > 0 && Math.random() < 0.7 && tr.water > 0) { extinguish(j, 20, 1); tr.water--; spray(j); }
+        else if (isFuel(world.type[j]) && world.wet[j] <= 0 && Math.random() < 0.3) extinguish(j, 15, 1);
+      }
+    } else stepToward(tr, bx, by, 2, false);
+  }
+}
+
+function dust(i) {
+  if (Math.random() > 0.5) return;
+  const [x, y] = cellCenter(i);
+  particles.push({ x: x + (Math.random() - 0.5) * cellPx, y, vx: (Math.random() - 0.5) * 20, vy: -15 - Math.random() * 15, life: 0, max: 400, color: '#a88a5c', size: Math.max(1.5, cellPx * 0.25), grav: 20 });
+}
+function spray(i) {
+  const [x, y] = cellCenter(i);
+  for (let k = 0; k < 3; k++) particles.push({ x, y, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20, life: 0, max: 350, color: '#8fd3ff', size: Math.max(1.5, cellPx * 0.22), grav: 120 });
+}
+
+/* ───────────────────────── Air tanker ───────────────────────── */
+
+function updateAir() {
+  const air = world.air;
+  if (!air) return;
+  if (air.cooldown > 0) air.cooldown--;
+  if (air.plane || air.sorties <= 0 || air.cooldown > 0) return;
+  let target = null;
+  for (const t of world.towns) {
+    if (!t.mobilized || t.nearestFire < 0 || t.fireDist > t.R + 10 || t.housesLeft === 0) continue;
+    if (!target || t.fireDist < target.fireDist) target = t;
+  }
+  if (!target) return;
+  const n = world.n;
+  const fx = target.nearestFire % n, fy = Math.floor(target.nearestFire / n);
+  const ex = target.cx + Math.cos(target.fireDir) * (target.R + 1.5);
+  const ey = target.cy + Math.sin(target.fireDir) * (target.R + 1.5);
+  const mx = (fx + ex) / 2, my = (fy + ey) / 2;
+  const perp = target.fireDir + Math.PI / 2;
+  const half = 5 + Math.round(target.R * 0.6);
+  const ax = mx - Math.cos(perp) * half, ay = my - Math.sin(perp) * half;
+  const bx = mx + Math.cos(perp) * half, by = my + Math.sin(perp) * half;
+  const overshoot = 6;
+  const p0 = [ax - Math.cos(perp) * overshoot, ay - Math.sin(perp) * overshoot];
+  const p1 = [bx + Math.cos(perp) * overshoot, by + Math.sin(perp) * overshoot];
+  const base = [air.x, air.y];
+  air.plane = { legs: [base, p0, p1, base], leg: 0, t: 0, x: air.x, y: air.y, heading: 0, dropped: new Set(), lineA: [ax, ay], lineB: [bx, by] };
+  air.sorties--;
+  air.cooldown = 45;
+  log(`Air tanker launches for ${target.name} (${air.sorties} sortie${air.sorties === 1 ? '' : 's'} left)`, 'good');
+}
+
+function flyPlane(dtSec) {
+  const air = world.air;
+  if (!air || !air.plane) return;
+  const p = air.plane;
+  const speed = 20; // cells per second
+  let remaining = speed * dtSec;
+  while (remaining > 0 && p.leg < p.legs.length - 1) {
+    const [ax, ay] = p.legs[p.leg], [bx, by] = p.legs[p.leg + 1];
+    const len = Math.hypot(bx - ax, by - ay) || 0.001;
+    const left = (1 - p.t) * len;
+    const adv = Math.min(left, remaining);
+    p.t += adv / len; remaining -= adv;
+    p.x = ax + (bx - ax) * p.t; p.y = ay + (by - ay) * p.t;
+    p.heading = Math.atan2(by - ay, bx - ax);
+    if (p.leg === 1) dropAt(p);
+    if (p.t >= 0.999) {
+      if (p.leg === 1) log(`Tanker drops retardant on ${p.dropped.size} cells`, 'good');
+      p.leg++; p.t = 0;
+    }
+  }
+  if (p.leg >= p.legs.length - 1) air.plane = null;
+}
+
+function dropAt(p) {
+  const n = world.n;
+  const [ax, ay] = p.lineA, [bx, by] = p.lineB;
+  const vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
+  const u = ((p.x - ax) * vx + (p.y - ay) * vy) / L2;
+  if (u < 0 || u > 1) return;
+  const cx = Math.round(p.x), cy = Math.round(p.y);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = cx + dx, y = cy + dy;
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const i = y * n + x;
+    if (p.dropped.has(i)) continue;
+    p.dropped.add(i);
+    if (isFuel(world.type[i]) || world.burnLeft[i] > 0) extinguish(i, 40, 2);
+    const [px, py] = cellCenter(i);
+    particles.push({ x: px, y: py - cellPx * 2, vx: (Math.random() - 0.5) * 30, vy: 40 + Math.random() * 40, life: 0, max: 500, color: '#ff7a9a', size: Math.max(2, cellPx * 0.35), grav: 60 });
+  }
+}
+
+/* ───────────────────────── Log ───────────────────────── */
+
+const logEntries = [];
+const logEl = document.getElementById('log');
+function log(text, kind) {
+  logEntries.unshift({ tick: world.tick, text, kind: kind || '' });
+  if (logEntries.length > 8) logEntries.length = 8;
+  renderLog();
+}
+function renderLog() {
+  if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
+  logEl.innerHTML = logEntries.map(e => `<li class="${e.kind}"><span class="t">t${e.tick}</span><span>${e.text}</span></li>`).join('');
 }
 
 /* ───────────────────────── Rendering ───────────────────────── */
@@ -927,13 +1411,10 @@ const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d');
 const viewport = document.getElementById('viewport');
 let cellPx = 8;
-let terrain = document.createElement('canvas');
-let tctx = terrain.getContext('2d');
+const terrain = document.createElement('canvas');
+const tctx = terrain.getContext('2d');
 const dirty = new Set();
-let waterFrame = 0;
-let fireFrame = 0;
-let hover = -1;
-let shake = 0;
+let waterFrame = 0, fireFrame = 0, hover = -1, shake = 0;
 
 function spriteFor(i) {
   const t = world.type[i];
@@ -945,6 +1426,12 @@ function spriteFor(i) {
     case T.OAK: return SPR.oak;
     case T.ASH: return SPR[world.glow[i] ? 'ashGlow' : 'ash'];
     case T.STUMP: return SPR[world.glow[i] ? 'stumpGlow' : 'stump'];
+    case T.HOUSE: return SPR[world.variant[i] ? 'house1' : 'house0'];
+    case T.STATION: return SPR.station;
+    case T.RUBBLE: return SPR.rubble;
+    case T.DIRT: return SPR.dirt;
+    case T.PAD: return SPR.pad;
+    case T.HANGAR: return SPR.hangar;
   }
   return SPR.ash;
 }
@@ -971,7 +1458,6 @@ function redrawTerrain() {
   }
   dirty.clear();
 }
-
 function flushDirty() {
   if (!dirty.size) return;
   const n = world.n;
@@ -981,7 +1467,6 @@ function flushDirty() {
   }
   dirty.clear();
 }
-
 function redrawWater() {
   const n = world.n;
   const s = SPR[waterFrame ? 'water1' : 'water0'];
@@ -992,7 +1477,12 @@ function redrawWater() {
   }
 }
 
-function render(now) {
+function cellCenter(i) {
+  const n = world.n;
+  return [((i % n) + 0.5) * cellPx, (Math.floor(i / n) + 0.5) * cellPx];
+}
+
+function render(now, tickFrac) {
   flushDirty();
   ctx.save();
   if (shake > 0) {
@@ -1000,18 +1490,79 @@ function render(now) {
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
   ctx.drawImage(terrain, 0, 0);
-
-  // Fire cells
   const n = world.n;
+
+  if (world.wetList.length) {
+    for (const i of world.wetList) {
+      const x = i % n, y = (i - x) / n;
+      const a = Math.min(1, world.wet[i] / 12);
+      ctx.fillStyle = world.wetKind[i] === 2 ? `rgba(255,90,130,${0.45 * a})` : `rgba(90,160,255,${0.4 * a})`;
+      ctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx);
+    }
+  }
+
   const frames = [SPR.fire0, SPR.fire1, SPR.fire2];
+  const burnLeft = world.burnLeft;
   for (const i of world.burning) {
+    if (burnLeft[i] <= 0) continue;
     const x = i % n, y = (i - x) / n;
     ctx.drawImage(frames[(fireFrame + i) % 3], x * cellPx, y * cellPx);
   }
 
+  ctx.font = `${Math.max(8, Math.round(cellPx * 1.1))}px Silkscreen, monospace`;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  for (const t of world.towns) {
+    const x = (t.cx + 0.5) * cellPx, y = (t.cy - t.R - 0.6) * cellPx;
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillText(t.name.toUpperCase(), x + 1, y + 1);
+    ctx.fillStyle = t.destroyed ? '#9a8a78' : (t.mobilized ? '#ffb627' : '#e9dccb');
+    ctx.fillText(t.name.toUpperCase(), x, y);
+  }
+
+  for (const t of world.towns) {
+    for (const c of t.crews) {
+      const x = (c.px + (c.x - c.px) * tickFrac) * cellPx, y = (c.py + (c.y - c.py) * tickFrac) * cellPx;
+      ctx.drawImage(SPR.crew, x, y);
+    }
+    for (const tr of t.trucks) {
+      if (!tr.alive) continue;
+      const x = (tr.px + (tr.x - tr.px) * tickFrac) * cellPx, y = (tr.py + (tr.y - tr.py) * tickFrac) * cellPx;
+      if (tr.face < 0) { ctx.save(); ctx.translate(x + cellPx, y); ctx.scale(-1, 1); ctx.drawImage(SPR.truck, 0, 0); ctx.restore(); }
+      else ctx.drawImage(SPR.truck, x, y);
+      if (tr.state === 'out' || tr.state === 'refill') {
+        const w = cellPx, h = Math.max(1, cellPx * 0.15);
+        ctx.fillStyle = '#000'; ctx.fillRect(x, y - h - 1, w, h);
+        ctx.fillStyle = '#8fd3ff'; ctx.fillRect(x, y - h - 1, w * tr.water / tr.cap, h);
+      }
+    }
+  }
+
+  if (world.air && world.air.plane) {
+    const p = world.air.plane;
+    const s = cellPx * 2.4;
+    ctx.save();
+    ctx.translate((p.x + 0.5) * cellPx, (p.y + 0.5) * cellPx);
+    ctx.rotate(p.heading + Math.PI / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.fillRect(-s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s);
+    ctx.drawImage(SPR.plane, -s / 2, -s / 2, s, s);
+    ctx.restore();
+  }
+
   drawEffects(now);
 
-  // hover reticle
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (let k = popups.length - 1; k >= 0; k--) {
+    const p = popups[k];
+    const t = (now - p.t0) / p.dur;
+    if (t >= 1) { popups.splice(k, 1); continue; }
+    ctx.globalAlpha = 1 - t * t;
+    ctx.font = `bold ${Math.max(10, Math.round(cellPx * 1.6))}px Silkscreen, monospace`;
+    ctx.fillStyle = '#000'; ctx.fillText(p.text, p.x + 1, p.y - t * 24 + 1);
+    ctx.fillStyle = p.color; ctx.fillText(p.text, p.x, p.y - t * 24);
+    ctx.globalAlpha = 1;
+  }
+
   if (hover >= 0 && hover < n * n) {
     const x = (hover % n) * cellPx, y = Math.floor(hover / n) * cellPx;
     const r = params.blast * cellPx;
@@ -1032,15 +1583,7 @@ function render(now) {
 
 /* ───────────────────────── Effects ───────────────────────── */
 
-const missiles = [];
-const explosions = [];
-const bolts = [];
-const particles = [];
-
-function cellCenter(i) {
-  const n = world.n;
-  return [((i % n) + 0.5) * cellPx, (Math.floor(i / n) + 0.5) * cellPx];
-}
+const missiles = [], explosions = [], bolts = [], particles = [], popups = [];
 
 function launchMissile(targetIdx) {
   const [tx, ty] = cellCenter(targetIdx);
@@ -1049,39 +1592,23 @@ function launchMissile(targetIdx) {
   const sx = fromLeft ? -30 : W + 30;
   const sy = H + 20;
   const dist = Math.hypot(tx - sx, ty - sy);
-  missiles.push({
-    sx, sy, tx, ty, target: targetIdx,
-    t0: performance.now(),
-    dur: 650 + dist * 0.55,
-    arc: Math.max(80, dist * 0.45),
-    lastSmoke: 0,
-  });
+  missiles.push({ sx, sy, tx, ty, target: targetIdx, t0: performance.now(), dur: 650 + dist * 0.55, arc: Math.max(80, dist * 0.45), lastSmoke: 0 });
 }
-
 function missilePos(m, t) {
-  const x = m.sx + (m.tx - m.sx) * t;
-  const y = m.sy + (m.ty - m.sy) * t - Math.sin(Math.PI * t) * m.arc;
-  return [x, y];
+  return [m.sx + (m.tx - m.sx) * t, m.sy + (m.ty - m.sy) * t - Math.sin(Math.PI * t) * m.arc];
 }
-
 function detonate(m) {
   const n = world.n;
-  const cx = m.target % n, cy = Math.floor(m.target / n);
-  strikeCell(cx, cy, params.blast);
+  strikeCell(m.target % n, Math.floor(m.target / n), params.blast);
   explosions.push({ x: m.tx, y: m.ty, t0: performance.now(), dur: 700, r: (params.blast + 1.5) * cellPx });
   shake = 1;
   const count = 24 + params.blast * 10;
   for (let k = 0; k < count; k++) {
     const a = Math.random() * Math.PI * 2, sp = 40 + Math.random() * 160;
-    particles.push({
-      x: m.tx, y: m.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
-      life: 0, max: 500 + Math.random() * 600,
-      color: Math.random() < 0.5 ? '#ffb627' : (Math.random() < 0.5 ? '#ff6a1f' : '#ffe866'),
-      size: 1.5 + Math.random() * 2.5, grav: 180,
-    });
+    particles.push({ x: m.tx, y: m.ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60, life: 0, max: 500 + Math.random() * 600,
+      color: Math.random() < 0.5 ? '#ffb627' : (Math.random() < 0.5 ? '#ff6a1f' : '#ffe866'), size: 1.5 + Math.random() * 2.5, grav: 180 });
   }
 }
-
 function lightning(targetIdx) {
   const [tx, ty] = cellCenter(targetIdx);
   const pts = [];
@@ -1090,15 +1617,11 @@ function lightning(targetIdx) {
   const segs = 10;
   for (let k = 1; k < segs; k++) {
     const t = k / segs;
-    const px = tx + (x - tx) * (1 - t) + (Math.random() - 0.5) * 36 * (1 - t);
-    const py = y + (ty - y) * t;
-    pts.push([px, py]);
+    pts.push([tx + (x - tx) * (1 - t) + (Math.random() - 0.5) * 36 * (1 - t), y + (ty - y) * t]);
   }
   pts.push([tx, ty]);
   bolts.push({ pts, t0: performance.now(), dur: 380 });
   ignite(targetIdx);
-  dirty.add(targetIdx);
-  // sparks
   for (let k = 0; k < 10; k++) {
     const a = Math.random() * Math.PI * 2, sp = 30 + Math.random() * 90;
     particles.push({ x: tx, y: ty, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, life: 0, max: 400, color: '#cfe6ff', size: 1.5, grav: 100 });
@@ -1110,7 +1633,6 @@ function drawEffects(now) {
   const dt = Math.min(50, now - (lastFx || now)) / 1000;
   lastFx = now;
 
-  // Missiles
   for (let k = missiles.length - 1; k >= 0; k--) {
     const m = missiles[k];
     const t = (now - m.t0) / m.dur;
@@ -1118,55 +1640,31 @@ function drawEffects(now) {
     const [x, y] = missilePos(m, t);
     const [px, py] = missilePos(m, Math.max(0, t - 0.02));
     const ang = Math.atan2(y - py, x - px);
-
-    // smoke trail
     if (now - m.lastSmoke > 22) {
       m.lastSmoke = now;
       particles.push({ x, y, vx: (Math.random() - 0.5) * 20, vy: -10 + (Math.random() - 0.5) * 20, life: 0, max: 900, color: 'smoke', size: 2 + Math.random() * 3, grav: -10 });
     }
-
     ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(ang);
+    ctx.translate(x, y); ctx.rotate(ang);
     const s = Math.max(3, cellPx * 0.9);
-    // exhaust
-    ctx.fillStyle = '#ffe866';
-    ctx.fillRect(-s * 1.6, -s * 0.25, s * 0.6, s * 0.5);
-    ctx.fillStyle = '#ff6a1f';
-    ctx.fillRect(-s * 2.2, -s * 0.18, s * 0.7, s * 0.36);
-    // body
-    ctx.fillStyle = '#c9c9d1';
-    ctx.fillRect(-s, -s * 0.35, s * 1.8, s * 0.7);
-    ctx.fillStyle = '#8a8a94';
-    ctx.fillRect(-s, 0, s * 1.8, s * 0.35);
-    // fins
-    ctx.fillStyle = '#3a3a44';
-    ctx.fillRect(-s, -s * 0.75, s * 0.5, s * 0.4);
-    ctx.fillRect(-s, s * 0.35, s * 0.5, s * 0.4);
-    // nose
+    ctx.fillStyle = '#ffe866'; ctx.fillRect(-s * 1.6, -s * 0.25, s * 0.6, s * 0.5);
+    ctx.fillStyle = '#ff6a1f'; ctx.fillRect(-s * 2.2, -s * 0.18, s * 0.7, s * 0.36);
+    ctx.fillStyle = '#c9c9d1'; ctx.fillRect(-s, -s * 0.35, s * 1.8, s * 0.7);
+    ctx.fillStyle = '#8a8a94'; ctx.fillRect(-s, 0, s * 1.8, s * 0.35);
+    ctx.fillStyle = '#3a3a44'; ctx.fillRect(-s, -s * 0.75, s * 0.5, s * 0.4); ctx.fillRect(-s, s * 0.35, s * 0.5, s * 0.4);
     ctx.fillStyle = '#e53935';
-    ctx.beginPath();
-    ctx.moveTo(s * 0.8, -s * 0.35);
-    ctx.lineTo(s * 1.5, 0);
-    ctx.lineTo(s * 0.8, s * 0.35);
-    ctx.closePath();
-    ctx.fill();
+    ctx.beginPath(); ctx.moveTo(s * 0.8, -s * 0.35); ctx.lineTo(s * 1.5, 0); ctx.lineTo(s * 0.8, s * 0.35); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
 
-  // Explosions
   for (let k = explosions.length - 1; k >= 0; k--) {
     const e = explosions[k];
     const t = (now - e.t0) / e.dur;
     if (t >= 1) { explosions.splice(k, 1); continue; }
     const ease = 1 - Math.pow(1 - t, 3);
-    // shockwave ring
     ctx.strokeStyle = `rgba(255,230,180,${(1 - t) * 0.8})`;
     ctx.lineWidth = Math.max(1, 4 * (1 - t));
-    ctx.beginPath();
-    ctx.arc(e.x, e.y, e.r * (0.3 + ease * 1.8), 0, Math.PI * 2);
-    ctx.stroke();
-    // fireball
+    ctx.beginPath(); ctx.arc(e.x, e.y, e.r * (0.3 + ease * 1.8), 0, Math.PI * 2); ctx.stroke();
     if (t < 0.6) {
       const ft = t / 0.6;
       const fr = e.r * (0.3 + ft * 0.9) * (1 - ft * 0.3);
@@ -1176,18 +1674,14 @@ function drawEffects(now) {
       g.addColorStop(0.7, `rgba(255,106,31,${0.8 - ft * 0.8})`);
       g.addColorStop(1, 'rgba(40,20,10,0)');
       ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(e.x, e.y, fr, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.beginPath(); ctx.arc(e.x, e.y, fr, 0, Math.PI * 2); ctx.fill();
     }
-    // flash
     if (t < 0.12) {
       ctx.fillStyle = `rgba(255,240,200,${(0.12 - t) / 0.12 * 0.35})`;
       ctx.fillRect(-10, -10, canvas.width + 20, canvas.height + 20);
     }
   }
 
-  // Lightning
   for (let k = bolts.length - 1; k >= 0; k--) {
     const b = bolts[k];
     const t = (now - b.t0) / b.dur;
@@ -1197,15 +1691,10 @@ function drawEffects(now) {
     ctx.fillStyle = `rgba(200,220,255,${a * 0.18})`;
     ctx.fillRect(-10, -10, canvas.width + 20, canvas.height + 20);
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = `rgba(120,170,255,${a * 0.5 * flicker})`;
-    ctx.lineWidth = 6;
-    strokePath(b.pts);
-    ctx.strokeStyle = `rgba(255,255,255,${a * flicker})`;
-    ctx.lineWidth = 2;
-    strokePath(b.pts);
+    ctx.strokeStyle = `rgba(120,170,255,${a * 0.5 * flicker})`; ctx.lineWidth = 6; strokePath(b.pts);
+    ctx.strokeStyle = `rgba(255,255,255,${a * flicker})`; ctx.lineWidth = 2; strokePath(b.pts);
   }
 
-  // Particles
   for (let k = particles.length - 1; k >= 0; k--) {
     const p = particles[k];
     p.life += dt * 1000;
@@ -1224,10 +1713,8 @@ function drawEffects(now) {
       ctx.globalAlpha = 1;
     }
   }
-
   if (shake > 0) shake = Math.max(0, shake - dt * 5);
 }
-
 function strokePath(pts) {
   ctx.beginPath();
   ctx.moveTo(pts[0][0], pts[0][1]);
@@ -1237,22 +1724,39 @@ function strokePath(pts) {
 
 /* ───────────────────────── Loop ───────────────────────── */
 
-let running = true;
-let tickAcc = 0;
-let lastT = 0;
-let lastWater = 0, lastFire = 0;
-
-const statTick = document.getElementById('statTick');
-const statBurning = document.getElementById('statBurning');
-const statBurned = document.getElementById('statBurned');
-const statTrees = document.getElementById('statTrees');
+let running = true, tickAcc = 0, lastT = 0, lastWater = 0, lastFire = 0;
+const $ = id => document.getElementById(id);
+const statEls = {
+  tick: $('statTick'), burning: $('statBurning'), burned: $('statBurned'), trees: $('statTrees'),
+  buildings: $('statBuildings'), people: $('statPeople'), crews: $('fCrews'), trucks: $('fTrucks'), air: $('fAir'),
+};
+let lastStatForce = '';
 
 function updateStats() {
-  statTick.textContent = world.tick;
-  statBurning.textContent = world.burning.length;
+  let burningNow = 0;
+  for (const i of world.burning) if (world.burnLeft[i] > 0) burningNow++;
+  statEls.tick.textContent = world.tick;
+  statEls.burning.textContent = burningNow;
   const pct = world.totalFuel ? (world.burnedCount / world.totalFuel * 100) : 0;
-  statBurned.textContent = pct.toFixed(pct < 10 ? 1 : 0) + '%';
-  statTrees.textContent = world.treeCount;
+  statEls.burned.textContent = pct.toFixed(pct < 10 ? 1 : 0) + '%';
+  statEls.trees.textContent = world.treeCount;
+  statEls.buildings.innerHTML = `${world.buildingsLeft}<small>/${world.buildingsTotal}</small>`;
+  statEls.people.innerHTML = `${world.popLeft}<small>/${world.popTotal}</small>`;
+  let crews = 0, trucksAlive = 0, trucksTotal = 0;
+  for (const t of world.towns) { crews += t.crews.length; trucksTotal += t.trucks.length; for (const tr of t.trucks) if (tr.alive) trucksAlive++; }
+  const force = `${crews}|${trucksAlive}/${trucksTotal}|${world.air ? world.air.sorties + (world.air.plane ? 'f' : '') : '-'}`;
+  if (force !== lastStatForce) {
+    lastStatForce = force;
+    statEls.crews.textContent = crews;
+    statEls.trucks.textContent = trucksTotal ? `${trucksAlive}/${trucksTotal}` : 'none';
+    statEls.air.textContent = world.air ? `${world.air.sorties}${world.air.plane ? ' (airborne)' : ''}` : 'none';
+  }
+}
+
+function anythingActive() {
+  if (world.burning.length || world.glowing.length || world.wetList.length) return true;
+  for (const t of world.towns) if (t.mobilized || t.crews.length) return true;
+  return false;
 }
 
 function frame(now) {
@@ -1260,29 +1764,24 @@ function frame(now) {
   const dt = Math.min(0.1, (now - lastT) / 1000);
   lastT = now;
 
-  if (running && world.burning.length) {
+  if (running && anythingActive()) {
     tickAcc += dt * params.speed;
     let steps = Math.floor(tickAcc);
     tickAcc -= steps;
     if (steps > 60) steps = 60;
-    for (let k = 0; k < steps && world.burning.length; k++) step();
-  } else if (world.glowing.length && running) {
-    // let embers finish fading even with no active fire
-    tickAcc += dt * params.speed;
-    if (tickAcc >= 1) { tickAcc = 0; step(); }
+    for (let k = 0; k < steps; k++) step();
   }
+  flyPlane(dt);
 
   if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
   if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
 
-  render(now);
+  render(now, Math.min(1, tickAcc));
   updateStats();
   requestAnimationFrame(frame);
 }
 
 /* ───────────────────────── UI ───────────────────────── */
-
-const $ = id => document.getElementById(id);
 
 function bindRange(id, outId, key, fmt, onChange) {
   const el = $(id), out = $(outId);
@@ -1295,7 +1794,6 @@ function bindRange(id, outId, key, fmt, onChange) {
   if (onChange) el.addEventListener('change', onChange);
   apply();
 }
-
 bindRange('speed', 'speedOut', 'speed', v => `${v} t/s`);
 bindRange('spread', 'spreadOut', 'spread', v => v.toFixed(2));
 bindRange('wind', 'windOut', 'windStrength', v => v.toFixed(2));
@@ -1303,10 +1801,16 @@ bindRange('blast', 'blastOut', 'blast', v => v === 0 ? 'point' : `${v}`);
 bindRange('density', 'densityOut', 'density', v => v.toFixed(2), () => reset());
 bindRange('size', 'sizeOut', null, v => `${v} &times; ${v}`, () => reset(parseInt($('size').value, 10)));
 
-document.querySelectorAll('.seg button').forEach(b => {
+document.querySelectorAll('.seg button[data-nb]').forEach(b => {
   b.addEventListener('click', () => {
     params.neighbors = parseInt(b.dataset.nb, 10);
-    document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+    document.querySelectorAll('.seg button[data-nb]').forEach(x => x.classList.toggle('on', x === b));
+  });
+});
+document.querySelectorAll('#spotSeg button').forEach(b => {
+  b.addEventListener('click', () => {
+    params.spotting = b.dataset.spot === '1';
+    document.querySelectorAll('#spotSeg button').forEach(x => x.classList.toggle('on', x === b));
   });
 });
 document.querySelectorAll('#compass button').forEach(b => {
@@ -1333,11 +1837,10 @@ function randomFuelCell() {
   const N = world.n * world.n;
   for (let k = 0; k < 200; k++) {
     const i = Math.floor(Math.random() * N);
-    if (isFuel(world.type[i]) && !world.burnLeft[i]) return i;
+    if (isFuel(world.type[i]) && !isBuilding(world.type[i]) && !world.burnLeft[i]) return i;
   }
   return Math.floor(Math.random() * N);
 }
-
 function cellFromEvent(ev) {
   const r = canvas.getBoundingClientRect();
   const x = Math.floor((ev.clientX - r.left) / r.width * world.n);
@@ -1347,15 +1850,8 @@ function cellFromEvent(ev) {
 }
 canvas.addEventListener('mousemove', ev => { hover = cellFromEvent(ev); });
 canvas.addEventListener('mouseleave', () => { hover = -1; });
-canvas.addEventListener('click', ev => {
-  const i = cellFromEvent(ev);
-  if (i >= 0) launchMissile(i);
-});
-canvas.addEventListener('contextmenu', ev => {
-  ev.preventDefault();
-  const i = cellFromEvent(ev);
-  if (i >= 0) lightning(i);
-});
+canvas.addEventListener('click', ev => { const i = cellFromEvent(ev); if (i >= 0) launchMissile(i); });
+canvas.addEventListener('contextmenu', ev => { ev.preventDefault(); const i = cellFromEvent(ev); if (i >= 0) lightning(i); });
 
 window.addEventListener('keydown', ev => {
   if (ev.target.tagName === 'INPUT') return;
@@ -1370,23 +1866,25 @@ window.addEventListener('keydown', ev => {
 
 function reset(n) {
   n = n || world.n;
-  missiles.length = 0; explosions.length = 0; bolts.length = 0; particles.length = 0;
+  missiles.length = 0; explosions.length = 0; bolts.length = 0; particles.length = 0; popups.length = 0;
   generate(n);
   layout();
+  const parts = [];
+  for (const t of world.towns) parts.push(`${t.name} (pop ${t.popTotal}${t.hasStation ? `, ${t.trucks.length} engine${t.trucks.length > 1 ? 's' : ''}` : ''})`);
+  if (world.air) parts.push(`air tanker on station, ${world.air.sorties} sorties`);
+  log(world.towns.length ? parts.join(' · ') : 'No towns in this wilderness');
   setRunning(true);
 }
 
 let resizeTimer = 0;
-window.addEventListener('resize', () => {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(layout, 120);
-});
+window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(layout, 120); });
 
-// Legend
 (function buildLegend() {
   const items = [
     ['grass0', 'grass'], ['pine', 'pine (small)'], ['oak', 'oak (large)'], ['water0', 'water'],
     ['rock', 'rock'], ['fire1', 'burning'], ['ash', 'ash'], ['stump', 'burnt tree'],
+    ['house0', 'house'], ['station', 'fire station'], ['rubble', 'rubble'], ['dirt', 'firebreak / road'],
+    ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
   ];
   const leg = $('legend');
   for (const [k, label] of items) {
@@ -1399,10 +1897,11 @@ window.addEventListener('resize', () => {
   }
 })();
 
+// Debug handle for automated tests and tinkering in the console.
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log };
+
 // Boot
-generate(100);
-layout();
-// A welcome strike so the map is not static on load.
+reset(100);
 setTimeout(() => launchMissile(randomFuelCell()), 600);
 requestAnimationFrame(frame);
 

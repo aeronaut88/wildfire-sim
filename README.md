@@ -29,6 +29,29 @@ embers that glow for a few ticks.
 Wind scales the probability by direction: up to 2.2x downwind, down to 0.1x upwind at full
 strength. Diagonal neighbors (Moore mode) get a 0.65x penalty for distance.
 
+## Towns fight back
+
+Every map gets one to three named towns (houses, dirt roads, sometimes a fire station with
+one to three engines). About a quarter of maps also have an airbase with a retardant tanker
+and a handful of sorties. Where things land, what they get, and how many people turn out is
+rolled fresh each time, so no two runs play the same.
+
+- A town only reacts once fire comes within its detection radius. Then it sounds the alarm,
+  and after a tick or two crews start forming up in the square. Turnout is a dice roll.
+- Crews walk out to the side facing the fire and dig a firebreak arc (two ticks per grass
+  cell, three for trees). If flames are already among the houses they switch to beating out
+  fires by hand. A crew standing on a burning cell has a coin-flip chance of being lost.
+- Engines drive to the nearest fire near town and spray. Each carries 20 units of water and
+  has to go back to the station to refill. Wet cells (blue) resist ignition for a while.
+- The air tanker lays a line of retardant (pink) across the fire's approach to the most
+  threatened town. Sorties are limited.
+- Why they lose: ember spotting from burning trees can jump a one-cell break (worse with
+  wind), fire can flank the arc, crews can be too slow or too few, and stations run dry.
+- Townspeople who are not warned in time do not always make it out. Unwarned towns lose far
+  more people than ones that had rallied before the fire arrived.
+
+The dispatch log on the right narrates each run. Stats show buildings and population left.
+
 ## Controls
 
 | Action              | Mouse / button      | Key     |
@@ -58,3 +81,4 @@ The `.nojekyll` file keeps GitHub from running the page through Jekyll.
   original assignment.
 - Point the wind east at full strength and strike the west edge.
 - Set map size to 300 and blast radius to 6.
+- Drop a missile right next to a town with the wind blowing toward it and watch the log.
