@@ -1621,18 +1621,32 @@ function strikeCell(cx, cy, radius) {
       if (x < 0 || y < 0 || x >= n || y >= n) continue;
       const i = y * n + x;
       const t = world.type[i];
-      if (!isFuel(t)) continue;
-      const inner = dx * dx + dy * dy <= Math.max(0, radius - 1.5) ** 2;
-      if (inner && radius >= 2) {
-        if (isTree(t)) world.treeCount--;
-        if (isBuilding(t)) onBuildingDestroyed(i, 'blast');
-        if (t === T.HANGAR) onHangarDestroyed('is flattened by the blast');
-        if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
-        world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH;
-        world.burnedCount++;
+      const d2 = dx * dx + dy * dy;
+      const inner = radius <= 1 ? d2 === 0 : d2 <= Math.max(1, radius - 1) ** 2;
+      if (t === T.WATER || t === T.ROCK || t === T.RUBBLE) continue;
+      if (inner) {
+        // Crater: roads, firebreaks and pads are torn up; buildings and the hangar come down; fuel is scorched.
+        if (t === T.DIRT) { world.road[i] = 0; world.type[i] = T.ASH; }
+        else if (t === T.PAD) { world.type[i] = T.RUBBLE; }
+        else if (t === T.HANGAR) { onHangarDestroyed('is flattened by the blast'); world.type[i] = T.RUBBLE; }
+        else if (isFuel(t)) {
+          if (isTree(t)) world.treeCount--;
+          if (isBuilding(t)) onBuildingDestroyed(i, 'blast');
+          if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
+          world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH;
+          world.burnedCount++;
+        } else continue;
         world.since[i] = world.tick;
         world.glow[i] = 6; world.glowing.push(i);
-      } else ignite(i);
+      } else if (isFuel(t)) {
+        // Outer ring: buildings may collapse from the shock, everything else catches.
+        if (isBuilding(t) && Math.random() < 0.5) {
+          onBuildingDestroyed(i, 'blast');
+          if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
+          world.type[i] = T.RUBBLE; world.burnedCount++;
+          world.since[i] = world.tick; world.glow[i] = 6; world.glowing.push(i);
+        } else ignite(i);
+      } else continue;
       dirty.add(i);
     }
   }
