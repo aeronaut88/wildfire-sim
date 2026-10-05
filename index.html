@@ -666,7 +666,9 @@ const PAL = {
   // ice
   '<': '#c4dcf0', '>': '#a3c3e3', '=': '#e6f0fb',
   // ores
-  '!': '#c2602c', '@': '#2fa37a', '#': '#17171b', '$': '#b8ff2e',
+  '!': '#c2602c', '@': '#2fa37a', '#': '#17171b', '$': '#b8ff2e', '&': '#f2c14e',
+  // jungle greens, which no season touches
+  '{': '#1e7a2e', '}': '#2f9a3f', '|': '#145a22',
 };
 
 const SPRITES = {
@@ -1131,6 +1133,12 @@ SPRITES.chicken = [
 SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
+SPRITES.jungle = [
+  'ggg}}}}}}}}ggggg','gg}}}}{{}}}}}ggg','g}}}{{{{{{{}}}}g','g}}{{{{|{{{{}}}g',
+  '}}{{{{||{{{{{}}}','}{{{{|||{{{{{{}}','}{{|||||||{{{{}}','g{{||||||||{{{}g',
+  'gg{||||||||{{}gg','ggg||||TT|||gggg','gggggTTTTggggggg','ggggTgTTgTgggggg',
+  'gggggTTTTggggggg','gggggTTTTggggggg','ggggghTThhgggggg','gggggggggggggggg',
+];
 SPRITES.sand = [
   'cccccccccccccccc','ccCcccccccccccCc','cccccccccCcccccc','cccccccccccccccc',
   'cCcccccccccccccc','ccccccCccccccccc','ccccccccccccCccc','cccccccccccccccc',
@@ -1150,14 +1158,14 @@ SPRITES.solar = [
   'ggg7ggggggg7gggg','ggg7ggggggg7gggg','gggggggggggggggg','gggggggggggggggg',
 ];
 // Ore seams: the rock sprite flecked with the metal.
-const ORE_KEYS = ['', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium'];
-const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil'];
-[['oreIron', '!', 71], ['oreCopper', '@', 72], ['oreCoal', '#', 73], ['oreUranium', '$', 74]].forEach(([k, ch, seed]) => {
+const ORE_KEYS = ['', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oil', 'oreGold'];
+const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
+[['oreIron', '!', 71], ['oreCopper', '@', 72], ['oreCoal', '#', 73], ['oreUranium', '$', 74], ['oreGold', '&', 75]].forEach(([k, ch, seed]) => {
   SPRITES[k] = SPRITES.rock.map((row, j) => row.split('').map((c, i) => (c === 'r' || c === 's') && hash2(i, j, seed) < (ch === '#' ? 0.4 : 0.28) ? ch : c).join(''));
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'reeds', 'sand']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'reeds', 'sand', 'jungle']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1316,7 +1324,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1350,6 +1358,7 @@ const FUEL = {
   [T.SHAFT]:      { ignite: 0.4,  burn: [5, 9],   after: T.RUBBLE, spots: false },
   [T.PASTURE]:    { ignite: 0.9,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.REEDS]:      { ignite: 0.85, burn: [2, 3],   after: T.ASH,    spots: false },
+  [T.JUNGLE]:     { ignite: 0.3,  burn: [12, 22], after: T.STUMP,  spots: true }, // wet and hard to light; once it goes, it goes big
   [T.SILO]:       { ignite: 0.2,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
@@ -1359,7 +1368,7 @@ const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
   [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture' };
-const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG;
+const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG || t === T.JUNGLE;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
 const WEATHER = {
@@ -1451,18 +1460,18 @@ function seedOres(n) {
   let tries = 0;
   while (cand.length < 12 && tries++ < 8000) { const i = Math.floor(rand() * N); const x = i % n, y = (i - x) / n; if (x > 0 && y > 0 && x < n - 1 && y < n - 1 && type[i] === T.GRASS && world.elev[i] > 0.5) { type[i] = T.ROCK; cand.push(i); } }
   const area = N / 10000;
-  const seams = [[1, 2 + Math.floor(rand() * 3)], [2, 1 + Math.floor(rand() * 2)], [3, 1 + Math.floor(rand() * 3)], [4, rand() < 0.45 ? 1 : 0]];
+  const seams = [[1, 2 + Math.floor(rand() * 3)], [2, 1 + Math.floor(rand() * 2)], [3, 1 + Math.floor(rand() * 3)], [4, rand() < 0.45 ? 1 : 0], [6, rand() < 0.5 ? 1 : 0]]; // gold: half of valleys have a seam
   for (const [kind, base] of seams) {
     const count = Math.round(base * Math.max(0.5, Math.sqrt(area)));
     for (let k = 0; k < count && cand.length; k++) {
       const start = cand[Math.floor(rand() * cand.length)];
       if (world.oreKind[start]) continue;
-      const size = kind === 4 ? 2 + Math.floor(rand() * 2) : 3 + Math.floor(rand() * 5);
+      const size = kind === 4 || kind === 6 ? 2 + Math.floor(rand() * 2) : 3 + Math.floor(rand() * 5);
       const q = [start]; let placed = 0;
       while (q.length && placed < size) {
         const i = q.shift();
         if (world.oreKind[i] || type[i] !== T.ROCK) continue;
-        world.oreKind[i] = kind; world.ore[i] = kind === 4 ? 120 + Math.floor(rand() * 100) : 250 + Math.floor(rand() * 350); placed++;
+        world.oreKind[i] = kind; world.ore[i] = kind === 4 ? 120 + Math.floor(rand() * 100) : kind === 6 ? 60 + Math.floor(rand() * 90) : 250 + Math.floor(rand() * 350); placed++;
         const x = i % n, y = (i - x) / n;
         for (const [ox, oy] of OFFS8) { const nx = x + ox, ny = y + oy; if (nx >= 0 && ny >= 0 && nx < n && ny < n && type[ny * n + nx] === T.ROCK && rand() < 0.7) q.push(ny * n + nx); }
       }
@@ -1503,6 +1512,12 @@ const LIVESTOCK = ['cattle', 'pigs', 'sheep', 'chickens'];
 const LIVESTOCK_FOOD = { cattle: 3, pigs: 2, sheep: 1.5, chickens: 0.5 };
 const LIVESTOCK_SPRITE = { cattle: 'cow', pigs: 'pig', sheep: 'sheep', chickens: 'chicken' };
 function herdKind() { let r = rand ? Math.random() : Math.random(); for (const k of HERD_KINDS) { r -= k[1]; if (r <= 0) return k; } return HERD_KINDS[0]; }
+// Is the straight line from (x0,y0) to (x1,y1) walkable? Beasts will not set out across water.
+function clearLine(x0, y0, x1, y1) {
+  const n = world.n, steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+  for (let k = 1; k <= steps; k++) { const x = Math.round(x0 + (x1 - x0) * k / steps), y = Math.round(y0 + (y1 - y0) * k / steps); if (x < 0 || y < 0 || x >= n || y >= n) return false; const t = world.type[y * n + x]; if (!passable(t) || isBuilding(t)) return false; }
+  return true;
+}
 function herdCell(i) { const t = world.type[i]; return (t === T.GRASS || t === T.SCRUB || t === T.REEDS || t === T.SAND || isTree(t) || t === T.ASH || t === T.MUD || t === T.STUMP) && !world.road[i] && world.townOf[i] < 0 && world.burnLeft[i] <= 0; }
 function seedHerds(n) {
   const N = n * n, want = Math.max(2, Math.round(N / 2200));
@@ -1530,7 +1545,16 @@ function updateHerds() {
     // Fire nearby: run the other way.
     let fx = 0, fy = 0, scared = false;
     for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = h.x + dx, y = h.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; if (world.burnLeft[y * n + x] > 0) { fx += dx; fy += dy; scared = true; } }
-    if (scared) { const tx = h.x - Math.sign(fx) * 8, ty = h.y - Math.sign(fy) * 8; h.wx = Math.max(0, Math.min(n - 1, tx)); h.wy = Math.max(0, Math.min(n - 1, ty)); h.rest = 0; h.leaving = false; }
+    if (scared) {
+      // Run away from the fire; if that way is blocked, try sideways.
+      let set = false;
+      for (const [ax, ay] of [[-Math.sign(fx), -Math.sign(fy)], [-Math.sign(fy), Math.sign(fx)], [Math.sign(fy), -Math.sign(fx)]]) {
+        const tx = Math.max(0, Math.min(n - 1, h.x + ax * 8)), ty = Math.max(0, Math.min(n - 1, h.y + ay * 8));
+        if ((ax || ay) && clearLine(h.x, h.y, tx, ty)) { h.wx = tx; h.wy = ty; set = true; break; }
+      }
+      if (!set) { h.wx = -1; }
+      h.rest = 0; h.leaving = false;
+    }
     else if (h.wx < 0 || (h.wx === h.x && h.wy === h.y)) {
       if (h.leaving) { if (Math.random() < 0.3) log(`A herd of ${h.kind === 'fowl' ? 'grouse' : h.kind === 'boar' ? 'boar' : h.kind === 'sheep' ? 'wild sheep' : h.kind} leaves the valley`, 'weather'); continue; } // over the edge and gone
       if (h.rest > 0) { h.rest--; keep.push(h); continue; }
@@ -1538,7 +1562,7 @@ function updateHerds() {
       if (nearEdge && Math.random() < 0.08) { // wander off the map
         h.wx = h.x <= 6 ? 0 : n - 1 - h.x <= 6 ? n - 1 : h.x; h.wy = h.y <= 6 ? 0 : n - 1 - h.y <= 6 ? n - 1 : h.y; h.leaving = true;
       } else {
-        for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x)) continue; h.wx = x; h.wy = y; break; }
+        for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x) || !clearLine(h.x, h.y, x, y)) continue; h.wx = x; h.wy = y; break; }
         h.rest = 4 + Math.floor(Math.random() * 10);
       }
     }
@@ -1560,7 +1584,7 @@ function updateHerds() {
         h.last = from;
         const after = Math.max(Math.abs(h.wx - h.x), Math.abs(h.wy - h.y));
         h.stall = after < before ? 0 : (h.stall || 0) + 1;
-        if (h.stall > 2) { h.wx = -1; h.leaving = false; h.stall = 0; h.rest = 2; break; } // blocked: graze, then pick somewhere else
+        if (h.stall > 1) { h.wx = -1; h.leaving = false; h.stall = 0; h.rest = 6; h.last = -1; break; } // blocked: graze a while, then pick somewhere else
       }
     }
     if (++h.breedT >= 50 && h.size < 12) { h.breedT = 0; if (Math.random() < 0.6) h.size++; } // a new animal every ~250 ticks
@@ -1583,13 +1607,13 @@ function stat(group, key, n) {
    The valley is not one forest. High ground is pine highland, wet low ground is broadleaf
    lowland or marsh, the dry side is scrubland, and the rest is the mixed forest. Each has its
    own trees, its own regrowth, its own fire, its own harvest and its own beasts. */
-const BIOME_NAMES = ['Mixed forest', 'Pine highland', 'Broadleaf lowland', 'Dry scrubland', 'Marsh', 'Desert'];
-const BIOME_FIRE = [1, 1.1, 0.8, 1.35, 0.55, 1.5];
-const BIOME_YIELD = [1, 0.8, 1.25, 0.7, 0.9, 0.5];
-const BIOME_TINT = [null, 'rgba(190,205,235,0.09)', 'rgba(110,200,90,0.07)', 'rgba(225,190,90,0.13)', 'rgba(30,90,85,0.15)', 'rgba(240,205,110,0.12)'];
-const BIOME_HERDS = [null, ['sheep', 'boar', 'deer'], ['deer', 'boar', 'fowl'], ['deer', 'aurochs', 'fowl'], ['fowl', 'boar', 'deer'], ['sheep', 'fowl', 'aurochs']];
+const BIOME_NAMES = ['Mixed forest', 'Pine highland', 'Broadleaf lowland', 'Dry scrubland', 'Marsh', 'Desert', 'Jungle'];
+const BIOME_FIRE = [1, 1.1, 0.8, 1.35, 0.55, 1.5, 0.65];
+const BIOME_YIELD = [1, 0.8, 1.25, 0.7, 0.9, 0.5, 1.1];
+const BIOME_TINT = [null, 'rgba(190,205,235,0.09)', 'rgba(110,200,90,0.07)', 'rgba(225,190,90,0.13)', 'rgba(30,90,85,0.15)', 'rgba(240,205,110,0.12)', 'rgba(10,110,40,0.16)'];
+const BIOME_HERDS = [null, ['sheep', 'boar', 'deer'], ['deer', 'boar', 'fowl'], ['deer', 'aurochs', 'fowl'], ['fowl', 'boar', 'deer'], ['sheep', 'fowl', 'aurochs'], ['boar', 'fowl', 'deer']];
 // Climates: most valleys are varied; some are one country end to end.
-const CLIMATES = [['temperate', 0, 0, 0.30], ['dry', -0.22, 0, 0.12], ['wet', 0.2, 0, 0.12], ['cold', 0, 0.18, 0.10], ['forest', 0.08, 0, 0.08], ['desert', -0.42, 0, 0.08], ['split', 0, 0, 0.12], ['ridge', 0, 0, 0.08]];
+const CLIMATES = [['temperate', 0, 0, 0.28], ['dry', -0.22, 0, 0.11], ['wet', 0.2, 0, 0.11], ['cold', 0, 0.18, 0.09], ['forest', 0.08, 0, 0.07], ['desert', -0.42, 0, 0.08], ['split', 0, 0, 0.11], ['ridge', 0, 0, 0.07], ['jungle', 0.32, -0.1, 0.08]];
 // 'split' runs a moisture gradient across the map (desert one side, forest the other); 'ridge' runs a cold one (highland on one side).
 function nearWater(i, r) {
   const n = world.n, x = i % n, y = (i - x) / n;
@@ -1673,7 +1697,7 @@ function generate(n, seed) {
       let B = 0;
       const dryness = moist + (bio - 0.5) * 0.5, cold = CL.cold + (CL.name === 'ridge' ? Math.max(0, grad(x, y)) * 0.5 : 0);
       if (e > 0.62 + (bio - 0.5) * 0.1 - cold) B = 1;
-      else if (CL.name !== 'forest') { if (dryness < 0.17) B = 5; else if (e < 0.34 && moist > 0.48) B = 4; else if (dryness < 0.36) B = 3; else if (moist > 0.56 && e < 0.52) B = 2; }
+      else if (CL.name !== 'forest') { if (dryness < 0.17) B = 5; else if (e < 0.34 && moist > 0.48) B = 4; else if (dryness < 0.36) B = 3; else if (moist > (CL.name === 'jungle' ? 0.55 : 0.74) && e < 0.56) B = 6; else if (moist > 0.56 && e < 0.52) B = 2; }
       world.biome[i] = B;
       let t;
       if (e < 0.27) t = T.WATER;
@@ -1682,12 +1706,13 @@ function generate(n, seed) {
         const forest = Math.min(1, Math.max(0, (m - 0.28) * 2.6));
         const shore = e < 0.31 ? 0.35 : 1;
         world.fert[i] = B === 4 ? 1 : B === 5 ? (e < 0.33 ? 1 : 0) : forest < 0.12 ? 0 : (forest < 0.45 ? 1 : 2);
-        const treeP = Math.min(0.97, params.density * (0.08 + 1.35 * forest) * shore * [1, 0.9, 1.1, 0.35, 0.5, 0.06][B]);
+        const treeP = Math.min(0.97, params.density * (0.08 + 1.35 * forest) * shore * [1, 0.9, 1.1, 0.35, 0.5, 0.06, 1.5][B]);
         if (B === 4 && e < 0.305 && rand() < 0.5) t = T.WATER; // pools in the marsh
         else if (B === 5 && e >= 0.33 && rand() < 0.995) { const r = rand(); t = r < 0.78 ? T.SAND : r < 0.95 ? T.SCRUB : T.GRASS; } // open desert: sand, a little scrub
         else if (rand() < treeP) {
           const r = rand();
-          if (B === 5) t = r < 0.6 ? T.OAK : T.PINE; // the odd tree where there is a little water
+          if (B === 6) t = r < 0.62 ? T.JUNGLE : r < 0.8 ? T.OAK : r < 0.92 ? T.BIRCH : T.BIGPINE;
+          else if (B === 5) t = r < 0.6 ? T.OAK : T.PINE; // the odd tree where there is a little water
           else if (B === 1) t = r < 0.7 ? T.PINE : T.BIGPINE;
           else if (B === 2) t = r < 0.45 ? T.OAK : r < 0.7 ? T.BIRCH : r < 0.9 ? T.PINE : T.BIGPINE;
           else if (B === 3) t = r < 0.6 ? T.PINE : T.OAK;
@@ -1697,6 +1722,7 @@ function generate(n, seed) {
           else t = rand() < 0.12 ? T.BIGPINE : T.PINE;
         }
         else if (B === 4) t = rand() < 0.5 ? T.REEDS : T.GRASS;
+        else if (B === 6) t = rand() < 0.25 ? T.REEDS : T.GRASS; // ferns and wet ground under the canopy
         else if (B === 5) t = rand() < 0.6 ? T.GRASS : T.SCRUB; // a wet hollow in the desert
         else if (B === 3) t = rand() < 0.5 ? T.SCRUB : T.GRASS;
         else t = (forest < 0.2 && m < 0.35 && rand() < 0.35) ? T.SCRUB : T.GRASS; // dry scrub on thin ground
@@ -2046,7 +2072,7 @@ function foundTown(cx, cy, R, opts) {
     align: rollAlignment(rng), militia: 0, relations: {}, wars: {}, raidCooldown: 0, wallR: 0, raidsMade: 0, raidsSuffered: 0,
     shape: [0.25 + rng() * 0.3, rng() * 6.283, 0.15 + rng() * 0.25, rng() * 6.283, rng() * 0.15, rng() * 6.283],
     mil: 0, civ: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
-    res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, game: 0, coin: 30 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, game: 0, coin: 0 },
+    res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, gold: 0, oil: 0, fish: 0, game: 0, coin: 20 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, gold: 0, oil: 0, fish: 0, game: 0, coin: 0 },
     power: 0, powerNeed: 0, powerRatio: 1, water: true, master: -1, mineKind: {}, spent: {}, deepSite: {}, livestock: { cattle: 0, pigs: 0, sheep: 0, chickens: 0 },
   };
   seedPeople(town, rng);
@@ -3098,7 +3124,7 @@ function updateWagons() {
       if (to && from && to.res && from.res) { // and whatever the other side is short of, if there is spare
         let best = null, bestAmt = 0;
         for (const k of RES_KINDS) { const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
-        if (best) { const amt = Math.min(10, Math.floor(bestAmt)); from.res[best] -= amt; addRes(to, best, amt); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}`, 'build'); }
+        if (best) { const amt = Math.min(10, Math.floor(bestAmt)), price = (PRICE[best] || 1) * amt, paid = Math.min(price, Math.max(0, Math.floor(to.res.coin || 0))); from.res[best] -= amt; addRes(to, best, amt); to.res.coin -= paid; from.res.coin += paid; stat('ev', 'tradeCoin', paid); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}${paid ? ` for ${paid} coin` : ', on credit'}`, 'build'); }
       }
       if (Math.random() < 0.25 && to && from) log(`A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
       // Plague rides along.
@@ -3465,8 +3491,9 @@ function regrowSweep() {
     if (k0 >= N) { k0 = 0; world.sweepOffset = Math.floor(Math.random() * N); }
     const i = (k0++ * step + (world.sweepOffset || 0)) % N; // exact: well below 2^53 for any map size here
     const t = type[i];
-    if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE && t !== T.BIGPINE && t !== T.OAK && t !== T.MUD) continue;
+    if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE && t !== T.BIGPINE && t !== T.OAK && t !== T.MUD && t !== T.JUNGLE) continue;
     const B = world.biome[i];
+    if (B === 6 && Math.random() < 0.4) continue; // handled below at a faster clip: two visits' worth of chance per visit
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
     if (world.fallout[i] > 40) continue; // poisoned ground
     if (world.snow[i] > 20) continue; // nothing grows under snow
@@ -3491,10 +3518,11 @@ function regrowSweep() {
       if (((x > 0 && type[i - 1] === T.WATER) || (x < n - 1 && type[i + 1] === T.WATER) || (y > 0 && type[i - n] === T.WATER) || (y < n - 1 && type[i + n] === T.WATER)) && r < mul / GROW.grassToPine) { type[i] = T.BIRCH; world.treeCount++; world.since[i] = world.tick; dirty.add(i); continue; }
       if (oaks && B !== 1 && r < fm * mul * (B === 2 ? 2 : B === 3 ? 0.5 : 1) / GROW.grassToOak) { type[i] = T.OAK; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
       else if (B === 4 && r < fm * mul / GROW.grassToPine) { type[i] = T.BIRCH; world.treeCount++; world.since[i] = world.tick; dirty.add(i); } // marsh comes back as birch
+      else if (B === 6 && r < 2.2 * mul / GROW.grassToPine) { type[i] = Math.random() < 0.7 ? T.JUNGLE : T.OAK; world.treeCount++; world.since[i] = world.tick; dirty.add(i); } // the jungle closes over fast
       else if (r < fm * mul * (B === 1 ? 1.5 : B === 3 ? 0.5 : B === 4 ? 0.3 : 1) / (trees ? GROW.grassToPine / Math.min(trees, 3) : GROW.grassToPineLonely)) { type[i] = T.PINE; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
     }
     else if (t === T.PINE) { if (r < mul / GROW.pineToBig) { type[i] = T.BIGPINE; world.since[i] = world.tick; dirty.add(i); } }
-    else if (t === T.BIGPINE || t === T.OAK) { if (r < mul / 70000) { type[i] = T.SNAG; dirty.add(i); } } // old giants die standing, rarely
+    else if (t === T.BIGPINE || t === T.OAK || t === T.JUNGLE) { if (r < mul / 70000) { type[i] = T.SNAG; dirty.add(i); } } // old giants die standing, rarely
   }
   world.sweepPos = k0;
 }
@@ -3956,8 +3984,8 @@ function rebuildAt(town, i) {
    Everything a town builds is paid for in wood, stone, iron, copper, coal or uranium. Wood is
    cut from the forest by loggers (the trees really go), stone comes from a quarry at a rock face,
    the metals from mines on finite seams. Stockpiles are small, so towns save up, trade, or fight. */
-const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'oil', 'fish', 'game', 'coin'];
-const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
+const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'gold', 'oil', 'fish', 'game', 'coin'];
+const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, gold: 15, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
 const COST = {
   [T.HOUSE]: { wood: 4 }, [T.TENEMENT]: { wood: 6, stone: 8 }, [T.FARM]: { wood: 1 }, [T.STATION]: { wood: 6, stone: 3 },
   [T.TOWNHALL]: { wood: 8, stone: 6 }, [T.BARRACKS]: { wood: 8, stone: 4, iron: 2 }, [T.FORGE]: { stone: 6, iron: 2 },
@@ -3969,7 +3997,7 @@ const COST = {
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
-const WOOD_YIELD = { [T.PINE]: 3, [T.OAK]: 5, [T.BIGPINE]: 6, [T.BIRCH]: 2, [T.SNAG]: 2 };
+const WOOD_YIELD = { [T.PINE]: 3, [T.OAK]: 5, [T.BIGPINE]: 6, [T.BIRCH]: 2, [T.SNAG]: 2, [T.JUNGLE]: 6 };
 // What research alone cannot give you.
 const MIL_NEED = [null, { iron: 10 }, null, { coal: 8 }, { iron: 15 }, { iron: 20 }, { uranium: 20 }];
 const CIV_NEED = [null, { wood: 10 }, { copper: 8, stone: 10 }, { stone: 6 }, { iron: 12, copper: 8 }, { oil: 10, iron: 20, copper: 10 }]; // no aviation without hydrocarbons
@@ -4022,7 +4050,8 @@ function updatePower(t) {
 function placeSite(town, type, maxD, okNeighbor) {
   const n = world.n, wt = world.type;
   let best = -1, bestScore = Infinity;
-  for (let dy = -maxD; dy <= maxD; dy++) for (let dx = -maxD; dx <= maxD; dx++) {
+  const step = maxD > 40 ? 2 : 1; // a coarser scan when the reach is long
+  for (let dy = -maxD; dy <= maxD; dy += step) for (let dx = -maxD; dx <= maxD; dx += step) {
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
     const d = Math.hypot(dx, dy); if (d > maxD) continue;
@@ -4109,6 +4138,8 @@ function updateLivestock(town) {
     if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) log(`${town.name} fences a pasture`, 'build'); }
   }
 }
+// How far a town will send people for rock and ore: further on big maps, where the rock is further.
+function siteReach(town) { return Math.max(town.R + 18, Math.round(world.n * 0.24)); }
 function buildSites(town) {
   if (Math.random() > 0.3) return;
   if (town.civ >= 4 && hasType(town, T.FACTORY)) {
@@ -4123,16 +4154,16 @@ function buildSites(town) {
     }
   }
   if (town.popLeft >= 25 && !hasType(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
-    const i = placeSite(town, T.QUARRY, town.R + 18, (t, j) => t === T.ROCK && !world.oreKind[j]);
+    const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
     if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); return; }
   }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
-    for (let kind = 1; kind <= 4; kind++) {
+    for (const kind of [6, 1, 2, 3, 4]) { // gold first: everyone knows what that is
       if (kind === 2 && town.popLeft < 60) continue;
       if (kind === 4 && town.mil < 4 && town.civ < 3) continue; // nobody digs for uranium until they know what it is
       if (countType(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80)) break;
-      const i = placeSite(town, T.MINE, town.R + 24, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
-      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(`${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); return; }
+      const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
+      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); return; }
     }
   }
   if (!town.water && town.popLeft >= 12 && canAfford(town, COST[T.WELL])) {
@@ -4301,8 +4332,9 @@ function coveted(a, b) {
     if (world.type[i] !== T.MINE || b.spent[i]) continue;
     const kind = b.mineKind[i]; if (!kind) continue;
     if (kind === 4 && a.mil < 4) continue;
+    if (kind === 6 && a.align.moral >= 0 && Math.random() < 0.5) continue; // only the greedy covet gold outright
     if (Object.keys(a.mineKind).some(j => a.mineKind[j] === kind && world.type[j] === T.MINE && !a.spent[j])) continue;
-    if (oreNear(a, kind, a.R + 24)) continue;
+    if (oreNear(a, kind, siteReach(a) + 6)) continue;
     return ORE_NAMES[kind];
   }
   return null;
@@ -4418,7 +4450,8 @@ function growTown(town) {
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   town.water = hasWater(town);
   town.powerRatio = updatePower(town);
-  if (Math.random() < 0.5) town.res.coin += Math.ceil(town.popLeft / 120); // taxes and market dues
+  // Coin comes from selling, not from thin air: caravans, paid deliveries, and gold minted at the hall.
+  if (town.res.gold > 0 && hasType(town, T.TOWNHALL) && hasType(town, T.FORGE)) { town.res.gold--; town.res.coin += 10; town.minted = (town.minted || 0) + 10; stat('ev', 'minted', 10); if (town.minted === 10) log(`${town.name} mints its first coin from its own gold`, 'build'); }
   if (town.res.fish > 10 && Math.random() < 0.3) town.res.fish--; // fish spoils
   if (town.res.game > 10 && Math.random() < 0.3) town.res.game--;
   updateLivestock(town);
@@ -4493,7 +4526,7 @@ function growTown(town) {
 // The price of size: plague without waterworks, riots when crowded and chaotic, slums burn.
 function bigCityTroubles(town) {
   const over = town.R - Math.max(params.townCap, town.R0);
-  if (town.popLeft >= 350 && town.civ < 2 && Math.random() < 0.0025 * (1 + Math.max(0, over))) {
+  if (town.popLeft >= (biomeAt(town.cx, town.cy) === 6 ? 180 : 350) && town.civ < 2 && Math.random() < 0.0025 * (1 + Math.max(0, over)) * (biomeAt(town.cx, town.cy) === 6 ? 1.6 : 1)) {
     const dead = Math.round(town.popLeft * (0.05 + Math.random() * 0.1));
     applyLosses(town, dead, 'plague');
     town.plagues = (town.plagues || 0) + 1; stat('ev', 'plagues'); town.plagueUntil = world.tick + 300;
@@ -4993,30 +5026,35 @@ function updateCrews(town) {
     }
     if (c.stall > 10) { c.stall = 0; if (c.target >= 0) town.claimed.delete(c.target); c.target = -1; c.progress = 0; c.lastCell = -1; }
 
+    if (c.retreat > 0 && fireInside) { c.retreat--; stepToward(c, town.cx, town.cy, 1, false); keep.push(c); continue; }
     if (fireInside) {
       c.mode = 'douse';
       if (c.target >= 0) { town.claimed.delete(c.target); c.target = -1; c.progress = 0; }
       let best = -1, bestD = Infinity;
+      if (c.stall > 4) { c.avoid = c.avoidCell; c.avoidUntil = world.tick + 40; c.stall = 0; c.lastCell = -1; } // across the water: leave that one to the engines
       for (const i of world.burning) {
         if (burnLeft[i] <= 0) continue;
+        if (i === c.avoid && world.tick < c.avoidUntil) continue;
         const x = i % n, y = (i - x) / n;
         if (Math.hypot(x - town.cx, y - town.cy) > town.R + 3) continue;
         const d = Math.hypot(x - c.x, y - c.y);
         if (d < bestD) { bestD = d; best = i; }
       }
+      c.avoidCell = best;
       if (best >= 0) {
         const bx = best % n, by = (best - bx) / n;
         if (Math.max(Math.abs(bx - c.x), Math.abs(by - c.y)) <= 1) {
           const t = type[best];
           const pDouse = t === T.GRASS ? 0.6 : (isTree(t) ? 0.3 : 0.2);
           if (Math.random() < pDouse) { extinguish(best, 12, 1); dust(best); }
-          else if (Math.random() < 0.08) stepToward(c, town.cx, town.cy, 1, false);
+          else if (Math.random() < 0.08) { c.retreat = 2 + Math.floor(Math.random() * 3); c.lastCell = -1; stepToward(c, town.cx, town.cy, 1, false); }
         } else stepToward(c, bx, by, 1, false);
       }
       keep.push(c);
       continue;
     }
 
+    if (c.retreat > 0) { c.retreat--; stepToward(c, town.cx, town.cy, 1, false); keep.push(c); continue; }
     c.mode = 'dig';
     if (c.target >= 0 && !isFuel(type[c.target])) { town.claimed.delete(c.target); c.target = -1; c.progress = 0; }
     if (c.target < 0) {
@@ -5030,15 +5068,15 @@ function updateCrews(town) {
         const d = Math.hypot(x - c.x, y - c.y) + off * 6;
         if (d < bestD) { bestD = d; best = i; }
       }
-      if (best >= 0) { c.target = best; town.claimed.add(best); c.progress = 0; c.bestD = undefined; c.stall = 0; }
+      if (best >= 0) { c.target = best; town.claimed.add(best); c.progress = 0; c.bestD = undefined; c.dstall = 0; c.stall = 0; c.lastCell = -1; }
     }
     if (c.target >= 0) {
       const tx = c.target % n, ty = (c.target - tx) / n;
       const dNow = Math.hypot(tx - c.x, ty - c.y);
-      if (c.bestD === undefined || dNow < c.bestD - 0.01) { c.bestD = dNow; c.stall = 0; }
-      else if (c.x !== tx || c.y !== ty) c.stall = (c.stall || 0) + 1;
-      if (c.stall > 10) { // can't get there (water, rock, fire): leave it claimed so nobody else tries, pick another
-        c.target = -1; c.progress = 0; c.bestD = undefined; c.stall = 0;
+      if (c.bestD === undefined || dNow < c.bestD - 0.01) { c.bestD = dNow; c.dstall = 0; }
+      else if (c.x !== tx || c.y !== ty) c.dstall = (c.dstall || 0) + 1;
+      if (c.dstall > 6 || c.stall > 4) { // can't get there (water, rock, fire): leave it claimed so nobody else tries, pick another
+        c.target = -1; c.progress = 0; c.bestD = undefined; c.dstall = 0; c.stall = 0; c.lastCell = -1;
         keep.push(c);
         continue;
       }
@@ -5053,7 +5091,7 @@ function updateCrews(town) {
         let crownNear = false;
         if (hot) for (const [ox, oy] of OFFS8) { const nx = tx + ox, ny = ty + oy; if (nx >= 0 && ny >= 0 && nx < n && ny < n && world.intensity[ny * n + nx] && burnLeft[ny * n + nx] > 0) { crownNear = true; break; } }
         if (hot && Math.random() < (crownNear ? 0.8 : 0.35)) {
-          town.claimed.delete(c.target); c.target = -1; c.progress = 0;
+          town.claimed.delete(c.target); c.target = -1; c.progress = 0; c.retreat = 3 + Math.floor(Math.random() * 4); c.lastCell = -1;
           stepToward(c, town.cx, town.cy, 1, false);
         } else {
           c.progress++;
@@ -5306,7 +5344,7 @@ ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', 
   ['hydro', '💧', 'White Coal', 'A town dams the river for power', /hydroelectric/], ['reactor', '☢️', 'Atoms for Peace', 'A reactor comes online', /brings a reactor online/],
   ['meltdown', '💀', 'Meltdown', 'A reactor burns open', /MELTDOWN/],
   ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan appears/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
-  ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['tamed', '🐖', 'Husbandry', 'Hunters bring a wild animal home alive', /home alive, to raise/], ['pasture', '🐄', 'Rancher', 'A town fences a pasture', /fences a pasture/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
+  ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['gold', '💰', 'Gold Rush', 'A town digs a gold mine', /digs a gold mine/], ['mint', '🪙', 'The Mint', 'A town mints its own coin', /mints its first coin/], ['tamed', '🐖', 'Husbandry', 'Hunters bring a wild animal home alive', /home alive, to raise/], ['pasture', '🐄', 'Rancher', 'A town fences a pasture', /fences a pasture/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
 renderAchievements();
 function renderLog() {
   if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
@@ -5369,6 +5407,7 @@ function spriteKey(i) {
     case T.PASTURE: return 'pasture';
     case T.REEDS: return 'reeds';
     case T.SAND: return 'sand';
+    case T.JUNGLE: return 'jungle';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
   }
@@ -5993,7 +6032,7 @@ function tipRows(obj, limit, total) {
 function statTipHtml(kind) {
   const st = world.stats || newStats(), ev = st.ev || {};
   const row = (k, v) => `<div class="row"><span>${k}</span><b>${v}</b></div>`;
-  if (kind === 'people') return `<h4>${world.deaths} dead, by cause</h4>${tipRows(st.deaths, 10, world.deaths)}<h4>by town</h4>${tipRows(st.deathsTown, 8, world.deaths)}<h4>alive</h4>${row('in the valley', world.popLeft)}${row('ever lived here', world.popTotal)}${world.towns.filter(isAlive).map(t => row(t.name, t.popLeft)).join('')}`;
+  if (kind === 'people') return `<h4>${world.deaths} dead, by cause</h4>${tipRows(st.deaths, 10, world.deaths)}<h4>by town</h4>${tipRows(st.deathsTown, 8, world.deaths)}<h4>alive</h4>${row('in the valley', world.popLeft)}${row('ever lived here', world.popTotal)}${world.towns.filter(isAlive).sort((a, b) => b.popLeft - a.popLeft).map(t => row(t.name, `${t.popLeft} <span class="dim">${Math.round(t.popLeft / Math.max(1, world.popLeft) * 100)}% of the living · ${Math.round(t.popLeft / Math.max(1, t.popTotal) * 100)}% of its own</span>`)).join('')}`;
   if (kind === 'buildings') return `<h4>${world.buildingsLost} lost, by cause</h4>${tipRows(st.lost, 8, world.buildingsLost)}<h4>by town</h4>${tipRows(st.lostTown, 8, world.buildingsLost)}<h4>standing</h4>${row('now', world.buildingsLeft)}${row('ever built', world.buildingsTotal)}`;
   if (kind === 'tick') return `<h4>Year ${Math.floor(world.tick / YEAR) + 1}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('ticks', world.tick)}${row('towns founded', world.towns.length)}<h4>the sky and the earth</h4>${row('lightning strikes', `${ev.lightning || 0} <span class="dim">(${ev.lightningNatural || 0} natural, ${Math.max(0, (ev.lightning || 0) - (ev.lightningNatural || 0))} yours)</span>`)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}${row('floods', ev.floods || 0)}${row('beaver colonies', ev.beavers || 0)}${row('dragon visits', `${ev.dragons || 0} <span class="dim">(${ev.dragonsSlain || 0} slain, ${ev.dragonsDriven || 0} driven off)</span>`)}<h4>the people</h4>${row('fire alarms', ev.alarms || 0)}${row('wars declared', ev.wars || 0)}${row('battles', ev.battles || 0)}${row('towns sacked', ev.sacks || 0)}${row('annexations', ev.annexes || 0)}${row('bomber sorties', ev.bombers || 0)}${row('nukes launched', ev.nukes || 0)}${row('meltdowns', ev.meltdowns || 0)}${row('famines', ev.famines || 0)}${row('plagues', ev.plagues || 0)}${row('caravans', `${ev.caravans || 0} <span class="dim">(${ev.markets || 0} markets, ${ev.caravansRobbed || 0} robbed)</span>`)}<h4>the beasts</h4>${row('wild herds', (world.herds || []).length)}${row('animals hunted', ev.hunted || 0)}${row('brought home alive', ev.tamed || 0)}${row('born on pastures', ev.animalsBorn || 0)}${row('lost to fire', ev.animalsBurned || 0)}`;
   if (kind === 'beasts') {
@@ -6234,7 +6273,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand' });
+Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -6502,7 +6541,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
 }
 function renderHistControls() {
   renderHistFacts();
@@ -6526,7 +6565,7 @@ $('histChart').addEventListener('mousemove', ev => {
   const H = world.history; if (!H || H.ticks.length < 2) return;
   const c = $('histChart'), r = c.getBoundingClientRect(), W = c.width, padL = 36, padR = 4;
   const k = Math.round(((ev.clientX - r.left) / r.width * W - padL) / (W - padL - padR) * (H.ticks.length - 1));
-  if (k < 0 || k >= H.ticks.length) return;
+  if (!Number.isFinite(k) || k < 0 || k >= H.ticks.length) return;
   const m = histState.metric, parts = [];
   for (const id of histTownIds()) { const t = H.towns[id]; const i = k - t.from; if (i >= 0 && i < t[m].length) parts.push(`${t.name} ${t[m][i]}`); }
   $('histRead').textContent = `t${H.ticks[k]} · Y${Math.floor(H.ticks[k] / YEAR) + 1} · ${parts.join(' · ') || 'no towns yet'}`;
@@ -6623,7 +6662,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
     ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
-    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'], ['reeds', 'marsh reeds'], ['sand', 'desert sand'],
+    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['oreGold', 'gold seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'], ['reeds', 'marsh reeds'], ['sand', 'desert sand'], ['jungle', 'jungle tree'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],
   ];
   const leg = $('legend');

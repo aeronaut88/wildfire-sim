@@ -230,7 +230,8 @@ what paces a town's recovery.
   tree really goes, leaving a stump that regrows), and carry the timber home. A lumberyard
   raises the storage cap and fields more loggers, and the clear-cut around a busy town is
   visible on the map.
-- **Stone** comes from a quarry opened at a rock face, worked by quarriers.
+- **Stone** comes from a quarry opened at a rock face, worked by quarriers. On big maps towns
+  send quarriers and miners further for it, and the trips take longer.
 - **Iron, copper, coal and uranium** are seams in the rock, drawn as flecked outcrops. A town
   digs a mine beside a seam and miners in yellow helmets walk the ore home two units at a
   time. Seams are finite; when one is dug to nothing the mine is worked out. Uranium is rare
@@ -251,7 +252,10 @@ digs comes to covet it, relations sour, and the war that follows is declared ove
 
 ## Trade
 
-Every town keeps a chest of coin, fed by taxes and market days. Now and then a trader's caravan
+Every town keeps a chest of coin, and coin only comes from selling: to caravans on market days,
+to other towns that pay for wagon deliveries, or from gold. Half of valleys have a small gold
+seam; a town that digs it and has a hall and a forge mints coin from it, and caravans pay well
+for raw gold. There are no taxes, so wealth is slow and uneven. Now and then a trader's caravan
 with an amber canopy appears on a map edge, walks in to a town, holds a market day, and leaves.
 It sells what the town is short of (iron, oil, even a little uranium) for coin, and buys the
 surplus. An evil town with enough militia sometimes just seizes the caravan, and then no trader
@@ -288,7 +292,9 @@ early spring fires fizzle. Shift+hover a cell to see its snow.
 ## Biomes and climate
 
 The valley is not one forest. High ground is pine highland, wet low ground is broadleaf lowland
-or marsh with reeds and pools, the dry side is scrubland, the driest is desert, and the rest is
+or marsh with reeds and pools, the dry side is scrubland, the driest is desert, the hottest and
+wettest is jungle (huge trees that are hard to light and burn for ages when they do, ferns, a
+canopy that closes over fast, and fever in crowded towns without waterworks), and the rest is
 mixed forest. Each has its own trees, its own regrowth (marsh comes back as reeds and birch,
 desert ash goes back to sand unless water is near), its own fire (scrub and desert brush burn
 fast, marsh barely), its own harvest, and its own beasts. Every tile carries a faint cast of its
@@ -314,7 +320,8 @@ town, burn with the pasture, and are driven off in a sack.
 ## The ledger
 
 Hover any tile in the readout under the map; the breakdown opens upward. Beasts lists the
-wild herds by kind and every town's livestock. Population shows who died and of what (fire,
+wild herds by kind and every town's livestock. Population lists the towns largest first with
+each one's share of the living and its own survival rate, and shows who died and of what (fire,
 famine, battle, plague, thirst, fallout, dragon fire, put to the sword) and in which town.
 Buildings shows what was lost and why. Tick shows the whole history of the valley: lightning
 strikes (natural and yours), missiles, meteors, floods, beaver colonies, dragon visits, wars,
