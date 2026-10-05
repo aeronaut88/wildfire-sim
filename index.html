@@ -1324,7 +1324,7 @@ function maybeDragon(force) {
 function flyDragon(dtSec) {
   const d = world.dragon;
   if (!d) return;
-  const speed = 8; // cells per second
+  const speed = Math.max(8, 2 * params.speed); // 2 cells per tick, expressed per second so it matches whatever the tick rate is
   let remaining = speed * dtSec;
   while (remaining > 0 && d.leg < d.legs.length - 1) {
     const [ax, ay] = d.legs[d.leg], [bx, by] = d.legs[d.leg + 1];
@@ -2402,7 +2402,7 @@ function flyPlane(dtSec) {
   const air = world.air;
   if (!air || !air.plane) return;
   const p = air.plane;
-  const speed = 20; // cells per second
+  const speed = Math.max(20, 5 * params.speed); // 5 cells per tick, expressed per second so it matches whatever the tick rate is
   let remaining = speed * dtSec;
   while (remaining > 0 && p.leg < p.legs.length - 1) {
     const [ax, ay] = p.legs[p.leg], [bx, by] = p.legs[p.leg + 1];
@@ -2710,7 +2710,7 @@ function launchMissile(targetIdx) {
   const sx = fromLeft ? -30 : W + 30;
   const sy = H + 20;
   const dist = Math.hypot(tx - sx, ty - sy);
-  missiles.push({ sx, sy, tx, ty, target: targetIdx, t0: performance.now(), dur: 650 + dist * 0.55, arc: Math.max(80, dist * 0.45), lastSmoke: 0 });
+  missiles.push({ sx, sy, tx, ty, target: targetIdx, t0: performance.now(), dur: 650 + dist * 0.55, arc: Math.max(80, dist * 0.45), lastSmoke: 0 }); // missiles stay real time
 }
 function missilePos(m, t) {
   return [m.sx + (m.tx - m.sx) * t, m.sy + (m.ty - m.sy) * t - Math.sin(Math.PI * t) * m.arc];
