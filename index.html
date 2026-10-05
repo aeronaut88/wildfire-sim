@@ -1650,6 +1650,7 @@ function strikeCell(cx, cy, radius) {
       dirty.add(i);
     }
   }
+  for (const town of world.towns) if (town.blastDead) { log(`${town.name}: ${town.blastDead} killed by the blast`, 'loss'); town.blastDead = 0; }
   for (const town of world.towns) {
     town.crews = town.crews.filter(c => {
       if (Math.hypot(c.x - cx, c.y - cy) <= radius) { loseCrew(town, c, 'caught in the blast'); return false; }
@@ -1688,7 +1689,7 @@ function onBuildingDestroyed(i, cause) {
   const t = world.type[i];
   if (cause === 'blast') {
     const res = Math.min(occupants(town), town.popLeft);
-    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; town.deaths += res; log(`${town.name}: ${res} killed by the blast`, 'loss'); }
+    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; town.deaths += res; town.blastDead = (town.blastDead || 0) + res; }
     town.firstHit = true;
   }
   world.buildingsLeft--; world.buildingsLost++;
