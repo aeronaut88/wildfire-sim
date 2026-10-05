@@ -111,6 +111,43 @@
     box-shadow: 0 0 0 1px #000;
   }
 
+  .hud {
+    position: absolute; left: 12px; top: 12px; z-index: 2;
+    display: flex; align-items: center; gap: 10px;
+    padding: 6px 10px 5px;
+    background: rgba(13, 11, 10, 0.82);
+    border: 1px solid var(--panel-edge);
+    box-shadow: 0 0 0 1px #000;
+    font-family: var(--pixel); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--ink); pointer-events: none;
+  }
+  .hud .w { color: #a8c8ff; }
+  .hud .w.drought { color: #e0a33a; }
+  .hud .w.storm { color: #e6ecff; }
+  .hud .w.clear { color: var(--ink); }
+  .hud .sep { width: 1px; height: 14px; background: var(--panel-edge); }
+  .hud .vane { width: 18px; height: 18px; transition: transform 300ms ease; }
+  .hud .vane path { fill: var(--ember-hot); }
+  .hud .vane.calm path { fill: var(--ink-dim); }
+  .hud .ws { color: var(--ink-dim); min-width: 30px; }
+  .hud .tk { color: var(--ink-dim); }
+  .tip {
+    position: absolute; z-index: 3; pointer-events: none; display: none;
+    min-width: 170px; max-width: 240px;
+    padding: 7px 9px 6px;
+    background: rgba(13, 11, 10, 0.92);
+    border: 1px solid #4a3b32;
+    box-shadow: 0 0 0 1px #000, 0 10px 30px -10px rgba(0,0,0,0.9);
+    font-size: 11px; line-height: 1.45; color: var(--ink);
+  }
+  .tip.show { display: block; }
+  .tip .h { font-family: var(--pixel); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ember-hot); margin-bottom: 3px; }
+  .tip .k { color: var(--ink-dim); }
+  .tip .fire { color: var(--ember); }
+  .tip .wet { color: #8fd3ff; }
+  .tip .ret { color: #ff8ab0; }
+  .tip .town { color: #d9c48a; }
+  .compass button.auto { background: #0f1f30; border-color: #2d6bb0; color: #a8d1ff; }
   .readout { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
   .stat {
     background: var(--panel);
@@ -237,6 +274,7 @@
     color: var(--ink-dim);
   }
   .log li.arson, .log li:first-child.arson { color: #ff6ad5; }
+  .log li.dragon, .log li:first-child.dragon { color: #ff4040; font-weight: 600; }
   .log li.weather, .log li:first-child.weather { color: #a8c8ff; }
   .log li.build, .log li:first-child.build { color: #d9c48a; }
   .log li { display: flex; gap: 8px; }
@@ -252,6 +290,23 @@
   .log li:first-child.win { color: #a7e36f; }
   .log .empty { color: #4e4238; font-style: italic; }
 
+  .towns { display: flex; flex-direction: column; gap: 5px; }
+  .towns .row {
+    display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: baseline;
+    background: #120e0c; border: 1px solid var(--panel-edge); padding: 6px 8px 5px;
+    font-size: 11px; color: var(--ink-dim);
+  }
+  .towns .dot { width: 8px; height: 8px; background: var(--leaf); align-self: center; box-shadow: 0 0 6px rgba(95,163,71,0.5); }
+  .towns .row.rallied .dot { background: var(--ember-hot); box-shadow: 0 0 8px var(--ember-glow); }
+  .towns .row.burning .dot { background: var(--ember); box-shadow: 0 0 8px var(--ember-glow); }
+  .towns .row.dead .dot { background: #4b413b; box-shadow: none; }
+  .towns .name { font-family: var(--pixel); font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink); }
+  .towns .row.dead .name { color: var(--ink-dim); text-decoration: line-through; }
+  .towns .st { font-size: 10px; color: var(--ink-dim); text-align: right; white-space: nowrap; }
+  .towns .sub { grid-column: 2 / -1; font-size: 10px; color: var(--ink-dim); }
+  .towns .sub b { color: var(--ink); font-weight: 500; }
+  .towns .sub .d { color: #ff8a73; }
+  .towns .empty { font-size: 11px; color: #4e4238; font-style: italic; padding: 4px 2px; }
   .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: var(--ink-dim); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend canvas { width: 16px; height: 16px; image-rendering: pixelated; border: 1px solid #000; background: #1d2a1a; }
@@ -273,7 +328,7 @@
   <h1><span class="flame">&#9650;</span> WILDFIRE</h1>
   <div class="sub">probabilistic forest fire cellular automaton</div>
   <div class="hint">
-    click = missile &nbsp; right-click = lightning &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>.</kbd> step
+    click = missile &nbsp; right-click = lightning &nbsp; <kbd>shift</kbd>+hover = inspect &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>.</kbd> step
   </div>
 </header>
 
@@ -281,6 +336,15 @@
   <section class="stage">
     <div class="viewport" id="viewport">
       <canvas id="map" width="800" height="800"></canvas>
+      <div class="hud" id="hud">
+        <span class="w clear" id="hudWeather">Clear</span>
+        <span class="sep"></span>
+        <svg class="vane" id="hudVane" viewBox="0 0 20 20"><path d="M2 8 L12 8 L12 4 L19 10 L12 16 L12 12 L2 12 Z"/></svg>
+        <span class="ws" id="hudWind">0.50</span>
+        <span class="sep"></span>
+        <span class="tk" id="hudTick">t0</span>
+      </div>
+      <div class="tip" id="tip"></div>
     </div>
     <div class="readout">
       <div class="stat tick"><div class="label">tick</div><div class="value" id="statTick">0</div></div>
@@ -330,6 +394,11 @@
     </div>
 
     <div class="group">
+      <div class="title">Settlements</div>
+      <div class="towns" id="towns"><div class="empty">no towns</div></div>
+    </div>
+
+    <div class="group">
       <div class="title">World</div>
       <div class="control">
         <label>Weather</label><output></output>
@@ -375,9 +444,10 @@
 
     <div class="group">
       <div class="title">Wind</div>
+      <button id="windAuto" class="cool on" style="width:100%">Auto (weather driven)</button>
       <div class="compass" id="compass">
         <button data-dir="-1,-1">&#8598;</button><button data-dir="0,-1">&#8593;</button><button data-dir="1,-1">&#8599;</button>
-        <button data-dir="-1,0">&#8592;</button><button data-dir="0,0" class="on">&#9679;</button><button data-dir="1,0">&#8594;</button>
+        <button data-dir="-1,0">&#8592;</button><button data-dir="0,0">&#9679;</button><button data-dir="1,0">&#8594;</button>
         <button data-dir="-1,1">&#8601;</button><button data-dir="0,1">&#8595;</button><button data-dir="1,1">&#8600;</button>
       </div>
       <div class="control">
@@ -547,6 +617,18 @@ const SPRITES = {
     '..VVVVVVVVVVVVt.','..VVVVVVVVVVVVtt','..VVVVVVVVVVVVt.','...KK......KK...',
     '..KKKK....KKKK..','...KK......KK...','................','................',
   ],
+  dragon0: [
+    'K..............K','KK....EddE....KK','KDK....dd....KDK','KDDK...dd...KDDK',
+    '.KDDK..dd..KDDK.','.KDDDKKddKKDDDK.','..KDDDDddDDDDK..','...KDDDDddDDDK..',
+    '....KKDDddDDKK..','......KDddDK....','.......KddK.....','.......KdK......',
+    '.......KdK......','........K.......','........K.......','................',
+  ],
+  dragon1: [
+    '................','......EddE......','.......dd.......','.......dd.......',
+    '.....KKddKK.....','...KKDDddDDKK...','..KDDDDddDDDDK..','.KDDDKKddKKDDDK.',
+    'KDDK..KddK..KDDK','KDK...KdK...KDK.','KK....KdK.....KK','K......K......K.',
+    '.......K........','........K.......','................','................',
+  ],
   // ── town ──
   house0: [
     'gggggggggggggggg','ggggggDDDDgggggg','gggggDddddDggggg','ggggDddddddDgggg',
@@ -632,6 +714,10 @@ function buildSprite16(rows) {
   return c;
 }
 
+// Crown fire frames: the same flames, one step hotter (white cores).
+for (let f = 0; f < 3; f++) {
+  SPRITES['crown' + f] = SPRITES['fire' + f].map(row => row.replace(/[fFy]/g, ch => ({ f: 'F', F: 'y', y: 'x' })[ch]));
+}
 const SPR16 = {};
 for (const k in SPRITES) SPR16[k] = buildSprite16(SPRITES[k]);
 
@@ -746,7 +832,7 @@ function makeTownName(rng) {
 const world = {
   n: 100,
   type: null, variant: null, burnLeft: null, glow: null,
-  wet: null, wetKind: null, residents: null, townOf: null, road: null, fert: null,
+  wet: null, wetKind: null, residents: null, townOf: null, road: null, fert: null, since: null, intensity: null,
   burning: [], glowing: [], water: [], wetList: [],
   tick: 0,
   totalFuel: 0, burnedCount: 0, treeCount: 0,
@@ -754,7 +840,8 @@ const world = {
   buildingsTotal: 0, buildingsLeft: 0, popTotal: 0, popLeft: 0,
   buildingsLost: 0, deaths: 0,
   weather: { kind: 'clear', left: 150 },
-  sweepPos: 0, settlers: null, names: [],
+  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false,
+  wind: { angle: 0, strength: 0.3, targetAngle: 0, targetStrength: 0.3, retarget: 0 },
 };
 
 const params = {
@@ -762,6 +849,7 @@ const params = {
   windX: 0, windY: 0, windStrength: 0.5,
   density: 0.65, blast: 2,
   weatherMode: 'auto', regrow: 1, townCap: 8,
+  windMode: 'auto',
 };
 
 function generate(n) {
@@ -777,12 +865,21 @@ function generate(n) {
   world.townOf = new Int8Array(N).fill(-1);
   world.road = new Uint8Array(N);
   world.fert = new Uint8Array(N); // 0 = meadow (trees never seed here), 1 = light, 2 = good forest ground
+  world.since = new Int32Array(N).fill(-100000); // tick a cell last changed; regrowth waits REGROW_DELAY after that
+  world.intensity = new Uint8Array(N); // 1 = crown fire
+  // Regrowth visits cells in a scattered order (multiplication by a stride coprime to N) so it never looks like a band sweeping down.
+  world.sweepStep = Math.floor(N * 0.6180339) | 1;
+  const gcd = (a, b) => b ? gcd(b, a % b) : a;
+  while (gcd(world.sweepStep, N) !== 1) world.sweepStep += 2;
+  world.lastCrownLog = -1000;
   world.burning = []; world.glowing = []; world.water = []; world.wetList = [];
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
+  const a0 = Math.random() * Math.PI * 2;
+  world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
   logEntries.length = 0; renderLog();
 
   const seed = (Math.random() * 0xffffffff) >>> 0;
@@ -919,20 +1016,27 @@ function foundTown(cx, cy, R, opts) {
     crews: [], crewsToSpawn: 0, ring: [], claimed: new Set(),
     firstHit: false, destroyed: false, lostLogged: 0,
     R0: R, growTimer: 10 + Math.floor(rng() * 10), nextTruckId: 1, built: 0,
+    deaths: 0, homesLost: 0, fires: 0, founded: world.tick,
   };
   const stationWanted = rng() < opts.stationChance;
   let stationPlaced = false;
+  town.layout = pickLayout(R, rng);
+  // Clear most trees inside the town footprint, then lay the roads.
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    if (Math.hypot(dx, dy) > R + 0.3) continue;
+    const i = (cy + dy) * n + cx + dx, tt = type[i];
+    if (isTree(tt) && rng() < 0.88) { type[i] = T.GRASS; if (opts.live) world.treeCount--; dirty.add(i); }
+  }
+  layRoads(town, opts.live);
 
   for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
     const d = Math.hypot(dx, dy);
     if (d > R + 0.3) continue;
     const x = cx + dx, y = cy + dy, i = y * n + x;
     const tt = type[i];
-    if (tt === T.WATER || tt === T.ROCK || tt === T.PAD || tt === T.HANGAR) continue;
-    if (isTree(tt) && rng() < 0.88) { type[i] = T.GRASS; world.treeCount = Math.max(0, world.treeCount - (opts.live ? 1 : 0)); }
-    const onRoad = (dx === 0 || dy === 0) && d <= R;
-    if (onRoad) { if (isTree(type[i]) && opts.live) world.treeCount--; type[i] = T.DIRT; world.road[i] = 1; dirty.add(i); continue; }
-    if (stationWanted && !stationPlaced && dx === 1 && dy === -1) {
+    if (tt === T.WATER || tt === T.ROCK || tt === T.PAD || tt === T.HANGAR || world.road[i]) continue;
+    // Station: first free cell touching a road, close to the centre.
+    if (stationWanted && !stationPlaced && d <= 2.5 && touchesRoad(x, y)) {
       type[i] = T.STATION; stationPlaced = true;
       town.hasStation = true; town.stationIdx = i;
       town.buildings.push(i); world.townOf[i] = town.id;
@@ -1025,9 +1129,38 @@ function ignite(i) {
   const f = FUEL[t];
   world.burnLeft[i] = f.burn[0] + Math.floor(Math.random() * (f.burn[1] - f.burn[0] + 1));
   world.burning.push(i);
+  world.intensity[i] = 0;
   if (isBuilding(t)) onBuildingIgnite(i);
   dirty.add(i);
   return true;
+}
+
+// Crown fire: a burning tree with burning timber around it can flare into the canopy, especially in wind or drought.
+function maybeCrown(i, x, y, hasWind, W) {
+  const n = world.n, type = world.type, burnLeft = world.burnLeft;
+  if (!isTree(type[i])) return;
+  let hotNeighbors = 0, crownNeighbors = 0;
+  for (let d = 0; d < 8; d++) {
+    const nx = x + OFFS8[d][0], ny = y + OFFS8[d][1];
+    if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+    const j = ny * n + nx;
+    if (burnLeft[j] > 0 && isTree(type[j])) { hotNeighbors++; if (world.intensity[j]) crownNeighbors++; }
+  }
+  let p = 0;
+  if (crownNeighbors) p = 0.22;          // runs along the canopy
+  else if (hotNeighbors >= 3) p = 0.006; // enough heat to flare
+  if (!p) return;
+  p *= (1 + (hasWind ? 2 * params.windStrength : 0)) * (world.weather.kind === 'drought' ? 2 : (W.rainOut > 0 ? 0.2 : 1));
+  if (Math.random() < p) {
+    world.intensity[i] = 1;
+    burnLeft[i] += 2;
+    if (!crownNeighbors && world.tick - world.lastCrownLog > 150) {
+      world.lastCrownLog = world.tick;
+      let near = null, nd = Infinity;
+      for (const t of world.towns) { const dd = Math.hypot(t.cx - x, t.cy - y); if (dd < nd) { nd = dd; near = t; } }
+      log(near && nd < near.R + 20 ? `Fire is crowning in the timber near ${near.name}` : 'Fire is crowning in the timber', 'alarm');
+    }
+  }
 }
 
 function extinguish(i, wetTicks, kind) {
@@ -1066,17 +1199,23 @@ function step() {
     if (burnLeft[i] <= 0) continue; // put out by someone
     if (W.rainOut > 0 && Math.random() < W.rainOut) { burnLeft[i] = 0; dirty.add(i); continue; } // doused by rain
     const x = i % n, y = (i - x) / n;
+    if (!world.intensity[i]) maybeCrown(i, x, y, hasWind, W);
+    const crown = world.intensity[i] === 1;
+    const heat = crown ? 1.5 : 1;
     for (let d = 0; d < offs.length; d++) {
       const nx = x + offs[d][0], ny = y + offs[d][1];
       if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
       const j = ny * n + nx;
       const tj = type[j];
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
-      let p = spreadMul * FUEL[tj].ignite * dirMult[d];
-      if (wet[j] > 0) p *= 0.1;
+      let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat;
+      if (wet[j] > 0) p *= crown ? 0.3 : 0.1;
       if (Math.random() < p) ignite(j);
     }
-    if (spotP > 0 && FUEL[type[i]].spots && Math.random() < spotP) throwEmber(x, y, hasWind);
+    if (crown) {
+      // A crown fire showers embers far ahead of the front, even without wind.
+      for (let k = 0; k < 2; k++) if (Math.random() < (params.spotting ? 0.04 : 0.015) * (W.spot || 0.5)) throwEmber(x, y, hasWind, true);
+    } else if (spotP > 0 && FUEL[type[i]].spots && Math.random() < spotP) throwEmber(x, y, hasWind, false);
     burnLeft[i]--;
     if (burnLeft[i] > 0) next.push(i);
     else burnout(i);
@@ -1103,10 +1242,91 @@ function step() {
 
   world.tick++;
   updateWeather();
+  updateWind();
   regrowSweep();
   updateTowns();
   updateSettlers();
   updateAir();
+  maybeDragon();
+}
+
+/* ───────────────────────── Dragon ───────────────────────── */
+// Nobody summons it. It is drawn to prosperity, and it just happens sometimes. Sorry.
+
+function maybeDragon(force) {
+  if (world.dragon) return;
+  if (!force && world.tick < 400) return;
+  const towns = world.towns.filter(t => t.popLeft > 0 && t.housesLeft > 0);
+  if (!towns.length) return;
+  let totalPop = 0; for (const t of towns) totalPop += t.popLeft;
+  if (!force && Math.random() > 0.00002 + 0.00008 * (totalPop / 300)) return;
+  // Riches: weight by population squared.
+  let sum = 0; for (const t of towns) sum += t.popLeft * t.popLeft;
+  let r = Math.random() * sum, town = towns[towns.length - 1];
+  for (const t of towns) { r -= t.popLeft * t.popLeft; if (r <= 0) { town = t; break; } }
+  const n = world.n;
+  const edgePoint = () => { const e = Math.floor(Math.random() * 4); const k = Math.random() * n; return e === 0 ? [k, -4] : e === 1 ? [k, n + 4] : e === 2 ? [-4, k] : [n + 4, k]; };
+  const legs = [edgePoint()];
+  const passes = 3 + Math.floor(Math.random() * 3);
+  for (let k = 0; k < passes; k++) {
+    const a = Math.random() * Math.PI * 2, d = Math.random() * town.R * 0.9;
+    legs.push([town.cx + Math.cos(a) * d, town.cy + Math.sin(a) * d]);
+  }
+  legs.push(edgePoint());
+  world.dragon = { legs, leg: 0, t: 0, x: legs[0][0], y: legs[0][1], heading: 0, town, lit: 0, flap: 0, breathT: 0 };
+  town.dragons = (town.dragons || 0) + 1;
+  log(`A DRAGON has been sighted, making for ${town.name}`, 'dragon');
+  const [px, py] = cellCenter(town.cy * n + town.cx);
+  popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'DRAGON', color: '#ff4040', t0: performance.now(), dur: 3000 });
+}
+
+function flyDragon(dtSec) {
+  const d = world.dragon;
+  if (!d) return;
+  const speed = 8; // cells per second
+  let remaining = speed * dtSec;
+  while (remaining > 0 && d.leg < d.legs.length - 1) {
+    const [ax, ay] = d.legs[d.leg], [bx, by] = d.legs[d.leg + 1];
+    const len = Math.hypot(bx - ax, by - ay) || 0.001;
+    const left = (1 - d.t) * len;
+    const adv = Math.min(left, remaining);
+    d.t += adv / len; remaining -= adv;
+    d.x = ax + (bx - ax) * d.t; d.y = ay + (by - ay) * d.t;
+    const target = Math.atan2(by - ay, bx - ax);
+    let da = target - d.heading; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+    d.heading += da * Math.min(1, dtSec * 4);
+    if (d.t >= 0.999) { d.leg++; d.t = 0; }
+  }
+  // Breathe fire while over the town.
+  const over = Math.hypot(d.x - d.town.cx, d.y - d.town.cy) < d.town.R + 2.5 && d.leg >= 1;
+  d.breathT += dtSec;
+  if (over && d.breathT > 0.08) { d.breathT = 0; breathe(d); }
+  if (d.leg >= d.legs.length - 1) {
+    log(`The dragon leaves ${d.town.name} burning. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze.`, 'dragon');
+    world.dragon = null;
+  }
+}
+
+function breathe(d) {
+  const n = world.n;
+  const cx = Math.round(d.x), cy = Math.round(d.y);
+  world.dragonfire = true;
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+    const x = cx + dx, y = cy + dy;
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const i = y * n + x;
+    if (!isFuel(world.type[i]) || world.burnLeft[i] > 0) continue;
+    if (Math.random() < 0.55) {
+      world.wet[i] = 0; // dragonfire does not care about your hoses
+      if (isBuilding(world.type[i])) d.lit++;
+      ignite(i);
+      world.intensity[i] = isTree(world.type[i]) ? 1 : 0;
+    }
+  }
+  world.dragonfire = false;
+  shake = Math.max(shake, 0.35);
+  const [px, py] = cellCenter(Math.max(0, Math.min(n - 1, cy)) * n + Math.max(0, Math.min(n - 1, cx)));
+  for (let k = 0; k < 4; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py - cellPx * 1.5, vx: (Math.random() - 0.5) * 40, vy: 60 + Math.random() * 60, life: 0, max: 350, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.4), grav: 40 });
 }
 
 /* ───────────────────────── Weather ───────────────────────── */
@@ -1145,10 +1365,36 @@ function naturalLightning() {
   else if (Math.random() < 0.5) log('Lightning strike in the forest', 'weather');
 }
 
+/* ───────────────────────── Wind ───────────────────────── */
+
+const WIND_RANGE = { clear: [0.05, 0.5], drought: [0.3, 0.75], rain: [0.2, 0.6], storm: [0.6, 1.0] };
+
+function updateWind() {
+  if (params.windMode !== 'auto') return;
+  const w = world.wind, wk = world.weather.kind;
+  const [lo, hi] = WIND_RANGE[wk];
+  if (--w.retarget <= 0) {
+    w.retarget = (wk === 'storm' ? 15 : 40) + Math.floor(Math.random() * (wk === 'storm' ? 40 : 140));
+    w.targetStrength = lo + Math.random() * (hi - lo);
+    // Fronts swing the wind; storms can spin it right around.
+    w.targetAngle = w.angle + (Math.random() - 0.5) * (wk === 'storm' ? 3.2 : 1.6);
+  }
+  const turn = wk === 'storm' ? 0.06 : 0.02;
+  w.angle += (w.targetAngle - w.angle) * turn;
+  w.strength += (w.targetStrength - w.strength) * 0.04;
+  const gust = wk === 'storm' && Math.random() < 0.08 ? 0.25 : 0;
+  const s = Math.min(1, Math.max(0, w.strength + gust));
+  params.windX = Math.cos(w.angle); params.windY = Math.sin(w.angle); params.windStrength = s;
+  if (s > 0.85 && !w.gale) { w.gale = true; if (Math.random() < 0.5) log('Winds gusting hard', 'weather'); }
+  else if (s < 0.6) w.gale = false;
+}
+
 /* ───────────────────────── Regrowth ───────────────────────── */
 
 // Mean ticks for each succession step at regrowth rate 1 in clear weather.
-const GROW = { ashToGrass: 50, stumpToAsh: 80, breakToGrass: 110, grassToPine: 170, grassToPineLonely: 1400, grassToOak: 520, pineToBig: 380 };
+const GROW = { ashToGrass: 60, stumpToAsh: 90, breakToGrass: 120, grassToPine: 260, grassToPineLonely: 1800, grassToOak: 700, pineToBig: 450 };
+// Nothing regrows until this many ticks after the cell last changed (burn, greening, seeding). Varies per cell.
+const REGROW_DELAY = [300, 420];
 const SWEEP_DIV = 16;
 
 function inAnyTown(x, y) {
@@ -1161,16 +1407,20 @@ function regrowSweep() {
   const n = world.n, N = n * n, type = world.type;
   const mul = params.regrow * WEATHER[world.weather.kind].regrow * SWEEP_DIV;
   const count = Math.ceil(N / SWEEP_DIV);
-  let i = world.sweepPos;
-  for (let k = 0; k < count; k++, i++) {
-    if (i >= N) i = 0;
+  const step = world.sweepStep;
+  let k0 = world.sweepPos;
+  for (let k = 0; k < count; k++) {
+    if (k0 >= N) k0 = 0;
+    const i = (k0++ * step) % N; // exact: k0 * step < 2^53 for any map size here
     const t = type[i];
     if (t !== T.ASH && t !== T.STUMP && t !== T.DIRT && t !== T.GRASS && t !== T.PINE) continue;
     if (world.burnLeft[i] > 0 || world.glow[i] > 0) continue;
+    const wait = REGROW_DELAY[0] + (i * 7919) % (REGROW_DELAY[1] - REGROW_DELAY[0]);
+    if (world.tick - world.since[i] < wait / Math.max(0.25, params.regrow)) continue;
     const r = Math.random();
-    if (t === T.ASH) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; dirty.add(i); } }
-    else if (t === T.STUMP) { if (r < mul / GROW.stumpToAsh) { type[i] = T.ASH; dirty.add(i); } }
-    else if (t === T.DIRT) { if (!world.road[i] && r < mul / GROW.breakToGrass) { type[i] = T.GRASS; dirty.add(i); } }
+    if (t === T.ASH) { if (r < mul / GROW.ashToGrass) { type[i] = T.GRASS; world.variant[i] = Math.random() < 0.5 ? 0 : 1; world.since[i] = world.tick; dirty.add(i); } }
+    else if (t === T.STUMP) { if (r < mul / GROW.stumpToAsh) { type[i] = T.ASH; world.since[i] = world.tick; dirty.add(i); } }
+    else if (t === T.DIRT) { if (!world.road[i] && r < mul / GROW.breakToGrass) { type[i] = T.GRASS; world.since[i] = world.tick; dirty.add(i); } }
     else if (t === T.GRASS) {
       if (r > mul / 100) continue; // cheap early-out: nothing below has a chance better than this
       const x = i % n, y = (i - x) / n;
@@ -1182,29 +1432,30 @@ function regrowSweep() {
       const fert = world.fert[i];
       if (fert === 0 || inAnyTown(x, y)) continue; // meadows stay meadows
       const fm = fert === 2 ? 1 : 0.3;
-      if (oaks && r < fm * mul / GROW.grassToOak) { type[i] = T.OAK; world.treeCount++; dirty.add(i); }
-      else if (r < fm * mul / (trees ? GROW.grassToPine / Math.min(trees, 3) : GROW.grassToPineLonely)) { type[i] = T.PINE; world.treeCount++; dirty.add(i); }
+      if (oaks && r < fm * mul / GROW.grassToOak) { type[i] = T.OAK; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
+      else if (r < fm * mul / (trees ? GROW.grassToPine / Math.min(trees, 3) : GROW.grassToPineLonely)) { type[i] = T.PINE; world.treeCount++; world.since[i] = world.tick; dirty.add(i); }
     }
-    else if (t === T.PINE) { if (r < mul / GROW.pineToBig) { type[i] = T.BIGPINE; dirty.add(i); } }
+    else if (t === T.PINE) { if (r < mul / GROW.pineToBig) { type[i] = T.BIGPINE; world.since[i] = world.tick; dirty.add(i); } }
   }
-  world.sweepPos = i;
+  world.sweepPos = k0;
 }
 
 /* ───────────────────────── Settlers ───────────────────────── */
 
-function updateSettlers() {
+function updateSettlers(force) {
   const n = world.n;
   const s = world.settlers;
   if (!s) {
-    if (world.tick < 150 || Math.random() > 0.0007) return;
+    if (!force && (world.tick < 150 || Math.random() > 0.0007)) return;
     // Resettle a dead town, or found a new one if there is room.
     const dead = world.towns.filter(t => t.housesLeft === 0 || t.popLeft <= 0);
-    const maxTowns = n >= 200 ? 5 : (n >= 120 ? 4 : 3);
+    const alive = world.towns.length - dead.length;
+    const maxAlive = n >= 160 ? 4 : 3; // keeps the valley from turning into suburbia
     let plan = null;
     if (dead.length && Math.random() < 0.6) {
       const t = dead[Math.floor(Math.random() * dead.length)];
       plan = { mode: 'resettle', town: t, tx: t.cx, ty: t.cy };
-    } else if (world.towns.length < maxTowns) {
+    } else if (alive < maxAlive) {
       const R = 2 + Math.floor(Math.random() * 2);
       const site = findTownSite(R, Math.random);
       if (site) plan = { mode: 'found', R, tx: site[0], ty: site[1] };
@@ -1219,7 +1470,10 @@ function updateSettlers() {
     let [ex, ey] = edges[Math.random() < 0.7 ? 0 : 1];
     // Slide along the edge to a passable cell.
     for (let k = 0; k < n && !passable(world.type[ey * n + ex]); k++) { if (ey === 0 || ey === n - 1) ex = (ex + 1) % n; else ey = (ey + 1) % n; }
-    world.settlers = { ...plan, x: ex, y: ey, px: ex, py: ey, face: 1, stuck: 0, size: 12 + Math.floor(Math.random() * 20) };
+    const path = findPath(ex, ey, plan.tx, plan.ty);
+    if (!path) return; // no way in from that edge this time
+    const size = Math.random() < 0.15 ? 30 + Math.floor(Math.random() * 40) : 8 + Math.floor(Math.random() * 20); // mostly small parties, sometimes a whole caravan
+    world.settlers = { ...plan, x: ex, y: ey, px: ex, py: ey, face: 1, wait: 0, path, pi: 0, size };
     log(`A wagon of settlers appears on the ${ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east'} edge`, 'build');
     return;
   }
@@ -1233,21 +1487,33 @@ function updateSettlers() {
     popups.push({ x: px, y: py, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
     return;
   }
-  const arrived = stepToward(s, s.tx, s.ty, 1, false);
-  if (!arrived && s.x === s.px && s.y === s.py && ++s.stuck > 30) {
-    // Boxed in by water or fire for too long: turn back.
-    world.settlers = null;
-    log('The settlers turned back', 'weather');
-    return;
+  // Follow the path. Fire on the next cell: wait a bit, then look for a way around, then give up.
+  let arrived = s.pi >= s.path.length;
+  if (!arrived) {
+    const next = s.path[s.pi];
+    if (world.burnLeft[next] > 0 || !passable(world.type[next])) {
+      if (++s.wait > 12) {
+        const alt = findPath(s.x, s.y, s.tx, s.ty);
+        if (alt) { s.path = alt; s.pi = 0; s.wait = 0; }
+        else if (s.wait > 60) { world.settlers = null; log('The settlers turned back', 'weather'); return; }
+      }
+      return;
+    }
+    s.wait = 0;
+    const nx = next % n, ny = (next - nx) / n;
+    if (nx !== s.x) s.face = Math.sign(nx - s.x);
+    s.x = nx; s.y = ny; s.pi++;
+    arrived = s.pi >= s.path.length;
   }
-  if (!arrived && Math.hypot(s.x - s.tx, s.y - s.ty) > 1.5) return;
+  if (!arrived) return;
 
   if (s.mode === 'found') {
-    const town = foundTown(s.tx, s.ty, s.R, { houseScale: 0.75, stationChance: 0.1, live: true });
+    const town = foundTown(s.tx, s.ty, s.R, { houseScale: 0.6, stationChance: 0.05, live: true });
     if (town) {
-      const add = Math.max(0, s.size - town.popLeft);
-      town.popLeft += add; town.popTotal += add; world.popLeft += add; world.popTotal += add;
-      log(`Settlers found ${town.name} (pop ${town.popLeft})`, 'build');
+      // The wagon is the whole population. Houses they raised beyond that stand empty until they grow into them.
+      const delta = s.size - town.popLeft;
+      town.popLeft += delta; town.popTotal += delta; world.popLeft += delta; world.popTotal += delta;
+      log(`${s.size} settlers found ${town.name}, ${town.housesLeft} homes raised`, 'build');
       const [px, py] = cellCenter(s.ty * n + s.tx);
       popups.push({ x: px, y: py - town.R * cellPx, text: town.name.toUpperCase(), color: '#d9c48a', t0: performance.now(), dur: 2500 });
     } else log('The settlers found no good ground and moved on', 'weather');
@@ -1257,32 +1523,33 @@ function updateSettlers() {
     t.lastThreat = -1000; t.growTimer = 1;
     let built = 0;
     for (let k = 0; k < 3; k++) if (buildHouse(t, true)) built++;
-    log(`Settlers resettle ${t.name} (pop ${t.popLeft}, ${built} homes raised)`, 'build');
+    log(`${s.size} settlers resettle ${t.name} (pop now ${t.popLeft}, ${built} homes raised)`, 'build');
   }
   world.settlers = null;
 }
 
-function throwEmber(x, y, hasWind) {
+function throwEmber(x, y, hasWind, crown) {
   const n = world.n;
   let dx, dy;
+  const far = crown ? 2.2 : 1;
   if (hasWind) {
-    const dist = 2 + Math.random() * (3 + 4 * params.windStrength);
+    const dist = 2 + Math.random() * (3 + 4 * params.windStrength) * far;
     const base = Math.atan2(params.windY, params.windX) + (Math.random() - 0.5) * 0.9;
     dx = Math.round(Math.cos(base) * dist); dy = Math.round(Math.sin(base) * dist);
   } else {
-    const a = Math.random() * Math.PI * 2, dist = 2 + Math.random() * 2.5;
+    const a = Math.random() * Math.PI * 2, dist = 2 + Math.random() * 2.5 * far;
     dx = Math.round(Math.cos(a) * dist); dy = Math.round(Math.sin(a) * dist);
   }
   const tx = x + dx, ty = y + dy;
   if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
   const j = ty * n + tx;
   if (!isFuel(world.type[j]) || world.burnLeft[j] > 0) return;
-  let p = FUEL[world.type[j]].ignite * 0.8;
+  let p = FUEL[world.type[j]].ignite * (crown ? 0.9 : 0.8);
   if (world.wet[j] > 0) p *= 0.1;
   if (Math.random() < p) {
     ignite(j);
     const [ax, ay] = cellCenter(y * n + x), [bx, by] = cellCenter(j);
-    particles.push({ x: ax, y: ay, vx: (bx - ax) * 2.2, vy: (by - ay) * 2.2 - 25, life: 0, max: 450, color: '#ffb627', size: Math.max(1.5, cellPx * 0.3), grav: 110 });
+    particles.push({ x: ax, y: ay, vx: (bx - ax) * 2.2, vy: (by - ay) * 2.2 - 25, life: 0, max: 450, color: crown ? '#fff0b0' : '#ffb627', size: Math.max(1.5, cellPx * (crown ? 0.4 : 0.3)), grav: 110 });
   }
 }
 
@@ -1308,6 +1575,7 @@ function burnout(i) {
   world.glow[i] = 4 + Math.floor(Math.random() * 5);
   world.glowing.push(i);
   world.burnedCount++;
+  world.since[i] = world.tick;
   dirty.add(i);
 }
 
@@ -1330,6 +1598,7 @@ function strikeCell(cx, cy, radius) {
         if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
         world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH;
         world.burnedCount++;
+        world.since[i] = world.tick;
         world.glow[i] = 6; world.glowing.push(i);
       } else ignite(i);
       dirty.add(i);
@@ -1352,14 +1621,14 @@ function onBuildingIgnite(i) {
   if (!town.firstHit) { town.firstHit = true; log(`Fire reaches ${town.name}`, 'loss'); }
   const res = occupants(town);
   if (res > 0) {
-    const survive = town.mobilized ? 0.92 : 0.6;
+    const survive = world.dragonfire ? 0.5 : (town.mobilized ? 0.92 : 0.6);
     let lost = 0;
     for (let k = 0; k < res; k++) if (Math.random() > survive) lost++;
     lost = Math.min(lost, town.popLeft);
     if (lost > 0) {
-      town.popLeft -= lost; world.popLeft -= lost; world.deaths += lost;
+      town.popLeft -= lost; world.popLeft -= lost; world.deaths += lost; town.deaths += lost;
       town.lostLogged += lost;
-      if (town.lostLogged >= 5 || Math.random() < 0.3) {
+      if (town.lostLogged >= 8) {
         log(`${town.name}: ${town.lostLogged} ${town.lostLogged === 1 ? 'person' : 'people'} could not get out`, 'loss');
         town.lostLogged = 0;
       }
@@ -1373,11 +1642,11 @@ function onBuildingDestroyed(i, cause) {
   const t = world.type[i];
   if (cause === 'blast') {
     const res = Math.min(occupants(town), town.popLeft);
-    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; log(`${town.name}: ${res} killed by the blast`, 'loss'); }
+    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; town.deaths += res; log(`${town.name}: ${res} killed by the blast`, 'loss'); }
     town.firstHit = true;
   }
   world.buildingsLeft--; world.buildingsLost++;
-  if (t === T.HOUSE) town.housesLeft--;
+  if (t === T.HOUSE) { town.housesLeft--; town.homesLost++; }
   if (t === T.STATION) {
     town.hasStation = false;
     for (const tr of town.trucks) if (tr.alive && (tr.state === 'idle' || tr.state === 'refill')) loseTruck(town, tr, 'lost with the station');
@@ -1395,7 +1664,7 @@ function occupants(town) {
 
 function loseCrew(town, crew, why) {
   const people = Math.min(crew.size, town.popLeft);
-  town.popLeft -= people; world.popLeft -= people; world.deaths += people;
+  town.popLeft -= people; world.popLeft -= people; world.deaths += people; town.deaths += people;
   town.claimed.delete(crew.target);
   log(`${town.name}: crew of ${people} ${why}`, 'loss');
   const [x, y] = cellCenter(crew.y * world.n + crew.x);
@@ -1427,6 +1696,7 @@ function updateTowns() {
       town.fireDir = Math.atan2(Math.floor(nearest / n) - town.cy, (nearest % n) - town.cx);
       if (!town.mobilized && town.popLeft > 0) {
         town.mobilized = true;
+        town.fires++;
         town.rallyAt = world.tick + 1 + Math.floor(Math.random() * 3);
         // Turnout is a dice roll: sometimes a handful show up, sometimes the whole town.
         const base = Math.sqrt(town.popLeft);
@@ -1494,10 +1764,8 @@ function updateWorkers(town) {
       if (rubble.length && Math.random() < 0.75) {
         w.target = rubble[Math.floor(Math.random() * rubble.length)]; w.job = 'rebuild';
       } else {
-        const d = 1 + Math.floor(Math.random() * town.R);
-        const dir = Math.floor(Math.random() * 4);
-        const tx = town.cx + (dir === 0 ? d : dir === 1 ? -d : 0), ty = town.cy + (dir === 2 ? d : dir === 3 ? -d : 0);
-        if (tx >= 0 && ty >= 0 && tx < n && ty < n && passable(type[ty * n + tx])) { w.target = ty * n + tx; w.job = 'stroll'; }
+        const roads = roadCells(town);
+        if (roads.length) { w.target = roads[Math.floor(Math.random() * roads.length)]; w.job = 'stroll'; }
       }
       w.linger = 0;
       if (w.target < 0) { keep.push(w); continue; }
@@ -1583,10 +1851,10 @@ function buildHouse(town, quiet) {
   for (let dy = -maxR; dy <= maxR; dy++) for (let dx = -maxR; dx <= maxR; dx++) {
     const d = Math.hypot(dx, dy);
     if (d > maxR || d < 1) continue;
-    if (dx === 0 || dy === 0) continue; // keep the roads clear
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
     const i = y * n + x, t = type[i];
+    if (world.road[i]) continue; // keep the roads clear
     if (t === T.WATER || t === T.ROCK || t === T.PAD || t === T.HANGAR || isBuilding(t)) continue;
     if (world.burnLeft[i] > 0) continue;
     let foreign = false;
@@ -1615,7 +1883,7 @@ function buildHouse(town, quiet) {
   const d = Math.hypot((best % n) - town.cx, Math.floor(best / n) - town.cy);
   if (d > town.R + 0.3) {
     town.R = Math.ceil(d);
-    layRoads(town);
+    layRoads(town, true);
     recomputeRing(town);
     if (!quiet) log(`${town.name} grows: new road, ${town.housesLeft} homes`, 'build');
   } else if (!quiet && rebuilt && Math.random() < 0.12) log(`${town.name} is rebuilding (${town.housesLeft} homes)`, 'build');
@@ -1628,27 +1896,68 @@ function findTownSpot(town, ok) {
   const n = world.n, type = world.type;
   let best = -1, bestD = Infinity;
   for (let dy = -town.R; dy <= town.R; dy++) for (let dx = -town.R; dx <= town.R; dx++) {
-    if (dx === 0 || dy === 0) continue;
     const d = Math.hypot(dx, dy);
     if (d > town.R + 0.3 || d < 1) continue;
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 0 || y < 0 || x >= n || y >= n) continue;
     const i = y * n + x;
-    if (!ok(type[i]) || world.burnLeft[i] > 0) continue;
+    if (world.road[i] || !ok(type[i]) || world.burnLeft[i] > 0) continue;
     if (d < bestD) { bestD = d; best = i; }
   }
   return best;
 }
 
-function layRoads(town) {
+// Road layouts: spokes at angles (degrees) out from the square, plus an optional ring road.
+function pickLayout(R, rng) {
+  const r = rng();
+  const rot = [0, 45, 90, 135][Math.floor(rng() * 4)];
+  let spokes;
+  if (r < 0.22) spokes = [0, 90, 180, 270];                     // crossroads
+  else if (r < 0.40) spokes = [0, 180, 90];                     // T junction
+  else if (r < 0.52) spokes = [0, 90];                          // L bend
+  else if (r < 0.70) spokes = [0, 180];                         // one main street
+  else if (r < 0.82) spokes = [0, 120, 240];                    // Y fork
+  else if (r < 0.92) spokes = [45, 135, 225, 315];              // X
+  else spokes = [0, 60, 120, 180, 240, 300];                    // star
+  spokes = spokes.map(a => (a + rot + (rng() < 0.25 ? Math.floor(rng() * 30) - 15 : 0)) % 360);
+  const ring = R >= 4 && rng() < 0.35 ? Math.max(2, Math.round(R * (0.45 + rng() * 0.3))) : 0;
+  return { spokes, ring };
+}
+
+function touchesRoad(x, y) {
+  const n = world.n;
+  for (const [ox, oy] of OFFS8) { const nx = x + ox, ny = y + oy; if (nx >= 0 && ny >= 0 && nx < n && ny < n && world.road[ny * n + nx]) return true; }
+  return false;
+}
+
+function roadCells(town) {
+  const n = world.n, out = [];
+  for (let dy = -town.R; dy <= town.R; dy++) for (let dx = -town.R; dx <= town.R; dx++) {
+    const x = town.cx + dx, y = town.cy + dy;
+    if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    if (world.road[y * n + x]) out.push(y * n + x);
+  }
+  return out;
+}
+
+function layRoads(town, live) {
   const n = world.n, type = world.type;
-  for (let d = 1; d <= town.R; d++) {
-    for (const [x, y] of [[town.cx + d, town.cy], [town.cx - d, town.cy], [town.cx, town.cy + d], [town.cx, town.cy - d]]) {
-      if (x < 0 || y < 0 || x >= n || y >= n) continue;
-      const i = y * n + x, t = type[i];
-      if (t === T.WATER || t === T.ROCK || isBuilding(t) || t === T.PAD || t === T.HANGAR) continue;
-      if (isTree(t)) world.treeCount--;
-      type[i] = T.DIRT; world.road[i] = 1; dirty.add(i);
+  const put = (x, y) => {
+    if (x < 0 || y < 0 || x >= n || y >= n) return;
+    const i = y * n + x, t = type[i];
+    if (t === T.WATER || t === T.ROCK || isBuilding(t) || t === T.PAD || t === T.HANGAR || t === T.RUBBLE) return;
+    if (isTree(t) && live !== false) world.treeCount--;
+    type[i] = T.DIRT; world.road[i] = 1; dirty.add(i);
+  };
+  put(town.cx, town.cy);
+  for (const a of town.layout.spokes) {
+    const ca = Math.cos(a * Math.PI / 180), sa = Math.sin(a * Math.PI / 180);
+    for (let d = 0.5; d <= town.R; d += 0.5) put(Math.round(town.cx + ca * d), Math.round(town.cy + sa * d));
+  }
+  if (town.layout.ring) {
+    const rr = town.layout.ring;
+    for (let dy = -rr - 1; dy <= rr + 1; dy++) for (let dx = -rr - 1; dx <= rr + 1; dx++) {
+      if (Math.abs(Math.hypot(dx, dy) - rr) < 0.55) put(town.cx + dx, town.cy + dy);
     }
   }
 }
@@ -1719,6 +2028,37 @@ function stepToward(a, tx, ty, speed, allowBurning) {
   return a.x === tx && a.y === ty;
 }
 
+// Breadth-first path over passable, non-burning cells. Returns cell indices from the step after start to the goal, or null.
+function findPath(sx, sy, tx, ty, maxCells) {
+  const n = world.n, N = n * n, type = world.type, burnLeft = world.burnLeft;
+  const start = sy * n + sx, goal = ty * n + tx;
+  if (start === goal) return [];
+  const parent = new Int32Array(N).fill(-1);
+  const queue = new Int32Array(N);
+  let head = 0, tail = 0;
+  queue[tail++] = start; parent[start] = start;
+  const limit = maxCells || N;
+  while (head < tail && head < limit) {
+    const cur = queue[head++];
+    const cx = cur % n, cy = (cur - cx) / n;
+    for (let d = 0; d < 8; d++) {
+      const nx = cx + OFFS8[d][0], ny = cy + OFFS8[d][1];
+      if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
+      const j = ny * n + nx;
+      if (parent[j] !== -1) continue;
+      if (!passable(type[j]) || burnLeft[j] > 0) continue;
+      parent[j] = cur;
+      if (j === goal) {
+        const path = [];
+        for (let k = j; k !== start; k = parent[k]) path.push(k);
+        return path.reverse();
+      }
+      queue[tail++] = j;
+    }
+  }
+  return null;
+}
+
 function angleDiff(a, b) {
   let d = a - b;
   while (d > Math.PI) d -= Math.PI * 2;
@@ -1785,18 +2125,29 @@ function updateCrews(town) {
         const d = Math.hypot(x - c.x, y - c.y) + off * 6;
         if (d < bestD) { bestD = d; best = i; }
       }
-      if (best >= 0) { c.target = best; town.claimed.add(best); c.progress = 0; }
+      if (best >= 0) { c.target = best; town.claimed.add(best); c.progress = 0; c.bestD = undefined; c.stall = 0; }
     }
     if (c.target >= 0) {
       const tx = c.target % n, ty = (c.target - tx) / n;
+      const dNow = Math.hypot(tx - c.x, ty - c.y);
+      if (c.bestD === undefined || dNow < c.bestD - 0.01) { c.bestD = dNow; c.stall = 0; }
+      else if (c.x !== tx || c.y !== ty) c.stall = (c.stall || 0) + 1;
+      if (c.stall > 10) { // can't get there (water, rock, fire): leave it claimed so nobody else tries, pick another
+        c.target = -1; c.progress = 0; c.bestD = undefined; c.stall = 0;
+        keep.push(c);
+        continue;
+      }
       if (c.x === tx && c.y === ty) {
+        c.bestD = undefined;
         let hot = false;
         for (const [ox, oy] of OFFS8) {
           const nx = tx + ox, ny = ty + oy;
           if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
           if (burnLeft[ny * n + nx] > 0) { hot = true; break; }
         }
-        if (hot && Math.random() < 0.35) {
+        let crownNear = false;
+        if (hot) for (const [ox, oy] of OFFS8) { const nx = tx + ox, ny = ty + oy; if (nx >= 0 && ny >= 0 && nx < n && ny < n && world.intensity[ny * n + nx] && burnLeft[ny * n + nx] > 0) { crownNear = true; break; } }
+        if (hot && Math.random() < (crownNear ? 0.8 : 0.35)) {
           town.claimed.delete(c.target); c.target = -1; c.progress = 0;
           stepToward(c, town.cx, town.cy, 1, false);
         } else {
@@ -1806,6 +2157,7 @@ function updateCrews(town) {
           if (c.progress >= need) {
             if (isTree(type[c.target])) world.treeCount--;
             type[c.target] = T.DIRT;
+            world.since[c.target] = world.tick;
             dirty.add(c.target);
             town.claimed.delete(c.target);
             c.target = -1; c.progress = 0;
@@ -1859,12 +2211,19 @@ function updateTrucks(town) {
     }
     if (best < 0) { if (!town.mobilized) tr.state = 'return'; continue; }
     const bx = best % n, by = (best - bx) / n;
+    if (tr.bestD === undefined || bestD < tr.bestD - 0.01) { tr.bestD = bestD; tr.stall = 0; }
+    else tr.stall = (tr.stall || 0) + 1;
+    if (tr.stall > 14 && bestD > 1.5) { // boxed in; head home and try again later
+      tr.state = town.hasStation ? 'return' : 'idle'; tr.bestD = undefined; tr.stall = 0;
+      continue;
+    }
     if (bestD <= 1.5) {
+      tr.bestD = undefined;
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
         const x = tr.x + dx, y = tr.y + dy;
         if (x < 0 || y < 0 || x >= n || y >= n) continue;
         const j = y * n + x;
-        if (burnLeft[j] > 0 && Math.random() < 0.7 && tr.water > 0) { extinguish(j, 20, 1); tr.water--; spray(j); }
+        if (burnLeft[j] > 0 && Math.random() < (world.intensity[j] ? 0.3 : 0.7) && tr.water > 0) { extinguish(j, 20, 1); tr.water--; spray(j); }
         else if (isFuel(world.type[j]) && world.wet[j] <= 0 && Math.random() < 0.3) extinguish(j, 15, 1);
       }
     } else stepToward(tr, bx, by, 2, false);
@@ -2068,21 +2427,34 @@ function render(now, tickFrac) {
   }
 
   const frames = [SPR.fire0, SPR.fire1, SPR.fire2];
-  const burnLeft = world.burnLeft;
+  const crownFrames = [SPR.crown0, SPR.crown1, SPR.crown2];
+  const burnLeft = world.burnLeft, intensity = world.intensity;
   for (const i of world.burning) {
     if (burnLeft[i] <= 0) continue;
     const x = i % n, y = (i - x) / n;
-    ctx.drawImage(frames[(fireFrame + i) % 3], x * cellPx, y * cellPx);
+    ctx.drawImage((intensity[i] ? crownFrames : frames)[(fireFrame + i) % 3], x * cellPx, y * cellPx);
   }
 
   ctx.font = `${Math.max(8, Math.round(cellPx * 1.1))}px Silkscreen, monospace`;
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+  const nameFont = `${Math.max(8, Math.round(cellPx * 1.1))}px Silkscreen, monospace`;
+  const statFont = `${Math.max(7, Math.round(cellPx * 0.8))}px Silkscreen, monospace`;
   for (const t of world.towns) {
     const x = (t.cx + 0.5) * cellPx, y = (t.cy - t.R - 0.6) * cellPx;
+    const dead = t.housesLeft === 0 || t.popLeft <= 0;
+    ctx.font = nameFont;
     ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillText(t.name.toUpperCase(), x + 1, y + 1);
-    ctx.fillStyle = t.destroyed ? '#9a8a78' : (t.mobilized ? '#ffb627' : '#e9dccb');
-    ctx.fillText(t.name.toUpperCase(), x, y);
+    ctx.fillText(t.name.toUpperCase(), x + 1, y - cellPx * 0.9 + 1);
+    ctx.fillStyle = dead ? '#9a8a78' : (t.mobilized ? '#ffb627' : '#e9dccb');
+    ctx.fillText(t.name.toUpperCase(), x, y - cellPx * 0.9);
+    if (cellPx >= 4) {
+      const stat = dead ? (t.popLeft > 0 ? `${t.popLeft} survivors` : 'abandoned') : `pop ${t.popLeft} · ${t.housesLeft} homes${t.hasStation ? ' · ' + t.trucks.filter(q => q.alive).length + ' eng' : ''}`;
+      ctx.font = statFont;
+      ctx.fillStyle = 'rgba(0,0,0,0.6)';
+      ctx.fillText(stat, x + 1, y + 1);
+      ctx.fillStyle = dead ? '#9a8a78' : 'rgba(233,220,203,0.85)';
+      ctx.fillText(stat, x, y);
+    }
   }
 
   for (const t of world.towns) {
@@ -2124,6 +2496,20 @@ function render(now, tickFrac) {
     ctx.fillStyle = 'rgba(0,0,0,0.25)';
     ctx.fillRect(-s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s);
     ctx.drawImage(SPR.plane, -s / 2, -s / 2, s, s);
+    ctx.restore();
+  }
+
+  if (world.dragon) {
+    const d = world.dragon;
+    const sz = cellPx * 3.4;
+    const frame = Math.floor(now / 140) % 2 ? SPR16.dragon1 : SPR16.dragon0;
+    ctx.save();
+    ctx.translate((d.x + 0.5) * cellPx, (d.y + 0.5) * cellPx);
+    ctx.rotate(d.heading + Math.PI / 2);
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.fillRect(-sz / 2 + sz * 0.2, -sz / 2 + sz * 0.35, sz * 0.9, sz * 0.9);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(frame, -sz / 2, -sz / 2, sz, sz);
     ctx.restore();
   }
 
@@ -2331,7 +2717,7 @@ function strokePath(pts) {
 
 /* ───────────────────────── Loop ───────────────────────── */
 
-let running = true, tickAcc = 0, lastT = 0, lastWater = 0, lastFire = 0;
+let running = true, tickAcc = 0, lastT = 0, lastWater = 0, lastFire = 0, lastTownsAt = 0;
 const $ = id => document.getElementById(id);
 const statEls = {
   tick: $('statTick'), burning: $('statBurning'), burned: $('statBurned'), trees: $('statTrees'),
@@ -2379,12 +2765,16 @@ function frame(now) {
     for (let k = 0; k < steps; k++) step();
   }
   flyPlane(dt);
+  flyDragon(dt);
 
   if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
   if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
 
   render(now, Math.min(1, tickAcc));
   updateStats();
+  updateHud();
+  updateTip();
+  if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); }
   requestAnimationFrame(frame);
 }
 
@@ -2428,13 +2818,144 @@ document.querySelectorAll('#weatherSeg button').forEach(b => {
     document.querySelectorAll('#weatherSeg button').forEach(x => x.classList.toggle('on', x === b));
   });
 });
-document.querySelectorAll('#compass button').forEach(b => {
-  b.addEventListener('click', () => {
-    const [x, y] = b.dataset.dir.split(',').map(Number);
-    params.windX = x; params.windY = y;
-    document.querySelectorAll('#compass button').forEach(q => q.classList.toggle('on', q === b));
-  });
+const compassBtns = [...document.querySelectorAll('#compass button')];
+const windAutoBtn = $('windAuto');
+function setWindManual(x, y) {
+  params.windMode = 'manual';
+  windAutoBtn.classList.remove('on');
+  params.windX = x; params.windY = y;
+  compassBtns.forEach(q => { q.classList.remove('auto'); q.classList.toggle('on', q.dataset.dir === `${x},${y}`); });
+}
+compassBtns.forEach(b => {
+  b.addEventListener('click', () => { const [x, y] = b.dataset.dir.split(',').map(Number); setWindManual(x, y); });
 });
+windAutoBtn.addEventListener('click', () => {
+  params.windMode = 'auto';
+  windAutoBtn.classList.add('on');
+  compassBtns.forEach(q => q.classList.remove('on'));
+});
+$('wind').addEventListener('input', () => {
+  if (params.windMode === 'auto') {
+    // Dragging the slider takes manual control of strength but keeps the current heading.
+    const a = world.wind.angle;
+    const dx = Math.round(Math.cos(a)), dy = Math.round(Math.sin(a));
+    setWindManual(dx, dy);
+    params.windStrength = parseFloat($('wind').value);
+  }
+});
+
+// Weather / wind HUD in the map corner, and the compass mirror while on auto.
+const hudEls = { weather: $('hudWeather'), vane: $('hudVane'), wind: $('hudWind'), tick: $('hudTick') };
+let lastHud = '';
+function updateHud() {
+  const wk = world.weather.kind;
+  const s = params.windStrength, calm = s < 0.08 || (params.windX === 0 && params.windY === 0);
+  const ang = calm ? 0 : Math.atan2(params.windY, params.windX) * 180 / Math.PI;
+  const dir8 = calm ? '0,0' : `${Math.round(Math.cos(ang * Math.PI / 180))},${Math.round(Math.sin(ang * Math.PI / 180))}`;
+  const key = `${wk}|${ang.toFixed(0)}|${s.toFixed(2)}|${dir8}|${params.windMode}`;
+  if (key !== lastHud) {
+    lastHud = key;
+    hudEls.weather.textContent = WEATHER[wk].label;
+    hudEls.weather.className = 'w ' + wk;
+    hudEls.vane.style.transform = `rotate(${ang}deg)`;
+    hudEls.vane.classList.toggle('calm', calm);
+    hudEls.wind.textContent = calm ? 'calm' : s.toFixed(2);
+    if (params.windMode === 'auto') {
+      $('wind').value = s; $('windOut').textContent = s.toFixed(2);
+      compassBtns.forEach(q => q.classList.toggle('auto', q.dataset.dir === dir8));
+    }
+  }
+  hudEls.tick.textContent = 't' + world.tick;
+}
+
+// Settlements panel.
+const townsEl = $('towns');
+let lastTownsKey = '';
+function updateTownsPanel() {
+  if (!world.towns.length) { if (lastTownsKey !== 'none') { lastTownsKey = 'none'; townsEl.innerHTML = '<div class="empty">no towns in this wilderness</div>'; } return; }
+  const rows = world.towns.map(t => {
+    const dead = t.housesLeft === 0 || t.popLeft <= 0;
+    const eng = t.trucks.filter(q => q.alive).length;
+    const burningHere = t.mobilized && t.fireDist < t.R + 1.5;
+    const cls = dead ? 'dead' : burningHere ? 'burning' : t.mobilized ? 'rallied' : '';
+    const status = dead ? (t.popLeft > 0 ? `${t.popLeft} survivors` : 'abandoned') : burningHere ? 'burning' : t.mobilized ? `rallied, ${t.crews.length} crews out` : 'calm';
+    const air = world.air && world.air.owner === t.name ? ` · airstrip ${world.air.sorties}/${world.air.max}` : '';
+    return `<div class="row ${cls}"><span class="dot"></span><span class="name">${t.name}</span><span class="st">${status}</span>` +
+      `<span class="sub">pop <b>${t.popLeft}</b> · homes <b>${t.housesLeft}</b> · r${t.R}` + (t.hasStation ? ` · <b>${eng}</b> eng` : '') + air +
+      (t.deaths || t.homesLost ? ` · <span class="d">${t.deaths} dead, ${t.homesLost} homes lost</span>` : '') + (t.fires ? ` · ${t.fires} fire${t.fires === 1 ? '' : 's'}` : '') + (t.dragons ? ` · <span class="d">dragon x${t.dragons}</span>` : '') + `</span></div>`;
+  });
+  const html = rows.join('');
+  if (html !== lastTownsKey) { lastTownsKey = html; townsEl.innerHTML = html; }
+}
+
+// Shift + hover inspector.
+const tipEl = $('tip');
+let shiftDown = false, tipPos = [0, 0];
+window.addEventListener('keydown', ev => { if (ev.key === 'Shift') shiftDown = true; });
+window.addEventListener('keyup', ev => { if (ev.key === 'Shift') shiftDown = false; });
+window.addEventListener('blur', () => { shiftDown = false; });
+canvas.addEventListener('mousemove', ev => {
+  shiftDown = ev.shiftKey;
+  const r = viewport.getBoundingClientRect();
+  tipPos = [ev.clientX - r.left, ev.clientY - r.top];
+});
+const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
+  [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
+  [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine' };
+function updateTip() {
+  const show = shiftDown && hover >= 0 && hover < world.n * world.n;
+  tipEl.classList.toggle('show', show);
+  if (!show) return;
+  const n = world.n, i = hover, x = i % n, y = (i - x) / n, t = world.type[i];
+  const lines = [];
+  let name = TYPE_NAMES[t] || '?';
+  if (t === T.DIRT) name = world.road[i] ? 'Road' : 'Firebreak';
+  lines.push(`<div class="h">${name} <span class="k">(${x}, ${y})</span></div>`);
+  if (world.burnLeft[i] > 0) lines.push(`<div class="fire">${world.intensity[i] ? 'CROWN FIRE, spreading hard and throwing embers far' : 'Burning'}, ${world.burnLeft[i]} tick${world.burnLeft[i] === 1 ? '' : 's'} left</div>`);
+  else if (world.glow[i] > 0) lines.push(`<div class="fire">Smoldering embers</div>`);
+  if (world.wet[i] > 0) lines.push(world.wetKind[i] === 2 ? `<div class="ret">Retardant, ${world.wet[i]} ticks</div>` : `<div class="wet">Wet, ${world.wet[i]} ticks</div>`);
+  const f = FUEL[t];
+  if (f) lines.push(`<div><span class="k">fuel:</span> ignites x${f.ignite}, burns ${f.burn[0]}-${f.burn[1]} ticks${f.spots ? ', throws embers' : ''}</div>`);
+  else lines.push(`<div><span class="k">fuel:</span> none</div>`);
+  if (t === T.ASH || t === T.STUMP || (t === T.DIRT && !world.road[i])) {
+    const wait = Math.round((REGROW_DELAY[0] + (i * 7919) % (REGROW_DELAY[1] - REGROW_DELAY[0])) / Math.max(0.25, params.regrow));
+    const left = wait - (world.tick - world.since[i]);
+    lines.push(`<div><span class="k">regrowth:</span> ${left > 0 ? `dormant for ${left} more ticks` : 'recovering'}</div>`);
+  }
+  if (t === T.GRASS || t === T.ASH || t === T.DIRT) {
+    const fert = world.fert ? world.fert[i] : 1;
+    lines.push(`<div><span class="k">ground:</span> ${fert === 0 ? 'meadow, trees never seed' : fert === 1 ? 'thin soil, slow regrowth' : 'forest soil'}</div>`);
+  }
+  const owner = world.townOf[i] >= 0 ? world.towns[world.townOf[i]] : null;
+  let within = null;
+  for (const tw of world.towns) if (Math.hypot(tw.cx - x, tw.cy - y) <= tw.R + 0.5) { within = tw; break; }
+  const tw = owner || within;
+  if (tw) {
+    let extra = '';
+    if (isBuilding(t) && owner) extra = `, about ${occupants(owner)} people inside`;
+    if (t === T.RUBBLE && owner) extra = ', waiting to be rebuilt';
+    lines.push(`<div class="town">${tw.name}: pop ${tw.popLeft}, ${tw.housesLeft} homes${tw.hasStation ? ', station' : ''}${tw.mobilized ? ', RALLIED' : ''}${extra}</div>`);
+  }
+  if (world.air && Math.abs(world.air.x - x) <= 1 && Math.abs(world.air.y - y) <= 1 && (t === T.PAD || t === T.HANGAR)) {
+    lines.push(`<div class="town">${world.air.owner} airstrip: ${world.air.sorties}/${world.air.max} sorties${world.air.plane ? ', tanker airborne' : ''}</div>`);
+  }
+  const here = [];
+  for (const town of world.towns) {
+    const crews = town.crews.filter(c => c.x === x && c.y === y);
+    if (crews.length) here.push(`${crews.length} ${town.name} crew${crews.length > 1 ? 's' : ''} (${crews.map(c => c.mode === 'douse' ? 'beating flames' : (c.target >= 0 && c.target === i ? 'digging' : 'moving')).join(', ')})`);
+    for (const tr of town.trucks) if (tr.alive && tr.x === x && tr.y === y) here.push(`${town.name} engine ${tr.id}, water ${tr.water}/${tr.cap}, ${tr.state}`);
+    if (town.workers) { const w = town.workers.filter(w => w.x === x && w.y === y); if (w.length) here.push(`${w.length} townsfolk ${w.some(q => q.job === 'rebuild') ? 'rebuilding' : 'out walking'}`); }
+  }
+  if (world.settlers && world.settlers.x === x && world.settlers.y === y) here.push(`settler wagon, ${world.settlers.size} people, bound for ${world.settlers.mode === 'found' ? 'new ground' : world.settlers.town.name}`);
+  if (here.length) lines.push(`<div><span class="k">here:</span> ${here.join('; ')}</div>`);
+  tipEl.innerHTML = lines.join('');
+  // Place beside the cursor, flipping to stay inside the viewport.
+  const vr = viewport.getBoundingClientRect();
+  let left = tipPos[0] + 16, top = tipPos[1] + 16;
+  if (left + 250 > vr.width) left = tipPos[0] - 16 - 240;
+  if (top + 140 > vr.height) top = tipPos[1] - 16 - 120;
+  tipEl.style.left = left + 'px'; tipEl.style.top = top + 'px';
+}
 
 const btnPlay = $('btnPlay');
 function setRunning(r) {
@@ -2496,10 +3017,10 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 (function buildLegend() {
   const items = [
     ['grass0', 'grass'], ['pine', 'pine (small)'], ['oak', 'oak (large)'], ['water0', 'water'],
-    ['rock', 'rock'], ['fire1', 'burning'], ['ash', 'ash'], ['stump', 'burnt tree'],
+    ['rock', 'rock'], ['fire1', 'burning'], ['crown1', 'crown fire'], ['ash', 'ash'], ['stump', 'burnt tree'],
     ['house0', 'house'], ['station', 'fire station'], ['rubble', 'rubble'], ['dirt', 'firebreak / road'],
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
-    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'],
+    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['dragon0', '...'],
   ];
   const leg = $('legend');
   for (const [k, label] of items) {
@@ -2513,7 +3034,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 })();
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true) };
 
 // Boot
 reset(100);

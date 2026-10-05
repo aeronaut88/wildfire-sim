@@ -79,11 +79,44 @@ Leave it running. Nothing is static.
 
 Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 60 events.
 
+## Wind, crown fire, and looking closer
+
+- **Wind follows the weather.** On Auto the wind drifts and swings with fronts, stays light
+  on clear days, blows steady in a drought, and gusts hard in storms. The corner readout on
+  the map shows weather, a wind vane, and strength. Click any compass arrow or drag the
+  strength slider to take manual control; the Auto button hands it back.
+- **Crown fire.** Burning timber with enough heat around it can flare into the canopy,
+  far more readily in wind or drought. Crown fire burns white-hot, spreads harder, shrugs
+  off wet ground, runs along the tree line, and showers embers two to three times farther
+  ahead of the front. Crews bail when it is next to them and engines struggle with it.
+- **Regrowth waits.** Burnt ground stays black for 300 to 420 ticks before anything
+  greens, and each succession step waits its own delay. Meadows from the original terrain
+  never grow trees.
+- **Settlers find their way.** Wagons use real pathfinding, wait for fire to clear, and turn
+  back if there is no route. Crews and engines give up on targets they cannot reach.
+- **Three living towns** at a time on the default map, four on big maps. Dead towns do not
+  count, and settlers prefer to resettle them.
+- **Settlements panel** lists every town with population, homes, radius, engines, deaths,
+  homes lost and fires survived. The same numbers sit under each town's name on the map.
+- **Roads have shape.** Each town rolls a layout: crossroads, T junction, L bend, a single
+  main street, a Y fork, an X, or a six-spoke star, sometimes with a ring road. Houses,
+  stations and strolling townsfolk follow the real road cells.
+- **Settlers are the population.** A wagon carries 8 to 28 people, occasionally a caravan
+  of up to 70. A founded town starts with exactly those people, and empty houses until
+  they grow into them.
+- **Dragon.** Rarely, and drawn to the richest towns (weighted by population squared), a
+  dragon crosses the map, makes several passes over a town breathing fire, ignores wet
+  ground, and leaves. There is no button for this. It just happens sometimes. Sorry.
+- **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
+  retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
+  is standing there (crews, engines, townsfolk, settlers).
+
 ## Controls
 
 | Action              | Mouse / button      | Key     |
 |---------------------|---------------------|---------|
 | Fire a missile      | click the map       | `M` (random target) |
+| Inspect a cell      | Shift + hover       |         |
 | Lightning strike    | right-click the map | `L` (random target) |
 | Pause / resume      | Pause button        | `space` |
 | Single step         | Step button         | `.`     |
