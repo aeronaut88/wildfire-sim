@@ -160,7 +160,30 @@
   .tip .ret { color: #ff8ab0; }
   .tip .town { color: #d9c48a; }
   .compass button.auto { background: #0f1f30; border-color: #2d6bb0; color: #a8d1ff; }
-  .readout { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+  .readout { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; position: relative; }
+  .stage .log { min-height: 96px; max-height: 150px; }
+  .tabs { display: flex; gap: 4px; position: sticky; top: -14px; z-index: 3; background: var(--panel); padding: 2px 0 8px; margin: -4px 0 -6px; border-bottom: 1px solid var(--panel-edge); }
+  .tabs button { flex: 1; font-family: var(--pixel); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 7px 4px; background: #1a1512; color: var(--ink-dim); border: 1px solid var(--panel-edge); cursor: pointer; }
+  .tabs button:hover { color: var(--ink); }
+  .tabs button.on { color: var(--ember-hot); background: #241c17; border-color: var(--ember-hot); }
+  .tabpane { display: none; flex-direction: column; gap: 14px; }
+  .tabpane.on { display: flex; }
+  .histbar { display: flex; flex-wrap: wrap; gap: 4px; }
+  .histbar button { font: inherit; font-size: 10px; padding: 3px 7px; background: #1a1512; color: var(--ink-dim); border: 1px solid var(--panel-edge); cursor: pointer; }
+  .histbar button.on { color: var(--ink); border-color: var(--ember-hot); }
+  .histbar button.off { opacity: 0.45; }
+  .histbar button.dead { font-style: italic; }
+  .histbar button .sw { display: inline-block; width: 8px; height: 8px; margin-right: 5px; vertical-align: middle; }
+  #histChart { width: 100%; height: auto; display: block; background: #0b0807; border: 1px solid var(--panel-edge); cursor: crosshair; }
+  .histopt { font-size: 11px; color: var(--ink-dim); display: flex; gap: 6px; align-items: center; }
+  .histread { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); min-height: 16px; }
+  .readout .stat { cursor: help; }
+  #statTip { display: none; position: absolute; z-index: 6; max-width: 360px; padding: 8px 10px; background: rgba(13, 11, 10, 0.96); border: 1px solid var(--panel-edge); box-shadow: 0 0 0 1px #000, 0 8px 24px rgba(0,0,0,0.5); font-family: var(--mono); font-size: 11px; line-height: 1.5; color: var(--ink); }
+  #statTip h4 { margin: 0 0 4px; font-family: var(--pixel); font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ember-hot); }
+  #statTip h4 + h4, #statTip div + h4 { margin-top: 8px; }
+  #statTip .row { display: flex; justify-content: space-between; gap: 14px; }
+  #statTip .row b { color: var(--ink); }
+  #statTip .dim { color: var(--ink-dim); }
   .stat {
     background: var(--panel);
     border: 1px solid var(--panel-edge);
@@ -381,7 +404,7 @@
   <h1><span class="flame">&#9650;</span> WILDFIRE</h1>
   <div class="sub">probabilistic forest fire cellular automaton</div>
   <div class="hint">
-    click = missile &nbsp; right-click = lightning &nbsp; <kbd>shift</kbd>+hover = inspect &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>.</kbd> step
+    click = missile &nbsp; right-click = lightning &nbsp; <kbd>shift</kbd>+hover = inspect &nbsp; <kbd>space</kbd> pause &nbsp; <kbd>M</kbd> missile &nbsp; <kbd>L</kbd> lightning &nbsp; <kbd>N</kbd> new forest &nbsp; <kbd>[</kbd> <kbd>]</kbd> speed &nbsp; <kbd>-</kbd> <kbd>=</kbd> zoom &nbsp; <kbd>.</kbd> step
   </div>
 </header>
 
@@ -414,10 +437,13 @@
       <div class="stat buildings"><div class="label">buildings</div><div class="value" id="statBuildings">0</div></div>
       <div class="stat people"><div class="label">population</div><div class="value" id="statPeople">0</div></div>
       <div class="stat weather" id="statWeatherTile"><div class="label">weather</div><div class="value" id="statWeather">Clear</div></div>
+      <div id="statTip"></div>
     </div>
+    <ul class="log" id="log"><li class="empty">all quiet</li></ul>
   </section>
 
   <aside class="panel">
+    <nav class="tabs" id="tabs"></nav>
     <div class="group">
       <div class="title">Run</div>
       <div class="btnrow">
@@ -470,13 +496,22 @@
         <div>engines<b id="fTrucks">-</b></div>
         <div>air sorties<b id="fAir">-</b></div>
       </div>
-      <ul class="log" id="log"><li class="empty">all quiet</li></ul>
     </div>
 
     <div class="group">
       <div class="title">Settlements</div>
       <div class="towns" id="towns"><div class="empty">no towns</div></div>
       <div class="foot">Click a town for its chronicle.</div>
+    </div>
+
+    <div class="group">
+      <div class="title">History</div>
+      <div class="histbar" id="histMetrics"></div>
+      <canvas id="histChart" width="340" height="200"></canvas>
+      <div class="histread" id="histRead"></div>
+      <div class="histbar" id="histTowns"></div>
+      <label class="histopt"><input type="checkbox" id="histHideDead"> hide dead towns</label>
+      <div class="foot">Sand plots: every town is a layer, stacked, from its founding to its end. Click a town to hide it, double-click to see it alone.</div>
     </div>
 
     <div class="group">
@@ -1030,6 +1065,51 @@ SPRITES.survey = [
   '................','................','................','................',
 ];
 SPRITES.trader = SPRITES.wagon.map(r => r.replace(/H/g, 'E')); // amber canopy: a caravan from beyond the hills
+SPRITES.pasture = [
+  'gggggggggggggggg','VzVzVzVzVzVzVzVz','gggggggggggggggg','VgggggggGggggggV',
+  'gggGgggggggggggg','VggggggggggGgggV','gggggggggggggggg','VgGggggggggggggV',
+  'ggggggggggGggggg','VgggggGggggggggV','gggggggggggggggg','VggggggggggggGgV',
+  'gggGgggggggggggg','VzVzVzVzVzVzVzVz','gggggggggggggggg','gggggggggggggggg',
+];
+SPRITES.deer = [
+  '................','................','.........tt.....','........tJJ.....',
+  '........JJJ.....','.....TTTTJJ.....','....TTTTTTT.....','....TTTTTT......',
+  '....TT..TT......','....T...T.......','....T...T.......','................',
+  '................','................','................','................',
+];
+SPRITES.boar = [
+  '................','................','................','................',
+  '....BBBBBB......','...BBBBBBBB.....','..BBBBBBBBBB....','..BBBBBBBBBk....',
+  '..BBBBBBBBBB....','...BB..BB.......','...BB..BB.......','................',
+  '................','................','................','................',
+];
+SPRITES.sheep = [
+  '................','................','................','................',
+  '.....HHHHHH.....','....HHHHHHHH....','...HHHHHHHHHk...','...HHHHHHHHHk...',
+  '....HHHHHHHH....','....kk...kk.....','....kk...kk.....','................',
+  '................','................','................','................',
+];
+SPRITES.cow = [
+  '................','................','................','....HHHHHHHH....',
+  '...HHKKHHHHHHk..','...HHHHKKHHHHk..','...HHHHHHKKHHk..','...HHHHHHHHHH...',
+  '....HH....HH....','....HH....HH....','................','................',
+  '................','................','................','................',
+];
+SPRITES.pig = [
+  '................','................','................','................',
+  '.....JJJJJJ.....','....JJJJJJJJ....','....JJJJJJJJe...','....JJJJJJJJe...',
+  '.....JJ..JJ.....','.....JJ..JJ.....','................','................',
+  '................','................','................','................',
+];
+SPRITES.chicken = [
+  '................','................','................','................',
+  '................','.......Hd.......','......HHHE......','.....HHHH.......',
+  '.....HHHH.......','......HH........','......YY........','................',
+  '................','................','................','................',
+];
+SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
+SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
+SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
 SPRITES.solar = [
   'gggggggggggggggg','gggggggggggggggg','g55555555555555g','g5uuu5uuu5uuu55g',
   'g5uuu5uuu5uuu55g','g55555555555555g','g5uuu5uuu5uuu55g','g5uuu5uuu5uuu55g',
@@ -1044,7 +1124,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1197,7 +1277,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1229,15 +1309,16 @@ const FUEL = {
   [T.NUCLEAR]:    { ignite: 0.35, burn: [10, 16], after: T.RUBBLE, spots: false },
   [T.DERRICK]:    { ignite: 0.9,  burn: [10, 18], after: T.RUBBLE, spots: true },
   [T.SHAFT]:      { ignite: 0.4,  burn: [5, 9],   after: T.RUBBLE, spots: false },
+  [T.PASTURE]:    { ignite: 0.9,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.SILO]:       { ignite: 0.2,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.SHAFT);
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE);
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
@@ -1374,6 +1455,74 @@ function seedDeep(n) {
   if (rand() < 0.5) lay(4, 1, 2, [100, 190]); // deep uranium
 }
 
+/* ───────────────────────── Wild herds ─────────────────────────
+   Deer, boar, wild sheep, grouse and the odd aurochs roam the open ground, flee fire, and breed
+   slowly. Hunters take game from them, and sometimes bring a young one home alive to raise. */
+const HERD_KINDS = [['deer', 0.45, 'deer', null, 5], ['boar', 0.2, 'boar', 'pigs', 4], ['sheep', 0.15, 'sheep', 'sheep', 3], ['fowl', 0.15, 'fowl', 'chickens', 2], ['aurochs', 0.05, 'aurochs', 'cattle', 8]];
+const LIVESTOCK = ['cattle', 'pigs', 'sheep', 'chickens'];
+const LIVESTOCK_FOOD = { cattle: 3, pigs: 2, sheep: 1.5, chickens: 0.5 };
+const LIVESTOCK_SPRITE = { cattle: 'cow', pigs: 'pig', sheep: 'sheep', chickens: 'chicken' };
+function herdKind() { let r = rand ? Math.random() : Math.random(); for (const k of HERD_KINDS) { r -= k[1]; if (r <= 0) return k; } return HERD_KINDS[0]; }
+function herdCell(i) { const t = world.type[i]; return (t === T.GRASS || t === T.SCRUB || isTree(t) || t === T.ASH || t === T.MUD || t === T.STUMP) && !world.road[i] && world.townOf[i] < 0 && world.burnLeft[i] <= 0; }
+function seedHerds(n) {
+  const N = n * n, want = Math.max(2, Math.round(N / 2200));
+  for (let k = 0; k < want; k++) {
+    let i = -1; for (let tries = 0; tries < 200 && i < 0; tries++) { const c = Math.floor(rand() * N); if (herdCell(c)) i = c; }
+    if (i < 0) break;
+    const kind = herdKind();
+    world.herds.push({ kind: kind[0], x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: kind[0] === 'fowl' ? 6 + Math.floor(rand() * 6) : 3 + Math.floor(rand() * 5), wx: -1, wy: -1, rest: 0, t0: 0, breedT: 0 });
+  }
+}
+function updateHerds() {
+  if (world.tick % 3 !== 0) return;
+  const n = world.n, N = n * n, herds = world.herds || (world.herds = []), keep = [];
+  const maxHerds = Math.max(3, Math.round(N / 1800));
+  if (herds.length < maxHerds && Math.random() < 0.012) { // a new herd wanders in from the edge
+    const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
+    if (edge === 0) y = 0; else if (edge === 1) y = n - 1; else if (edge === 2) x = 0; else x = n - 1;
+    if (herdCell(y * n + x)) { const kind = herdKind(); herds.push({ kind: kind[0], x, y, px: x, py: y, face: 1, size: 2 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, breedT: 0 }); }
+  }
+  for (const h of herds) {
+    if (h.size <= 0) continue; // hunted out
+    h.px = h.x; h.py = h.y; h.t0 = world.tick;
+    const here = h.y * n + h.x;
+    if (world.burnLeft[here] > 0) { const lost = Math.min(h.size, 1 + Math.floor(Math.random() * 2)); h.size -= lost; stat('ev', 'animalsBurned', lost); if (h.size <= 0) continue; h.wx = -1; }
+    // Fire nearby: run the other way.
+    let fx = 0, fy = 0, scared = false;
+    for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = h.x + dx, y = h.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; if (world.burnLeft[y * n + x] > 0) { fx += dx; fy += dy; scared = true; } }
+    if (scared) { const tx = h.x - Math.sign(fx) * 6, ty = h.y - Math.sign(fy) * 6; h.wx = Math.max(0, Math.min(n - 1, tx)); h.wy = Math.max(0, Math.min(n - 1, ty)); h.rest = 0; }
+    else if (h.wx < 0 || (h.wx === h.x && h.wy === h.y)) {
+      if (h.rest > 0) { h.rest--; keep.push(h); continue; }
+      for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x)) continue; h.wx = x; h.wy = y; break; }
+      h.rest = 4 + Math.floor(Math.random() * 10);
+    }
+    if (h.wx >= 0) {
+      const dx = Math.sign(h.wx - h.x), dy = Math.sign(h.wy - h.y);
+      let moved = false;
+      for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [-dx, dy], [dx, -dy]]) {
+        if (!mx && !my) continue;
+        const x = h.x + mx, y = h.y + my; if (x < 0 || y < 0 || x >= n || y >= n) continue;
+        const j = y * n + x; if (!passable(world.type[j]) || isBuilding(world.type[j]) || world.burnLeft[j] > 0) continue;
+        h.x = x; h.y = y; if (mx) h.face = mx; moved = true; break;
+      }
+      if (!moved) h.wx = -1;
+    }
+    if (++h.breedT >= 50 && h.size < 12) { h.breedT = 0; if (Math.random() < 0.6) h.size++; } // a new animal every ~250 ticks
+    keep.push(h);
+  }
+  world.herds = keep;
+}
+
+/* ───────────────────────── The ledger ─────────────────────────
+   Everything that happens is tallied: who died and of what, what burned and why, and how many
+   times the sky fell in. Hover a tile in the readout to see it. */
+function newStats() { return { deaths: {}, deathsTown: {}, lost: {}, lostTown: {}, ev: {} }; }
+function stat(group, key, n) {
+  const st = world.stats || (world.stats = newStats());
+  const g = st[group] || (st[group] = {});
+  g[key] = (g[key] || 0) + (n === undefined ? 1 : n);
+}
+
 function generate(n, seed) {
   world.n = n;
   const N = n * n;
@@ -1396,6 +1545,9 @@ function generate(n, seed) {
   world.oreKind = new Uint8Array(N); world.ore = new Uint16Array(N); // seams in the rock: kind and units left
   world.deep = new Uint8Array(N); world.deepAmt = new Uint16Array(N); world.surveyed = new Uint8Array(N); // what lies under the ground, found only by geologists
   world.trader = null; world.nextTrader = 0; world.traderWary = 0; world.roadProjects = [];
+  world.stats = newStats();
+  world.herds = [];
+  world.history = { ticks: [], towns: {} };
   // Regrowth visits cells in a scattered order (multiplication by a stride coprime to N) so it never looks like a band sweeping down.
   world.sweepStep = Math.floor(N * 0.6180339) | 1;
   const gcd = (a, b) => b ? gcd(b, a % b) : a;
@@ -1447,6 +1599,7 @@ function generate(n, seed) {
   carveRiver(n, seed);
   seedOres(n);
   seedDeep(n);
+  seedHerds(n);
   placeTowns(n);
 
   world.totalFuel = 0; world.treeCount = 0;
@@ -1554,6 +1707,7 @@ function upstreamOf(target, limit) {
 
 // Flood every cell near the given river cells whose ground is below the water line. Returns how many.
 function floodArea(sourceCells, rise, radius, permanent, cause) {
+  if (!permanent) stat('ev', 'floods');
   const n = world.n, type = world.type, elev = world.elev;
   const hit = new Set();
   for (const r of sourceCells) {
@@ -1571,7 +1725,7 @@ function floodArea(sourceCells, rise, radius, permanent, cause) {
     if (!world.floodOrig.has(i)) world.floodOrig.set(i, t);
     if (isBuilding(t)) {
       const town = world.towns[world.townOf[i]];
-      if (town) { if (isHome(t)) { town.housesLeft--; town.homesLost++; } const dead = Math.min(town.popLeft, Math.round(occupants(town) * 0.15)); applyLosses(town, dead); drowned += dead; homes++; world.buildingsLeft--; world.buildingsLost++; }
+      if (town) { if (isHome(t)) { town.housesLeft--; town.homesLost++; } const dead = Math.min(town.popLeft, Math.round(occupants(town) * 0.15)); applyLosses(town, dead, 'blast'); drowned += dead; homes++; world.buildingsLeft--; world.buildingsLost++; }
       world.floodOrig.set(i, T.RUBBLE);
     } else if (isTree(t)) world.treeCount--;
     if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
@@ -1639,7 +1793,7 @@ function updateBeavers() {
       let trees = 0; for (const [ox, oy] of OFFS8) { const xx = x + ox, yy = y + oy; if (xx >= 0 && yy >= 0 && xx < n && yy < n && isTree(type[yy * n + xx])) trees++; }
       if (trees < 2) continue;
       if (world.towns.some(t => Math.hypot(t.cx - x, t.cy - y) < t.R + 7)) continue;
-      world.beavers = { cell: i, x, y, stage: 'building', progress: 0, pond: new Set(), lodge: null };
+      world.beavers = { cell: i, x, y, stage: 'building', progress: 0, pond: new Set(), lodge: null }; stat('ev', 'beavers');
       let near = null, nd = Infinity; for (const t of world.towns) { const d = Math.hypot(t.cx - x, t.cy - y); if (d < nd) { nd = d; near = t; } }
       log(`Beavers are at work on the river${near ? ' ' + (nd < 25 ? 'near ' : 'far from ') + near.name : ''}`, 'build');
       return;
@@ -1735,7 +1889,7 @@ function foundTown(cx, cy, R, opts) {
     shape: [0.25 + rng() * 0.3, rng() * 6.283, 0.15 + rng() * 0.25, rng() * 6.283, rng() * 0.15, rng() * 6.283],
     mil: 0, civ: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
     res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, coin: 30 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, oil: 0, fish: 0, coin: 0 },
-    power: 0, powerNeed: 0, powerRatio: 1, water: true, master: -1, mineKind: {}, spent: {}, deepSite: {},
+    power: 0, powerNeed: 0, powerRatio: 1, water: true, master: -1, mineKind: {}, spent: {}, deepSite: {}, livestock: { cattle: 0, pigs: 0, sheep: 0, chickens: 0 },
   };
   const stationWanted = rng() < opts.stationChance;
   let stationPlaced = false;
@@ -1992,7 +2146,9 @@ function step() {
   updateWarbands();
   updateFallout();
   updateBoats();
+  updateHerds();
   maybeTradeRoad();
+  if (world.tick % 50 === 0) sampleHistory();
   updateRoadProjects();
   updateWagons();
   updateTrader();
@@ -2015,6 +2171,7 @@ function rel(a, b) { return a.relations[b.id] || 0; }
 function setRel(a, b, v) { v = Math.max(-100, Math.min(100, v)); a.relations[b.id] = v; b.relations[a.id] = v; }
 function atWar(a, b) { return !!a.wars[b.id]; }
 function declareWar(a, b, why) {
+  stat('ev', 'wars');
   if (atWar(a, b)) return;
   a.wars[b.id] = world.tick; b.wars[a.id] = world.tick;
   setRel(a, b, Math.min(rel(a, b), -70));
@@ -2146,7 +2303,7 @@ function updateWarbands() {
     if (!isAlive(to)) { from.militia += b.size; continue; } // nothing left to raid, go home
     if (world.burnLeft[b.y * n + b.x] > 0) {
       const dead = Math.max(1, Math.ceil(b.size * 0.25));
-      b.size -= dead; applyLosses(from, dead);
+      b.size -= dead; applyLosses(from, dead, 'fire');
       if (!b.burnedOnce) { b.burnedOnce = true; log(`${from.name}'s column marches into the fire, ${dead} lost`, 'loss'); }
       if (b.size <= 0) continue;
       // Get out: step to any neighbouring cell that is not burning, then find a new route.
@@ -2178,6 +2335,7 @@ function updateWarbands() {
 
 // Attackers form up where the warband arrived; defenders line up between them and the town (on the wall if there is one).
 function startBattle(b, from, to) {
+  stat('ev', 'battles');
   const n = world.n;
   const ang = Math.atan2(b.y - to.cy, b.x - to.cx);
   const defenders = to.militia; to.militia = 0;
@@ -2279,10 +2437,12 @@ function finishBattle(bt, from, to) {
     for (const i of to.buildings) { const tt = world.type[i]; if ((tt === T.BARRACKS || tt === T.FORGE || tt === T.FACTORY || tt === T.UNIVERSITY || tt === T.SILO || tt === T.STATION) && Math.random() < 0.5) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); wrecked++; } }
     world.raidfire = false;
     to.popLeft -= captives; from.popLeft += captives; from.popTotal += captives;
+    if (to.livestock && from.livestock) { const taken = []; for (const k of LIVESTOCK) { const d = Math.floor((to.livestock[k] || 0) * 0.5); if (d > 0) { to.livestock[k] -= d; from.livestock[k] = (from.livestock[k] || 0) + d; taken.push(`${d} ${k}`); } } if (taken.length) log(`${from.name} drives off ${taken.join(', ')} from ${to.name}'s pastures`, 'war'); }
     if (to.res && from.res) { const loot = []; for (const k of RES_KINDS) { const amt = Math.floor((to.res[k] || 0) * 0.6); if (amt > 0) { to.res[k] -= amt; addRes(from, k, amt); loot.push(`${amt} ${k}`); } } if (loot.length) log(`${from.name} carries off ${loot.join(', ')} from ${to.name}`, 'war'); }
     let sword = 0;
-    if (from.align.moral < 0) { sword = Math.min(to.popLeft, Math.round(to.popLeft * (0.1 + Math.random() * 0.25))); applyLosses(to, sword); }
+    if (from.align.moral < 0) { sword = Math.min(to.popLeft, Math.round(to.popLeft * (0.1 + Math.random() * 0.25))); applyLosses(to, sword, 'put to the sword'); }
     from.militia += bt.att;
+    stat('ev', 'sacks');
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'SACKED', color: '#ff4040', t0: performance.now(), dur: 2500 });
     log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
     if (to.popLeft < 10 || to.housesLeft - torch < 2) { // razed
@@ -2308,6 +2468,7 @@ function finishBattle(bt, from, to) {
 
 // Conquest: the town changes hands, keeps its name with a note, takes the victor's alignment.
 function annex(from, to) {
+  stat('ev', 'annexes');
   to.align = { ...from.align };
   to.relations = {}; to.wars = {};
   for (const o of world.towns) { if (o !== to) { delete o.wars[to.id]; o.relations[to.id] = o === from ? 100 : rel(o, from); to.relations[o.id] = o === from ? 100 : rel(o, from); } }
@@ -2319,10 +2480,11 @@ function annex(from, to) {
 
 // (raids now play out as battles; see startBattle/updateBattles/finishBattle)
 
-function applyLosses(t, dead) {
+function applyLosses(t, dead, cause) {
   dead = Math.min(dead, t.popLeft);
   if (dead <= 0) return;
   t.popLeft -= dead; world.popLeft -= dead; world.deaths += dead; t.deaths += dead;
+  stat('deaths', cause || 'battle', dead); stat('deathsTown', t.name, dead);
 }
 
 // Allies send fire crews when a friend rallies.
@@ -2423,6 +2585,7 @@ function maybeBombard(t) {
 
 // Bombers: a town with artillery-era tech at war flies a sortie over the enemy and drops a stick of bombs.
 function launchBomber(from, to) {
+  stat('ev', 'bombers');
   const n = world.n;
   const ang = Math.random() * Math.PI * 2;
   const run = to.R + 6;
@@ -2470,6 +2633,7 @@ function launchShell(fromX, fromY, targetIdx, radius, nuke) {
 }
 
 function launchNuke(from, to) {
+  stat('ev', 'nukes');
   from.nukes--; from.nukeCooldown = 600;
   const n = world.n;
   const silo = from.buildings.find(i => world.type[i] === T.SILO);
@@ -2525,7 +2689,7 @@ function meltdown(i, town) {
   explosions.push({ x: px, y: py, t0: performance.now(), dur: 1800, r: 5 * cellPx, nuke: false });
   shake = 2;
   if (params.weatherMode === 'auto') setWeather('ashfall', true);
-  town.meltdowns = (town.meltdowns || 0) + 1;
+  town.meltdowns = (town.meltdowns || 0) + 1; stat('ev', 'meltdowns');
   log(`MELTDOWN at ${town.name}. The reactor burns open and the land around it is poisoned for years.`, 'nuke');
 }
 function addFallout(i, dose) {
@@ -2553,7 +2717,7 @@ function updateFallout() {
       dose /= cells;
       if (dose < 10) { t.sick = 0; continue; }
       const dead = Math.max(1, Math.round(t.popLeft * dose / 255 * 0.03));
-      applyLosses(t, Math.min(dead, t.popLeft));
+      applyLosses(t, Math.min(dead, t.popLeft), 'fallout');
       if (!t.sick) { t.sick = 1; log(`A sickness no one can name spreads through ${t.name}`, 'loss'); }
       if (t.popLeft <= 0) log(`${t.name} is empty. The land is poisoned.`, 'loss');
     }
@@ -2860,6 +3024,7 @@ function maybeDragon(force) {
   const name = grudge && world.dragonGrudge.name ? world.dragonGrudge.name : dragonName(kind);
   world.dragon = { legs, leg: 0, t: 0, x: legs[0][0], y: legs[0][1], heading: 0, town, targets: targets.map(t => t.id), lit: 0, flap: 0, breathT: 0, kind: kind.name, name, frames: tintDragonFrames(kind), flame: kind.flame, hp: 3 + Math.floor(Math.random() * 3) };
   for (const t of targets) t.dragons = (t.dragons || 0) + 1;
+  stat('ev', 'dragons');
   if (grudge) { log(`${name}, the ${kind.name} dragon, returns for ${town.name}`, 'dragon'); world.dragonGrudge = null; }
   else log(`${name.toUpperCase()}, a ${kind.name} dragon, has been sighted making for ${town.name}${targets.length > 1 ? ' and then ' + targets.slice(1).map(t => t.name).join(' and ') : ''}`, 'dragon');
   const [px, py] = cellCenter(town.cy * n + town.cx);
@@ -2921,17 +3086,17 @@ function breathe(d) {
   // Militia and guns wound it; it takes several hits to drive off, and a kill needs rifles or better.
   if (d.town.militia >= 8 && Math.random() < Math.min(0.3, (d.town.militia / 250) * (1 + 0.6 * d.town.mil)) && --d.hp <= 0) {
     d.legs = [d.legs[Math.min(d.leg, d.legs.length - 1)], d.legs[d.legs.length - 1]]; d.leg = 0; d.t = 0; d.driven = true;
-    const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost); d.town.militia -= lost;
+    const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost, 'dragon'); d.town.militia -= lost;
     if (d.town.mil >= 4 && Math.random() < 0.35) {
       // Rifles and up can bring it down. The hoard changes everything for the town.
       d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
       const boom = 20 + Math.floor(Math.random() * 30);
       d.town.popLeft += boom; d.town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; d.town.research += 2000; d.town.civPts = (d.town.civPts || 0) + 1000; d.town.milPts = (d.town.milPts || 0) + 1000;
-      log(`${d.town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. Its hoard draws ${boom} newcomers.`, 'win');
+      stat('ev', 'dragonsSlain'); log(`${d.town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. Its hoard draws ${boom} newcomers.`, 'win');
       const [px, py] = cellCenter(Math.round(d.y) * world.n + Math.round(d.x));
       popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
     } else {
-      log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
+      stat('ev', 'dragonsDriven'); log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
       world.dragonGrudge = { town: d.town.id, tick: world.tick, kind: d.kind, name: d.name };
     }
   }
@@ -3065,10 +3230,11 @@ function maybeMeteor() {
   const [tx, ty] = cellCenter(i);
   const sx = tx + (Math.random() - 0.5) * canvas.width * 0.8, sy = -60;
   missiles.push({ sx, sy, tx, ty, target: i, t0: performance.now(), dur: 900, arc: 0, lastSmoke: 0, radius: 3 + Math.floor(Math.random() * 3), nuke: false, meteor: true });
-  log('A streak of light crosses the sky', 'weather');
+  log('A streak of light crosses the sky', 'weather'); stat('ev', 'meteors');
 }
 
 function naturalLightning() {
+  stat('ev', 'lightningNatural');
   const i = randomFuelCell();
   const n = world.n, x = i % n, y = Math.floor(i / n);
   let near = null, nd = Infinity;
@@ -3214,7 +3380,7 @@ function updateSettlers(force) {
   if (world.burnLeft[here] > 0) {
     world.settlers = null;
     log(`The settlers never made it. ${s.size} lost on the road.`, 'loss');
-    world.deaths += s.size;
+    world.deaths += s.size; stat('deaths', 'fire', s.size); stat('deathsTown', 'settlers on the road', s.size);
     const [px, py] = cellCenter(here);
     popups.push({ x: px, y: py, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
     return;
@@ -3386,6 +3552,7 @@ function onBuildingIgnite(i) {
     lost = Math.min(lost, town.popLeft);
     if (lost > 0) {
       town.popLeft -= lost; world.popLeft -= lost; world.deaths += lost; town.deaths += lost;
+      stat('deaths', world.dragonfire ? 'dragon fire' : world.raidfire ? 'torched in a raid' : 'fire', lost); stat('deathsTown', town.name, lost);
       town.lostLogged += lost;
       if (town.lostLogged >= 8) {
         log(`${town.name}: ${town.lostLogged} ${town.lostLogged === 1 ? 'person' : 'people'} could not get out`, 'loss');
@@ -3401,11 +3568,13 @@ function onBuildingDestroyed(i, cause) {
   const t = world.type[i];
   if (cause === 'blast') {
     const res = Math.min(occupants(town), town.popLeft);
-    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; town.deaths += res; town.blastDead = (town.blastDead || 0) + res; }
+    if (res > 0) { town.popLeft -= res; world.popLeft -= res; world.deaths += res; town.deaths += res; town.blastDead = (town.blastDead || 0) + res; stat('deaths', 'blast', res); stat('deathsTown', town.name, res); }
     town.firstHit = true;
   }
   world.buildingsLeft--; world.buildingsLost++;
+  stat('lost', cause === 'blast' ? 'blast' : world.dragonfire ? 'dragon fire' : world.raidfire ? 'torched in a raid' : 'fire'); stat('lostTown', town.name);
   if (t === T.NUCLEAR) meltdown(i, town);
+  if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
   else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');
   if (t === T.STATION) {
@@ -3427,6 +3596,7 @@ function occupants(town) {
 function loseCrew(town, crew, why) {
   const people = Math.min(crew.size, town.popLeft);
   town.popLeft -= people; world.popLeft -= people; world.deaths += people; town.deaths += people;
+  stat('deaths', 'fire crews lost', people); stat('deathsTown', town.name, people);
   town.claimed.delete(crew.target);
   log(`${town.name}: crew of ${people} ${why}`, 'loss');
   const [x, y] = cellCenter(crew.y * world.n + crew.x);
@@ -3458,7 +3628,7 @@ function updateTowns() {
       town.fireDir = Math.atan2(Math.floor(nearest / n) - town.cy, (nearest % n) - town.cx);
       if (!town.mobilized && town.popLeft > 0 && town.housesLeft > 0) { // no homes, no base to rally from
         town.mobilized = true;
-        town.fires++;
+        town.fires++; stat('ev', 'alarms');
         town.rallyAt = world.tick + (town.align.order > 0 ? 1 : 1 + Math.floor(Math.random() * 3));
         // Turnout is a dice roll: sometimes a handful show up, sometimes the whole town. Chaotic towns swing wider.
         const base = Math.sqrt(town.popLeft);
@@ -3614,8 +3784,8 @@ function rebuildAt(town, i) {
    Everything a town builds is paid for in wood, stone, iron, copper, coal or uranium. Wood is
    cut from the forest by loggers (the trees really go), stone comes from a quarry at a rock face,
    the metals from mines on finite seams. Stockpiles are small, so towns save up, trade, or fight. */
-const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'oil', 'fish', 'coin'];
-const PRICE = { wood: 1, stone: 1, fish: 1, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12 };
+const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'oil', 'fish', 'game', 'coin'];
+const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
 const COST = {
   [T.HOUSE]: { wood: 4 }, [T.TENEMENT]: { wood: 6, stone: 8 }, [T.FARM]: { wood: 1 }, [T.STATION]: { wood: 6, stone: 3 },
   [T.TOWNHALL]: { wood: 8, stone: 6 }, [T.BARRACKS]: { wood: 8, stone: 4, iron: 2 }, [T.FORGE]: { stone: 6, iron: 2 },
@@ -3623,7 +3793,7 @@ const COST = {
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
-  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 },
+  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -3633,7 +3803,7 @@ const MIL_NEED = [null, { iron: 10 }, null, { coal: 8 }, { iron: 15 }, { iron: 2
 const CIV_NEED = [null, { wood: 10 }, { copper: 8, stone: 10 }, { stone: 6 }, { iron: 12, copper: 8 }, { oil: 10, iron: 20, copper: 10 }]; // no aviation without hydrocarbons
 function resCap(t, kind) {
   if (kind === 'coin') return 1e9;
-  if (kind === 'fish') return 40;
+  if (kind === 'fish' || kind === 'game') return 40;
   if (kind === 'oil') return 30 + 20 * countType(t, T.DERRICK);
   if (kind === 'wood') return 40 + 30 * countType(t, T.LUMBERYARD);
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
@@ -3754,6 +3924,18 @@ function buildOn(town, i, type) {
   dirty.add(i);
   return true;
 }
+function pastureRoom(t) { let have = 0; for (const k of LIVESTOCK) have += t.livestock[k] || 0; return countType(t, T.PASTURE) * 8 - have; }
+function updateLivestock(town) {
+  const ls = town.livestock; if (!ls) return;
+  let total = 0; for (const k of LIVESTOCK) total += ls[k] || 0;
+  // Breeding, if there is room on the pasture.
+  if (pastureRoom(town) > 0) for (const k of LIVESTOCK) if (ls[k] >= 2 && Math.random() < (k === 'chickens' ? 0.14 : 0.06)) { ls[k]++; stat('ev', 'animalsBorn'); }
+  // Fences before beasts: a town with animals, or one big enough to want some, lays out a pasture.
+  const pastures = countType(town, T.PASTURE);
+  if ((total > 0 && pastureRoom(town) < 2 && pastures < 1 + Math.floor(total / 8)) || (!pastures && town.popLeft >= 30 && Math.random() < 0.2)) {
+    if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) log(`${town.name} fences a pasture`, 'build'); }
+  }
+}
 function buildSites(town) {
   if (Math.random() > 0.3) return;
   if (town.civ >= 4 && hasType(town, T.FACTORY)) {
@@ -3808,6 +3990,7 @@ function buildSites(town) {
 // Loggers, quarriers and miners: out to the work, a while at it, and back with the goods.
 function updateGatherer(town, w) {
   const n = world.n, type = world.type;
+  if (w.job === 'hunt') return updateHunter(town, w);
   if (w.site >= 0 && type[w.site] !== w.siteType) return false; // the site burned
   if (w.job === 'mine' && town.spent[w.site]) return false;
   if (w.phase === 'out') {
@@ -3828,7 +4011,7 @@ function updateGatherer(town, w) {
     if (w.work >= (w.job === 'log' ? 10 : 14)) {
       if (w.job === 'log') {
         const t = type[w.target];
-        if (isTree(t)) { w.carry = WOOD_YIELD[t] || 3; type[w.target] = T.STUMP; world.since[w.target] = world.tick; if (t !== T.SNAG) world.treeCount--; dirty.add(w.target); for (let k = 0; k < 3; k++) dust(w.target); town.felled = (town.felled || 0) + 1; }
+        if (isTree(t)) { w.carry = WOOD_YIELD[t] || 3; type[w.target] = T.STUMP; world.since[w.target] = world.tick; if (t !== T.SNAG) world.treeCount--; dirty.add(w.target); for (let k = 0; k < 3; k++) dust(w.target); town.felled = (town.felled || 0) + 1; stat('ev', 'felled'); }
       } else if (w.job === 'quarry') w.carry = 3;
       else {
         const o = w.target, take = Math.min(2, world.ore[o]);
@@ -3844,6 +4027,40 @@ function updateGatherer(town, w) {
     if (w.carry) addRes(town, w.job === 'log' ? 'wood' : w.job === 'quarry' ? 'stone' : w.kind, w.carry);
     w.carry = 0; w.phase = 'out'; w.target = -1; w.stuck = 0;
   } else { stepToward(w, hx, hy, 1, false); if (w.stall > 10 || ++w.stuck > 80) return false; }
+  return true;
+}
+// Hunters stalk the nearest herd, take one animal, and carry the game home. Now and then the
+// animal comes home alive instead, and that is how a town first gets pigs, sheep, chickens or cattle.
+function updateHunter(town, w) {
+  const n = world.n;
+  if (w.phase === 'out') {
+    let herd = w.herd !== undefined ? (world.herds || [])[w.herd] : null;
+    if (!herd || herd.size <= 0) { let best = -1, bd = town.R + 18; (world.herds || []).forEach((h, k) => { const d = Math.hypot(h.x - w.x, h.y - w.y); if (h.size >= 3 && d < bd) { bd = d; best = k; } }); /* small herds are left to recover */ if (best < 0) { w.idle = (w.idle || 0) + 1; return w.idle < 40; } w.herd = best; herd = world.herds[best]; }
+    if (Math.hypot(herd.x - w.x, herd.y - w.y) <= 2.5) { w.phase = 'work'; w.work = 0; w.stall = 0; return true; }
+    stepToward(w, herd.x, herd.y, 1, false);
+    if (w.stall > 4 || ++w.stuck > 120) { w.herd = undefined; w.stuck = 0; w.stall = 0; w.lastCell = -1; }
+    return true;
+  }
+  if (w.phase === 'work') {
+    const herd = (world.herds || [])[w.herd];
+    if (!herd || herd.size < 3) { w.phase = 'out'; w.herd = undefined; return true; }
+    if (++w.work === 5) {
+      const [px, py] = cellCenter(w.y * n + w.x); particles.push({ x: px, y: py, vx: (herd.x - w.x) * 60, vy: (herd.y - w.y) * 60, life: 0, max: 150, color: '#ffe866', size: 2, grav: 0 }); // the shot
+      herd.size--; herd.wx = -1; herd.rest = 0;
+      const kind = HERD_KINDS.find(k => k[0] === herd.kind);
+      if (kind[3] && pastureRoom(town) > 0 && Math.random() < 0.35) { w.animal = kind[3]; w.carry = 0; }
+      else { w.carry = kind[4]; w.animal = null; }
+      stat('ev', 'hunted');
+      w.phase = 'back';
+    }
+    return true;
+  }
+  const hx = w.home % n, hy = (w.home - hx) / n;
+  if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) {
+    if (w.animal) { town.livestock[w.animal] = (town.livestock[w.animal] || 0) + 1; if (!town.tamed || !town.tamed[w.animal]) { town.tamed = town.tamed || {}; town.tamed[w.animal] = 1; log(`${town.name}'s hunters bring a young ${w.animal === 'cattle' ? 'aurochs' : w.animal === 'pigs' ? 'boar' : w.animal === 'chickens' ? 'grouse' : 'wild sheep'} home alive, to raise`, 'build'); stat('ev', 'tamed'); } }
+    else if (w.carry) addRes(town, 'game', w.carry);
+    w.carry = 0; w.animal = null; w.phase = 'out'; w.herd = undefined; w.stuck = 0;
+  } else { stepToward(w, hx, hy, 1, false); if (w.stall > 10 || ++w.stuck > 100) return false; }
   return true;
 }
 function gatherTargetOk(w) {
@@ -3889,6 +4106,9 @@ function spawnGatherers(town) {
   if (world.tick % 7 !== 0 || town.popLeft < 8) return;
   const muster = musterPoint(town); if (muster < 0) return;
   const mk = (job, site, siteType, home) => { const hx = home % n, hy = (home - hx) / n; town.workers.push({ x: hx, y: hy, px: hx, py: hy, target: -1, linger: 0, face: 1, job, gather: true, site, siteType, home, phase: 'out', work: 0, carry: 0, stuck: 0 }); };
+  const herdsNear = (world.herds || []).some(h => Math.hypot(h.x - town.cx, h.y - town.cy) <= town.R + 18);
+  const wantHunt = herdsNear && town.popLeft >= 15 && (town.res.game || 0) < resCap(town, 'game') ? Math.min(2, 1 + Math.floor(town.popLeft / 120)) : 0;
+  if (town.workers.filter(w => w.job === 'hunt').length < wantHunt) { mk('hunt', -1, 0, muster); return; }
   const yards = town.buildings.filter(i => type[i] === T.LUMBERYARD);
   const wantLog = Math.min(2 + 2 * yards.length, 1 + Math.floor(town.popLeft / 40));
   const loggers = town.workers.filter(w => w.job === 'log').length;
@@ -3935,11 +4155,12 @@ function updateTrader() {
     for (let k = 0; k < n && !passable(world.type[ey * n + ex]); k++) { if (ey === 0 || ey === n - 1) ex = (ex + 1) % n; else ey = (ey + 1) % n; }
     const path = findPath(ex, ey, town.cx, town.cy); if (!path) { world.nextTrader = world.tick + 30; return; }
     // Modest loads: a little of this and that. Oil now and then; uranium once in a long while, and only a few units.
-    const pool = ['wood', 'wood', 'stone', 'stone', 'iron', 'iron', 'copper', 'coal', 'coal', 'fish', 'fish', 'oil'];
+    const pool = ['wood', 'wood', 'stone', 'stone', 'iron', 'iron', 'copper', 'coal', 'coal', 'fish', 'fish', 'oil', 'cattle', 'pigs', 'sheep', 'chickens'];
     const stock = {}; const kinds = 2 + Math.floor(Math.random() * 2);
-    for (let k = 0; k < kinds; k++) { const kind = pool[Math.floor(Math.random() * pool.length)]; stock[kind] = (stock[kind] || 0) + 6 + Math.floor(Math.random() * 10); }
+    for (let k = 0; k < kinds; k++) { const kind = pool[Math.floor(Math.random() * pool.length)]; stock[kind] = (stock[kind] || 0) + (LIVESTOCK.includes(kind) ? (kind === 'chickens' ? 3 : 1) + Math.floor(Math.random() * 3) : 6 + Math.floor(Math.random() * 10)); }
     if (Math.random() < 0.04) stock.uranium = 1 + Math.floor(Math.random() * 3);
     world.trader = { x: ex, y: ey, px: ex, py: ey, face: 1, path, pi: 0, town: town.id, stock, coin: 50 + Math.floor(Math.random() * 60), phase: 'in', linger: 0, wait: 0 };
+    stat('ev', 'caravans');
     log(`A trader's caravan appears on the ${ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east'} edge, bound for ${town.name}`, 'build');
     return;
   }
@@ -3967,17 +4188,25 @@ function holdMarket(tr, town) {
   if (!town || !isAlive(town)) return;
   const [px, py] = cellCenter(town.cy * world.n + town.cx);
   if (town.align.moral < 0 && town.militia >= 10 && Math.random() < 0.35) {
-    const took = []; for (const k in tr.stock) { addRes(town, k, tr.stock[k]); took.push(`${tr.stock[k]} ${k}`); }
+    const took = []; for (const k in tr.stock) { if (LIVESTOCK.includes(k)) town.livestock[k] = (town.livestock[k] || 0) + tr.stock[k]; else addRes(town, k, tr.stock[k]); took.push(`${tr.stock[k]} ${k}`); }
     town.res.coin += tr.coin; tr.stock = {}; tr.coin = 0;
-    world.traderWary = world.tick + 2500;
+    world.traderWary = world.tick + 2500; stat('ev', 'caravansRobbed');
     for (const o of world.towns) if (o !== town) setRel(town, o, rel(town, o) - 8);
     popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'ROBBED', color: '#ff4040', t0: performance.now(), dur: 2500 });
     log(`${town.name}'s militia seizes the caravan: ${took.join(', ')} and the strongbox. Word gets around; no trader will come for a long while.`, 'war');
     return;
   }
   const bought = [], sold = [];
-  // The town buys what it is short of, cheapest first, as long as the coin holds out.
-  const wants = Object.keys(tr.stock).filter(k => town.res[k] < resCap(town, k) * 0.4).sort((a, b) => PRICE[a] - PRICE[b]);
+  // Livestock first: a town with room on its pasture buys what it can afford.
+  for (const k of LIVESTOCK) {
+    if (!tr.stock[k]) continue;
+    const amt = Math.min(tr.stock[k], Math.floor(town.res.coin / PRICE[k]), Math.max(0, pastureRoom(town)));
+    if (amt <= 0) continue;
+    town.res.coin -= amt * PRICE[k]; tr.coin += amt * PRICE[k]; tr.stock[k] -= amt; town.livestock[k] = (town.livestock[k] || 0) + amt; bought.push(`${amt} ${k}`);
+    if (!town.tamed || !town.tamed[k]) { town.tamed = town.tamed || {}; town.tamed[k] = 1; stat('ev', 'tamed'); }
+  }
+  // Then what it is short of, cheapest first, as long as the coin holds out.
+  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && town.res[k] < resCap(town, k) * 0.4).sort((a, b) => PRICE[a] - PRICE[b]);
   for (const k of wants) {
     const amt = Math.min(tr.stock[k], Math.floor(town.res.coin / PRICE[k]), resCap(town, k) - town.res[k]);
     if (amt <= 0) continue;
@@ -3992,6 +4221,7 @@ function holdMarket(tr, town) {
     if (amt <= 0) continue;
     town.res[k] -= amt; town.res.coin += amt * PRICE[k]; tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
+  stat('ev', 'markets');
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'MARKET', color: '#f5a623', t0: performance.now(), dur: 2000 });
   if (!bought.length && !sold.length) log(`Market day at ${town.name}, but nobody has anything the other wants`, 'build');
   else log(`Market day at ${town.name}: ${bought.length ? 'buys ' + bought.join(', ') : ''}${bought.length && sold.length ? '; ' : ''}${sold.length ? 'sells ' + sold.join(', ') : ''}. ${town.res.coin} coin in the chest.`, 'build');
@@ -4013,11 +4243,13 @@ function growTown(town) {
   town.powerRatio = updatePower(town);
   if (Math.random() < 0.5) town.res.coin += Math.ceil(town.popLeft / 120); // taxes and market dues
   if (town.res.fish > 10 && Math.random() < 0.3) town.res.fish--; // fish spoils
+  if (town.res.game > 10 && Math.random() < 0.3) town.res.game--;
+  updateLivestock(town);
   if (town.civ >= 4 && hasType(town, T.UNIVERSITY) && Math.random() < 0.06) surveyFor(town);
   updateExtraction(town);
   if (town.civ >= 4 && town.res.oil > 0) for (const tr of town.trucks) if (tr.cap < 40) tr.cap = 40; // motor pumps
   if (!town.water && world.weather.kind === 'drought' && Math.random() < 0.15) {
-    applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.02)));
+    applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.02)), 'thirst');
     if (!town.dryLogged || world.tick - town.dryLogged > 400) { town.dryLogged = world.tick; log(`The spring at ${town.name} runs dry. People are dying of thirst.`, 'loss'); }
   }
   if (town.master >= 0) { // a conquered town sends tribute to its master
@@ -4029,9 +4261,9 @@ function growTown(town) {
   // Hungry towns clear fields; well-fed ones grow.
   if (town.popLeft > foodSupply(town) * 0.85 && Math.random() < 0.6) buildFarm(town);
   if (town.popLeft > foodSupply(town) * 1.15) {
-    if (!town.famine) { town.famine = world.tick; log(`Famine in ${town.name}: ${countType(town, T.FARM)} farms cannot feed ${town.popLeft}`, 'loss'); }
-    if (Math.random() < 0.5) applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.01)));
-    town.res.fish = Math.max(0, town.res.fish - 3);
+    if (!town.famine) { town.famine = world.tick; stat('ev', 'famines'); log(`Famine in ${town.name}: ${countType(town, T.FARM)} farms cannot feed ${town.popLeft}`, 'loss'); }
+    if (Math.random() < 0.5) applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.01)), 'famine');
+    town.res.fish = Math.max(0, town.res.fish - 3); town.res.game = Math.max(0, (town.res.game || 0) - 3);
   } else if (town.famine) { town.famine = 0; log(`The famine in ${town.name} ends`, 'good'); }
   if (town.popLeft < capacity && Math.random() < 0.65) {
     const add = Math.max(1, Math.round(town.popLeft * 0.01));
@@ -4080,8 +4312,8 @@ function bigCityTroubles(town) {
   const over = town.R - Math.max(params.townCap, town.R0);
   if (town.popLeft >= 350 && town.civ < 2 && Math.random() < 0.0025 * (1 + Math.max(0, over))) {
     const dead = Math.round(town.popLeft * (0.05 + Math.random() * 0.1));
-    applyLosses(town, dead);
-    town.plagues = (town.plagues || 0) + 1; town.plagueUntil = world.tick + 300;
+    applyLosses(town, dead, 'plague');
+    town.plagues = (town.plagues || 0) + 1; stat('ev', 'plagues'); town.plagueUntil = world.tick + 300;
     log(`Plague in the crowded streets of ${town.name}: ${dead} dead. A waterworks would help.`, 'loss');
     const [x, y] = cellCenter(town.cy * world.n + town.cx); popups.push({ x, y: y - town.R * cellPx - 14, text: 'PLAGUE', color: '#9fe8d8', t0: performance.now(), dur: 2500 });
     return;
@@ -4106,12 +4338,14 @@ function foodSupply(town) {
   const seasonMul = sea === 2 ? 1.3 : sea === 3 ? 0.7 : 1; // harvest, then the stored half of it through winter
   const yieldMul = (wk === 'drought' || wk === 'drystorm' ? 0.55 : wk === 'rain' ? 1.2 : wk === 'ashfall' ? 0.3 : 1) * seasonMul;
   let food = 25 + farms * 12 * yieldMul;
-  food += Math.min(town.res ? town.res.fish || 0 : 0, 40); // the catch in the smokehouse
+  food += Math.min(town.res ? town.res.fish || 0 : 0, 40) + Math.min(town.res ? town.res.game || 0 : 0, 40); // the smokehouse
+  if (town.livestock) for (const k of LIVESTOCK) food += (town.livestock[k] || 0) * LIVESTOCK_FOOD[k]; // the herd
   if (town.tradeFood && town.tradeFood > world.tick) food += 30;
   return Math.round(food);
 }
 // Fields go on open ground just outside the houses, beside a road or another field.
-function buildFarm(town) {
+function buildFarm(town) { return buildField(town, T.FARM); }
+function buildField(town, fieldType) {
   const n = world.n, type = world.type;
   let best = -1, bestScore = Infinity;
   const R = town.R + 4;
@@ -4126,12 +4360,13 @@ function buildFarm(town) {
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
     if (foreign) continue;
     let touch = false, farmNear = false;
-    for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (world.road[j] || isBuilding(type[j])) touch = true; if (type[j] === T.FARM) farmNear = true; }
+    for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (world.road[j] || isBuilding(type[j])) touch = true; if (type[j] === T.FARM || type[j] === T.PASTURE) farmNear = true; }
     if (!touch && !farmNear) continue;
     const score = d + Math.random() * 2 - (farmNear ? 1.5 : 0) + (inFootprint(town, x, y, 0) ? 2 : 0);
     if (score < bestScore) { bestScore = score; best = i; }
   }
   if (best < 0) return false;
+  if (fieldType === T.PASTURE) { type[best] = T.PASTURE; world.townOf[best] = town.id; if (!town.buildings.includes(best)) town.buildings.push(best); world.buildingsTotal++; world.buildingsLeft++; dirty.add(best); return true; }
   if (!canAfford(town, COST[T.FARM])) return false;
   pay(town, COST[T.FARM]);
   type[best] = T.FARM; world.townOf[best] = town.id;
@@ -4873,7 +5108,7 @@ ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', 
   ['hydro', '💧', 'White Coal', 'A town dams the river for power', /hydroelectric/], ['reactor', '☢️', 'Atoms for Peace', 'A reactor comes online', /brings a reactor online/],
   ['meltdown', '💀', 'Meltdown', 'A reactor burns open', /MELTDOWN/],
   ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan appears/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
-  ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
+  ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['tamed', '🐖', 'Husbandry', 'Hunters bring a wild animal home alive', /home alive, to raise/], ['pasture', '🐄', 'Rancher', 'A town fences a pasture', /fences a pasture/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
 renderAchievements();
 function renderLog() {
   if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
@@ -4933,6 +5168,7 @@ function spriteKey(i) {
     case T.NUCLEAR: return 'nuclear';
     case T.DERRICK: return 'derrick';
     case T.SHAFT: return 'shaft';
+    case T.PASTURE: return 'pasture';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
   }
@@ -5087,7 +5323,8 @@ function render(now, tickFrac) {
   for (const t of world.towns) {
     if (t.workers) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
-      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
     for (const c of t.crews) {
@@ -5142,6 +5379,26 @@ function render(now, tickFrac) {
     ctx.drawImage(SPR.beaver, (bv.x + (Math.sin(now / 400) * 0.6)) * cellPx, bv.y * cellPx);
   }
 
+  for (const h of world.herds || []) {
+    const u = Math.min(1, (world.tick - (h.t0 || world.tick) + tickFrac) / 3);
+    const hx = (h.px + (h.x - h.px) * u) * cellPx, hy = (h.py + (h.y - h.py) * u) * cellPx;
+    const spr = SPR[h.kind] || SPR.deer, shown = Math.min(h.size, 7);
+    for (let k = 0; k < shown; k++) {
+      const ox = (hash2(k, 1, 5) - 0.5) * cellPx * 3.2, oy = (hash2(k, 2, 5) - 0.5) * cellPx * 2.6;
+      if (h.face < 0) { ctx.save(); ctx.translate(hx + ox + cellPx, hy + oy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0); ctx.restore(); } else ctx.drawImage(spr, hx + ox, hy + oy);
+    }
+  }
+  for (const t of world.towns) {
+    if (!t.livestock) continue;
+    const pastures = t.buildings.filter(i => world.type[i] === T.PASTURE);
+    if (!pastures.length) continue;
+    let k = 0;
+    for (const kind of LIVESTOCK) for (let a = 0; a < Math.min(t.livestock[kind] || 0, 12); a++, k++) {
+      const cell = pastures[k % pastures.length], cx = cell % n, cy = (cell - cx) / n;
+      const ox = 0.1 + hash2(k, 3, 9) * 0.55, oy = 0.15 + hash2(k, 4, 9) * 0.55;
+      ctx.drawImage(SPR[LIVESTOCK_SPRITE[kind]], (cx + ox) * cellPx - cellPx * 0.35, (cy + oy) * cellPx - cellPx * 0.4);
+    }
+  }
   for (const b of world.boats) {
     const u = Math.min(1, (world.tick - (b.t0 === undefined ? world.tick : b.t0) + tickFrac) / 5); // boats step every 5 ticks
     const x = (b.px + (b.x - b.px) * u) * cellPx, y = (b.py + (b.y - b.py) * u) * cellPx;
@@ -5346,6 +5603,7 @@ function drawWeather(now) {
 }
 
 function launchMissile(targetIdx) {
+  stat('ev', 'missiles');
   const [tx, ty] = cellCenter(targetIdx);
   const W = canvas.width, H = canvas.height;
   const fromLeft = tx > W / 2;
@@ -5380,6 +5638,7 @@ function detonate(m) {
   }
 }
 function lightning(targetIdx) {
+  stat('ev', 'lightning');
   const [tx, ty] = cellCenter(targetIdx);
   const pts = [];
   let x = tx + (Math.random() - 0.5) * 120, y = -10;
@@ -5518,7 +5777,42 @@ const statEls = {
 let lastWeatherShown = '';
 let lastStatForce = '';
 
+// Hover a readout tile for the ledger behind the number.
+const statTipEl = $('statTip');
+let statTipFor = null;
+function tipRows(obj, limit, total) {
+  const entries = Object.entries(obj || {}).filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return '<div class="dim">nothing yet</div>';
+  return entries.slice(0, limit).map(([k, v]) => `<div class="row"><span>${k}</span><b>${v}${total ? ` <span class="dim">${Math.round(v / total * 100)}%</span>` : ''}</b></div>`).join('') + (entries.length > limit ? `<div class="dim">and ${entries.length - limit} more</div>` : '');
+}
+function statTipHtml(kind) {
+  const st = world.stats || newStats(), ev = st.ev || {};
+  const row = (k, v) => `<div class="row"><span>${k}</span><b>${v}</b></div>`;
+  if (kind === 'people') return `<h4>${world.deaths} dead, by cause</h4>${tipRows(st.deaths, 10, world.deaths)}<h4>by town</h4>${tipRows(st.deathsTown, 8, world.deaths)}<h4>alive</h4>${row('in the valley', world.popLeft)}${row('ever lived here', world.popTotal)}${world.towns.filter(isAlive).map(t => row(t.name, t.popLeft)).join('')}`;
+  if (kind === 'buildings') return `<h4>${world.buildingsLost} lost, by cause</h4>${tipRows(st.lost, 8, world.buildingsLost)}<h4>by town</h4>${tipRows(st.lostTown, 8, world.buildingsLost)}<h4>standing</h4>${row('now', world.buildingsLeft)}${row('ever built', world.buildingsTotal)}`;
+  if (kind === 'tick') return `<h4>Year ${Math.floor(world.tick / YEAR) + 1}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('ticks', world.tick)}${row('towns founded', world.towns.length)}<h4>the sky and the earth</h4>${row('lightning strikes', `${ev.lightning || 0} <span class="dim">(${ev.lightningNatural || 0} natural, ${Math.max(0, (ev.lightning || 0) - (ev.lightningNatural || 0))} yours)</span>`)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}${row('floods', ev.floods || 0)}${row('beaver colonies', ev.beavers || 0)}${row('dragon visits', `${ev.dragons || 0} <span class="dim">(${ev.dragonsSlain || 0} slain, ${ev.dragonsDriven || 0} driven off)</span>`)}<h4>the people</h4>${row('fire alarms', ev.alarms || 0)}${row('wars declared', ev.wars || 0)}${row('battles', ev.battles || 0)}${row('towns sacked', ev.sacks || 0)}${row('annexations', ev.annexes || 0)}${row('bomber sorties', ev.bombers || 0)}${row('nukes launched', ev.nukes || 0)}${row('meltdowns', ev.meltdowns || 0)}${row('famines', ev.famines || 0)}${row('plagues', ev.plagues || 0)}${row('caravans', `${ev.caravans || 0} <span class="dim">(${ev.markets || 0} markets, ${ev.caravansRobbed || 0} robbed)</span>`)}<h4>the beasts</h4>${row('wild herds', (world.herds || []).length)}${row('animals hunted', ev.hunted || 0)}${row('brought home alive', ev.tamed || 0)}${row('born on pastures', ev.animalsBorn || 0)}${row('lost to fire', ev.animalsBurned || 0)}`;
+  if (kind === 'trees') return `<h4>the forest</h4>${row('standing', world.treeCount)}${row('felled by loggers', ev.felled || 0)}${row('cells burned', world.burnedCount)}`;
+  if (kind === 'burned' || kind === 'burning') return `<h4>fire</h4>${row('burning now', world.burning.filter(i => world.burnLeft[i] > 0).length)}${row('cells burned', world.burnedCount)}${row('fire alarms', ev.alarms || 0)}${row('lightning strikes', ev.lightning || 0)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}`;
+  if (kind === 'weather') return `<h4>${WEATHER[world.weather.kind].label}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('wind', params.windStrength.toFixed(2))}${row('fire danger', fireDanger())}${row('snow cover', Math.round((world.snowCover || 0) * 100) + '%')}${row('floods', ev.floods || 0)}${world.dryWinter && season() === 3 ? '<div class="dim">a hard dry winter</div>' : ''}`;
+  return '';
+}
+function showStatTip(el) {
+  const kind = [...el.classList].find(c => c !== 'stat' && !WEATHER[c]) || 'tick';
+  statTipFor = kind;
+  statTipEl.innerHTML = statTipHtml(kind);
+  statTipEl.style.display = 'block';
+  statTipEl.style.left = Math.min(el.offsetLeft, el.offsetParent.clientWidth - 370) + 'px';
+  statTipEl.style.top = (el.offsetTop + el.offsetHeight + 4) + 'px';
+}
+function hideStatTip() { statTipFor = null; statTipEl.style.display = 'none'; }
+for (const el of document.querySelectorAll('.readout .stat')) {
+  el.addEventListener('mouseenter', () => showStatTip(el));
+  el.addEventListener('mouseleave', hideStatTip);
+  el.addEventListener('click', () => { if (statTipFor) hideStatTip(); else showStatTip(el); });
+}
+let statTipRefresh = 0;
 function updateStats() {
+  if (statTipFor && ++statTipRefresh % 30 === 0) { const el = document.querySelector('.readout .stat.' + statTipFor); if (el) showStatTip(el); }
   let burningNow = 0;
   for (const i of world.burning) if (world.burnLeft[i] > 0) burningNow++;
   statEls.tick.textContent = world.tick;
@@ -5570,7 +5864,7 @@ function frame(now) {
     updateStats();
     updateHud();
     updateTip();
-    if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); }
+    if ((now - lastTownsAt) > 400) { lastTownsAt = now; updateTownsPanel(); if (world.history && world.history.ticks.length !== histLastLen && document.querySelector('.tabpane[data-tab="Valley"].on')) drawHistory(); }
   } catch (e) {
     console.error(e);
     if (++frameErrors <= 3) log(`A hiccup in the simulation (${(e && e.message || String(e)).slice(0, 80)}); carrying on`, 'loss');
@@ -5677,7 +5971,7 @@ function updateHud() {
 
 function civicSummary(t) {
   const parts = [];
-  for (const [ty, nm] of [[T.TOWNHALL, 'hall'], [T.BARRACKS, 'barracks'], [T.FORGE, 'forge'], [T.FACTORY, 'factory'], [T.UNIVERSITY, 'university'], [T.TOWER, 'tower'], [T.SILO, 'silo'], [T.TENEMENT, 'tenement'], [T.LUMBERYARD, 'lumberyard'], [T.QUARRY, 'quarry'], [T.MINE, 'mine'], [T.WELL, 'well'], [T.WHEEL, 'water wheel'], [T.PLANT, 'coal plant'], [T.SOLAR, 'solar array'], [T.HYDRO, 'hydro dam'], [T.NUCLEAR, 'reactor'], [T.DERRICK, 'derrick'], [T.SHAFT, 'shaft']]) {
+  for (const [ty, nm] of [[T.TOWNHALL, 'hall'], [T.BARRACKS, 'barracks'], [T.FORGE, 'forge'], [T.FACTORY, 'factory'], [T.UNIVERSITY, 'university'], [T.TOWER, 'tower'], [T.SILO, 'silo'], [T.TENEMENT, 'tenement'], [T.LUMBERYARD, 'lumberyard'], [T.QUARRY, 'quarry'], [T.MINE, 'mine'], [T.WELL, 'well'], [T.WHEEL, 'water wheel'], [T.PLANT, 'coal plant'], [T.SOLAR, 'solar array'], [T.HYDRO, 'hydro dam'], [T.NUCLEAR, 'reactor'], [T.DERRICK, 'derrick'], [T.SHAFT, 'shaft'], [T.PASTURE, 'pasture']]) {
     const c = countType(t, ty); if (c) parts.push(c > 1 ? `${c} ${nm}${nm.endsWith('s') ? '' : 's'}` : nm);
   }
   return parts.length ? ' · ' + parts.join(', ') : '';
@@ -5704,7 +5998,7 @@ function updateTownsPanel() {
     return `<div class="row ${cls}" data-town="${t.id}"><span class="dot"></span><span class="name">${t.name}<span class="al ${alCls}">${al}</span></span><span class="st">${status}</span>` +
       `<span class="sub">pop <b>${t.popLeft}</b> · homes <b>${t.housesLeft}</b> · r${t.R}` + (t.hasStation ? ` · <b>${eng}</b> eng` : '') + ` · food <b>${foodSupply(t)}</b>` + (t.famine ? ' <span class="d">famine</span>' : '') + ` · militia <b>${t.militia}</b>` + (t.wallR ? ' · walled' : '') + (t.R > Math.max(params.townCap, t.R0) ? ' · <span class="d">sprawling</span>' : '') + air + relLine + `<br><span class="tech">${MIL_TECH[t.mil]}${t.nukes ? ' (' + t.nukes + ' bomb' + (t.nukes > 1 ? 's' : '') + ')' : ''} · ${CIV_TECH[t.civ]}${civicSummary(t)}</span>` +
       (t.deaths || t.homesLost ? ` · <span class="d">${t.deaths} dead, ${t.homesLost} homes lost</span>` : '') + (t.fires ? ` · ${t.fires} fire${t.fires === 1 ? '' : 's'}` : '') + (t.dragons ? ` · <span class="d">dragon x${t.dragons}</span>` : '') + `</span>` +
-      (t.res ? `<span class="sub">` + RES_KINDS.filter(k => t.res[k] > 0).map(k => `${k} <b>${t.res[k]}</b>`).join(' · ') + (RES_KINDS.every(k => !t.res[k]) ? 'empty stores' : '') + (t.powerNeed ? ` · power <b>${t.power}</b>/${t.powerNeed}` : '') + (t.water === false ? ' · <span class="d">no water</span>' : '') + (t.covets && world.towns[t.covets.town] ? ` · <span class="d">covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</span>` : '') + (t.master >= 0 && world.towns[t.master] ? ` · tribute to ${world.towns[t.master].name}` : '') + `</span>` : '') + `${chron}</div>`;
+      (t.res ? `<span class="sub">` + RES_KINDS.filter(k => t.res[k] > 0).map(k => `${k} <b>${t.res[k]}</b>`).join(' · ') + (RES_KINDS.every(k => !t.res[k]) ? 'empty stores' : '') + (t.powerNeed ? ` · power <b>${t.power}</b>/${t.powerNeed}` : '') + (t.water === false ? ' · <span class="d">no water</span>' : '') + (t.covets && world.towns[t.covets.town] ? ` · <span class="d">covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</span>` : '') + (t.master >= 0 && world.towns[t.master] ? ` · tribute to ${world.towns[t.master].name}` : '') + (t.livestock && LIVESTOCK.some(k => t.livestock[k]) ? ' · ' + LIVESTOCK.filter(k => t.livestock[k]).map(k => `${k} <b>${t.livestock[k]}</b>`).join(' · ') : '') + `</span>` : '') + `${chron}</div>`;
   });
   const html = rows.join('');
   if (html !== lastTownsKey) { lastTownsKey = html; townsEl.innerHTML = html; }
@@ -5729,7 +6023,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft' });
+Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -5876,9 +6170,132 @@ $('zoomIn').addEventListener('click', () => zoomAt(1.5, canvas.width / 2, canvas
 $('zoomOut').addEventListener('click', () => zoomAt(1 / 1.5, canvas.width / 2, canvas.height / 2));
 $('zoomReset').addEventListener('click', resetView);
 
+/* ───────────────────────── Sidebar tabs ───────────────────────── */
+let showTab = () => {};
+(function buildTabs() {
+  const panel = document.querySelector('aside.panel'), nav = $('tabs');
+  const TABS = [['Play', ['Run', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Valley', ['Settlements', 'History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
+  const groups = [...panel.children].filter(el => el !== nav);
+  const byTitle = {};
+  for (const g of groups) { const t = g.querySelector(':scope > .title'); byTitle[g.classList.contains('foot') ? '__foot' : (t ? t.textContent.trim() : '')] = g; }
+  const panes = {};
+  for (const [name, titles] of TABS) {
+    const pane = document.createElement('div'); pane.className = 'tabpane'; pane.dataset.tab = name;
+    for (const t of titles) if (byTitle[t]) pane.appendChild(byTitle[t]);
+    panel.appendChild(pane); panes[name] = pane;
+    const b = document.createElement('button'); b.textContent = name; b.dataset.tab = name; b.addEventListener('click', () => showTab(name)); nav.appendChild(b);
+  }
+  for (const g of groups) if (g.parentElement === panel) panes.Info.appendChild(g);
+  showTab = name => {
+    if (!panes[name]) name = 'Play';
+    for (const b of nav.children) b.classList.toggle('on', b.dataset.tab === name);
+    for (const k in panes) panes[k].classList.toggle('on', k === name);
+    try { localStorage.setItem('wildfire.tab', name); } catch (e) { /* private window */ }
+    if (name === 'Valley') { histLastLen = -1; drawHistory(); }
+  };
+  let start = 'Play'; try { start = localStorage.getItem('wildfire.tab') || 'Play'; } catch (e) { /* ignore */ }
+  showTab(start);
+})();
+
+/* ───────────────────────── History: sand plots ─────────────────────────
+   Every fifty ticks each town's numbers are sampled. The chart stacks the towns as layers from
+   each one's founding to its end, so a dead town shows as a band that narrows to nothing. */
+const HIST_METRICS = [['pop', 'population'], ['homes', 'homes'], ['militia', 'militia'], ['coin', 'coin'], ['food', 'food'], ['stock', 'stockpile']];
+const histState = { metric: 'pop', hidden: new Set(), hideDead: false, hover: -1 };
+let histLastLen = -1, histControlsKey = '';
+function sampleHistory() {
+  const H = world.history || (world.history = { ticks: [], towns: {} });
+  H.ticks.push(world.tick);
+  const idx = H.ticks.length - 1;
+  for (const t of world.towns) {
+    let r = H.towns[t.id];
+    if (!r) r = H.towns[t.id] = { name: t.name, from: idx, pop: [], homes: [], militia: [], coin: [], food: [], stock: [] };
+    r.name = t.name;
+    r.pop.push(t.popLeft); r.homes.push(t.housesLeft); r.militia.push(t.militia); r.coin.push(t.res ? t.res.coin : 0); r.food.push(foodSupply(t));
+    r.stock.push(t.res ? (t.res.wood + t.res.stone + t.res.iron + t.res.copper + t.res.coal + (t.res.oil || 0) + (t.res.uranium || 0)) : 0);
+  }
+}
+function townColor(id) { const h = (id * 137.508 + 20) % 360; return `hsl(${h}, 68%, 56%)`; }
+function histTownIds() {
+  const H = world.history; if (!H) return [];
+  return Object.keys(H.towns).map(Number).filter(id => !histState.hidden.has(id)).filter(id => !histState.hideDead || (world.towns[id] && isAlive(world.towns[id])));
+}
+function drawHistory() {
+  const c = $('histChart'); if (!c) return;
+  const g = c.getContext('2d'), W = c.width, Hh = c.height;
+  g.fillStyle = '#0b0807'; g.fillRect(0, 0, W, Hh);
+  const H = world.history;
+  if (!H || H.ticks.length < 2) { g.fillStyle = '#6a5c4e'; g.font = '11px IBM Plex Mono, monospace'; g.fillText('not enough history yet', 12, 24); renderHistControls(); return; }
+  const n = H.ticks.length, m = histState.metric, ids = histTownIds();
+  const totals = new Float64Array(n);
+  for (const id of ids) { const r = H.towns[id], v = r[m] || []; for (let k = 0; k < v.length; k++) totals[r.from + k] += v[k]; }
+  let max = 1; for (let k = 0; k < n; k++) max = Math.max(max, totals[k]);
+  const padL = 36, padB = 16, padT = 6, padR = 4;
+  const x = k => padL + (W - padL - padR) * (n === 1 ? 0 : k / (n - 1)), y = v => padT + (Hh - padT - padB) * (1 - v / max);
+  g.strokeStyle = 'rgba(255,255,255,0.06)';
+  for (let yr = YEAR; yr <= H.ticks[n - 1]; yr += YEAR) { const k = H.ticks.findIndex(t => t >= yr); if (k < 0) break; g.beginPath(); g.moveTo(x(k), padT); g.lineTo(x(k), Hh - padB); g.stroke(); }
+  const base = new Float64Array(n);
+  for (const id of ids) {
+    const r = H.towns[id], v = r[m] || []; if (!v.length) continue;
+    g.beginPath();
+    for (let k = 0; k < v.length; k++) g.lineTo(x(r.from + k), y(base[r.from + k] + v[k]));
+    for (let k = v.length - 1; k >= 0; k--) g.lineTo(x(r.from + k), y(base[r.from + k]));
+    g.closePath(); g.fillStyle = townColor(id); g.globalAlpha = histState.hover === id ? 1 : 0.8; g.fill(); g.globalAlpha = 1;
+    g.strokeStyle = 'rgba(0,0,0,0.5)'; g.lineWidth = 1; g.stroke();
+    for (let k = 0; k < v.length; k++) base[r.from + k] += v[k];
+  }
+  g.strokeStyle = '#3a2e27'; g.beginPath(); g.moveTo(padL, padT); g.lineTo(padL, Hh - padB); g.lineTo(W - padR, Hh - padB); g.stroke();
+  g.fillStyle = '#9a8a78'; g.font = '9px IBM Plex Mono, monospace'; g.textAlign = 'right';
+  g.fillText(String(Math.round(max)), padL - 3, padT + 8); g.fillText('0', padL - 3, Hh - padB);
+  g.textAlign = 'left'; g.fillText('t' + H.ticks[0], padL, Hh - 4);
+  g.textAlign = 'right'; g.fillText(`t${H.ticks[n - 1]} · Y${Math.floor(H.ticks[n - 1] / YEAR) + 1}`, W - padR, Hh - 4);
+  histLastLen = n;
+  renderHistControls();
+}
+function renderHistControls() {
+  const H = world.history || { towns: {} };
+  const ids = Object.keys(H.towns).map(Number);
+  const key = histState.metric + '|' + ids.map(id => id + ':' + (histState.hidden.has(id) ? 0 : 1) + ':' + (world.towns[id] && isAlive(world.towns[id]) ? 1 : 0) + ':' + H.towns[id].name).join(',') + '|' + histState.hideDead;
+  if (key === histControlsKey) return; histControlsKey = key;
+  $('histMetrics').innerHTML = HIST_METRICS.map(([k, label]) => `<button data-m="${k}" class="${histState.metric === k ? 'on' : ''}">${label}</button>`).join('');
+  for (const b of $('histMetrics').children) b.addEventListener('click', () => { histState.metric = b.dataset.m; drawHistory(); });
+  $('histTowns').innerHTML = ids.map(id => { const alive = world.towns[id] && isAlive(world.towns[id]); return `<button data-id="${id}" class="${histState.hidden.has(id) ? 'off' : ''} ${alive ? '' : 'dead'}" title="click to hide, double-click to see alone"><span class="sw" style="background:${townColor(id)}"></span>${H.towns[id].name}</button>`; }).join('');
+  for (const b of $('histTowns').children) {
+    const id = +b.dataset.id;
+    b.addEventListener('click', () => { if (histState.hidden.has(id)) histState.hidden.delete(id); else histState.hidden.add(id); drawHistory(); });
+    b.addEventListener('dblclick', () => { const solo = ids.every(o => o === id || histState.hidden.has(o)); histState.hidden = new Set(solo ? [] : ids.filter(o => o !== id)); drawHistory(); });
+    b.addEventListener('mouseenter', () => { histState.hover = id; drawHistory(); });
+    b.addEventListener('mouseleave', () => { histState.hover = -1; drawHistory(); });
+  }
+}
+$('histHideDead').addEventListener('change', ev => { histState.hideDead = ev.target.checked; drawHistory(); });
+$('histChart').addEventListener('mousemove', ev => {
+  const H = world.history; if (!H || H.ticks.length < 2) return;
+  const c = $('histChart'), r = c.getBoundingClientRect(), W = c.width, padL = 36, padR = 4;
+  const k = Math.round(((ev.clientX - r.left) / r.width * W - padL) / (W - padL - padR) * (H.ticks.length - 1));
+  if (k < 0 || k >= H.ticks.length) return;
+  const m = histState.metric, parts = [];
+  for (const id of histTownIds()) { const t = H.towns[id]; const i = k - t.from; if (i >= 0 && i < t[m].length) parts.push(`${t.name} ${t[m][i]}`); }
+  $('histRead').textContent = `t${H.ticks[k]} · Y${Math.floor(H.ticks[k] / YEAR) + 1} · ${parts.join(' · ') || 'no towns yet'}`;
+});
+$('histChart').addEventListener('mouseleave', () => { $('histRead').textContent = ''; });
+
+const SPEEDS = [1, 2, 4, 8, 15, 30, 60, 120, 240];
+function nudgeSpeed(dir) {
+  const cur = params.speed; let k = SPEEDS.findIndex(v => v >= cur); if (k < 0) k = SPEEDS.length - 1;
+  if (dir > 0) k = Math.min(SPEEDS.length - 1, SPEEDS[k] > cur ? k : k + 1); else k = Math.max(0, SPEEDS[k] >= cur ? k - 1 : k);
+  params.speed = SPEEDS[k]; $('speed').value = params.speed; $('speedOut').textContent = `${params.speed} t/s`;
+  popups.push({ x: canvas.width / 2 / view.zoom + view.x, y: 30 / view.zoom + view.y, text: `${params.speed} T/S`, color: '#ffb627', t0: performance.now(), dur: 900 });
+}
 window.addEventListener('keydown', ev => {
   if (ev.target.tagName === 'INPUT') return;
   switch (ev.key) {
+    case '[': nudgeSpeed(-1); break;
+    case ']': nudgeSpeed(1); break;
+    case '-': case '_': zoomAt(1 / 1.5, canvas.width / 2, canvas.height / 2); break;
+    case '=': case '+': zoomAt(1.5, canvas.width / 2, canvas.height / 2); break;
+    case '0': resetView(); break;
+    case 'h': case 'H': showTab('Valley'); break;
     case ' ': ev.preventDefault(); setRunning(!running); break;
     case 'm': case 'M': launchMissile(randomFuelCell()); break;
     case 'l': case 'L': lightning(randomFuelCell()); break;
@@ -5936,7 +6353,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
     ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
-    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'],
+    ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],
   ];
   const leg = $('legend');
@@ -5973,7 +6390,7 @@ function snapshot() {
     },
     river: world.river, flooded: world.flooded, floodOrig: [...world.floodOrig], floodUntil: world.floodUntil,
     beavers: world.beavers ? { ...world.beavers, pond: [...world.beavers.pond] } : null,
-    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [],
+    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
     falloutList: world.falloutList,
     burning: world.burning, glowing: world.glowing, wetList: world.wetList,
     totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
@@ -6014,7 +6431,7 @@ function restore(d) {
   world.deep = d.arrays.deep ? unpackArr(d.arrays.deep, Uint8Array) : new Uint8Array(N);
   world.deepAmt = d.arrays.deepAmt ? unpackArr(d.arrays.deepAmt, Uint16Array) : new Uint16Array(N);
   world.surveyed = d.arrays.surveyed ? unpackArr(d.arrays.surveyed, Uint8Array) : new Uint8Array(N);
-  world.trader = d.trader || null; world.nextTrader = d.nextTrader || 0; world.traderWary = d.traderWary || 0; world.roadProjects = (d.roadProjects || []).slice();
+  world.trader = d.trader || null; world.nextTrader = d.nextTrader || 0; world.traderWary = d.traderWary || 0; world.roadProjects = (d.roadProjects || []).slice(); world.stats = d.stats || newStats(); world.herds = (d.herds || []).slice(); world.history = d.history || { ticks: [], towns: {} }; histLastLen = -1;
   world.snowLv = new Uint8Array(N); world.snowCells = 0;
   for (let i = 0; i < N; i++) { world.snowLv[i] = snowLevel(world.snow[i]); if (world.snow[i]) world.snowCells++; }
   world.snowCover = 0;
@@ -6031,7 +6448,7 @@ function restore(d) {
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
   world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
-  for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (t.res[k] === undefined) t.res[k] = k === 'coin' ? 30 : 0; if (t.gathered[k] === undefined) t.gathered[k] = 0; } t.deepSite = t.deepSite || {}; if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
+  for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (t.res[k] === undefined) t.res[k] = k === 'coin' ? 30 : 0; if (t.gathered[k] === undefined) t.gathered[k] = 0; } t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
   for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;

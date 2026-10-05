@@ -283,6 +283,37 @@ the season and the weather: almost nothing in a clear winter, fast in spring rai
 ground holds its snow longest. Ground that has just thawed is damp for a while, which is why
 early spring fires fizzle. Shift+hover a cell to see its snow.
 
+## Beasts
+
+Herds of deer, wild boar, wild sheep, grouse and the odd aurochs roam the open ground, flee
+fire, breed slowly, and drift in from the map edges. Hunters in green stalk the nearest herd,
+take an animal, and carry the game home; small herds are left to recover. Now and then the
+animal comes home alive, and that is how a town first gets pigs, sheep, chickens or cattle.
+Caravans sell livestock too. Beasts need a fenced pasture, breed when there is room, feed the
+town, burn with the pasture, and are driven off in a sack.
+
+## The ledger
+
+Hover any tile in the readout under the map. Population shows who died and of what (fire,
+famine, battle, plague, thirst, fallout, dragon fire, put to the sword) and in which town.
+Buildings shows what was lost and why. Tick shows the whole history of the valley: lightning
+strikes (natural and yours), missiles, meteors, floods, beaver colonies, dragon visits, wars,
+battles, sacks, annexations, bombers, nukes, meltdowns, famines, plagues, caravans, and the
+beasts.
+
+## The sidebar
+
+Four tabs: Play (run, ignite, dispatch, save and seed), Valley (settlements and history),
+Settings (world, fire, wind, terrain and the legend) and Info (achievements and the notes).
+The running log sits under the map so you are always in tune with the world.
+
+The History panel draws sand plots: every town is a layer, stacked, from its founding to its
+end, so a town that dies shows as a band that narrows to nothing. Pick population, homes,
+militia, coin, food or stockpile; click a town to hide it, double-click to see it alone, tick
+"hide dead towns", and hover the chart to read the numbers at any tick. Press H to jump there.
+
+Hotkeys: `[` and `]` step the speed down and up, `-` and `=` zoom, `0` shows the whole map.
+
 ## Looking closer
 
 Scroll to zoom at the cursor, drag to pan, pinch and drag on a phone, or use the + / - / home
