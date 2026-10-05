@@ -307,6 +307,15 @@
   .towns .sub b { color: var(--ink); font-weight: 500; }
   .towns .sub .d { color: #ff8a73; }
   .towns .empty { font-size: 11px; color: #4e4238; font-style: italic; padding: 4px 2px; }
+  .seedrow { display: grid; grid-template-columns: 1fr auto auto; gap: 6px; align-items: stretch; }
+  .seedrow input {
+    font-family: var(--pixel); font-size: 10px; letter-spacing: 0.06em;
+    background: #0b0807; border: 1px solid #332a24; color: var(--ember-hot);
+    padding: 8px 8px 6px; min-width: 0; width: 100%;
+  }
+  .seedrow input:focus { outline: 1px solid var(--ember); }
+  .seedrow button { padding: 8px 9px 6px; }
+  .seedrow button.ok { color: #a7e36f; border-color: #3f6a2a; }
   .legend { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; font-size: 11px; color: var(--ink-dim); }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend canvas { width: 16px; height: 16px; image-rendering: pixelated; border: 1px solid #000; background: #1d2a1a; }
@@ -465,6 +474,14 @@
       <div class="control">
         <label for="density">Tree density</label><output id="densityOut">0.65</output>
         <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
+      </div>
+      <div class="control">
+        <label for="seed">Seed</label><output class="k" style="color:var(--ink-dim)">same seed = same valley</output>
+        <div class="seedrow" style="grid-column:1/-1">
+          <input id="seed" type="text" inputmode="numeric" spellcheck="false" title="Type a seed and press Enter to rebuild this valley">
+          <button id="seedApply" title="Rebuild from this seed">Load</button>
+          <button id="seedCopy" title="Copy a link to this valley">Copy link</button>
+        </div>
       </div>
       <div class="legend" id="legend"></div>
     </div>
@@ -852,7 +869,7 @@ const params = {
   windMode: 'auto',
 };
 
-function generate(n) {
+function generate(n, seed) {
   world.n = n;
   const N = n * n;
   world.type = new Uint8Array(N);
@@ -882,7 +899,8 @@ function generate(n) {
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
   logEntries.length = 0; renderLog();
 
-  const seed = (Math.random() * 0xffffffff) >>> 0;
+  seed = (seed === undefined || seed === null || Number.isNaN(seed)) ? ((Math.random() * 0xffffffff) >>> 0) : (seed >>> 0);
+  world.seed = seed;
   seedRng(seed);
   const sE = seed ^ 0x9e3779b9, sM = seed ^ 0x85ebca6b, sB = seed ^ 0xc2b2ae35;
   const scale = 7 / n;
@@ -969,7 +987,7 @@ function placeTowns(n) {
   for (let t = 0; t < count; t++) {
     // Starting size varies a lot: most towns are small, a few start as real towns.
     const R = Math.max(2, Math.min(9, Math.round(2 + Math.pow(rand(), 1.4) * Math.min(7, n / 16))));
-    const site = findTownSite(R, Math.random);
+    const site = findTownSite(R, rand);
     if (!site) continue;
     foundTown(site[0], site[1], R, { houseScale: 0.55 + rand() * 0.5, stationChance: R >= 4 ? 0.5 : 0.2, rng: rand });
   }
@@ -977,9 +995,10 @@ function placeTowns(n) {
   world.popLeft = world.popTotal;
 }
 
-function nextTownName() {
+function nextTownName(rng) {
+  rng = rng || Math.random;
   const used = new Set(world.towns.map(t => t.name));
-  for (let k = 0; k < 40; k++) { const nm = makeTownName(Math.random); if (!used.has(nm)) return nm; }
+  for (let k = 0; k < 40; k++) { const nm = makeTownName(rng); if (!used.has(nm)) return nm; }
   return 'New ' + world.towns[Math.floor(Math.random() * world.towns.length)].name;
 }
 
@@ -1009,7 +1028,7 @@ function findTownSite(R, rng) {
 function foundTown(cx, cy, R, opts) {
   const n = world.n, type = world.type, rng = opts.rng || Math.random;
   const town = {
-    id: world.towns.length, name: opts.name || nextTownName(), cx, cy, R,
+    id: world.towns.length, name: opts.name || nextTownName(rng), cx, cy, R,
     buildings: [], housesTotal: 0, housesLeft: 0, popTotal: 0, popLeft: 0,
     hasStation: false, stationIdx: -1, trucks: [],
     mobilized: false, rallyAt: 0, lastThreat: -1000, fireDir: 0, fireDist: Infinity, nearestFire: -1,
@@ -1392,9 +1411,9 @@ function updateWind() {
 /* ───────────────────────── Regrowth ───────────────────────── */
 
 // Mean ticks for each succession step at regrowth rate 1 in clear weather.
-const GROW = { ashToGrass: 60, stumpToAsh: 90, breakToGrass: 120, grassToPine: 260, grassToPineLonely: 1800, grassToOak: 700, pineToBig: 450 };
+const GROW = { ashToGrass: 45, stumpToAsh: 70, breakToGrass: 100, grassToPine: 170, grassToPineLonely: 1400, grassToOak: 520, pineToBig: 380 };
 // Nothing regrows until this many ticks after the cell last changed (burn, greening, seeding). Varies per cell.
-const REGROW_DELAY = [300, 420];
+const REGROW_DELAY = [120, 220];
 const SWEEP_DIV = 16;
 
 function inAnyTown(x, y) {
@@ -3000,16 +3019,48 @@ window.addEventListener('keydown', ev => {
   }
 });
 
-function reset(n) {
+function reset(n, seed) {
   n = n || world.n;
   missiles.length = 0; explosions.length = 0; bolts.length = 0; particles.length = 0; popups.length = 0;
-  generate(n);
+  generate(n, seed);
   layout();
+  syncSeedUi();
   const parts = [];
   for (const t of world.towns) parts.push(`${t.name} (pop ${t.popTotal}${t.hasStation ? `, ${t.trucks.length} engine${t.trucks.length > 1 ? 's' : ''}` : ''})`);
   log(world.towns.length ? parts.join(' · ') : 'No towns in this wilderness');
+  log(`Valley #${world.seed}, ${world.n} x ${world.n}`);
   setRunning(true);
 }
+
+// Seed field, Load / Copy link, and the address bar.
+const seedEl = $('seed'), seedCopyBtn = $('seedCopy');
+function syncSeedUi() {
+  seedEl.value = String(world.seed);
+  try {
+    const u = new URL(location.href);
+    u.searchParams.set('seed', String(world.seed));
+    u.searchParams.set('size', String(world.n));
+    history.replaceState(null, '', u);
+  } catch (e) { /* file:// or sandboxed: ignore */ }
+}
+function loadSeedFromField() {
+  const raw = seedEl.value.trim();
+  if (!raw) return;
+  let seed;
+  if (/^\d+$/.test(raw)) seed = Number(raw) >>> 0;
+  else { seed = 2166136261; for (let k = 0; k < raw.length; k++) { seed ^= raw.charCodeAt(k); seed = Math.imul(seed, 16777619); } seed >>>= 0; } // words work too
+  reset(world.n, seed);
+}
+$('seedApply').addEventListener('click', loadSeedFromField);
+seedEl.addEventListener('keydown', ev => { if (ev.key === 'Enter') { ev.preventDefault(); loadSeedFromField(); seedEl.blur(); } ev.stopPropagation(); });
+seedCopyBtn.addEventListener('click', async () => {
+  const u = new URL(location.href);
+  u.searchParams.set('seed', String(world.seed)); u.searchParams.set('size', String(world.n));
+  const text = u.toString();
+  try { await navigator.clipboard.writeText(text); } catch (e) { seedEl.value = text; seedEl.select(); }
+  seedCopyBtn.textContent = 'Copied'; seedCopyBtn.classList.add('ok');
+  setTimeout(() => { seedCopyBtn.textContent = 'Copy link'; seedCopyBtn.classList.remove('ok'); }, 1400);
+});
 
 let resizeTimer = 0;
 window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(layout, 120); });
@@ -3034,10 +3085,16 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
 })();
 
 // Debug handle for automated tests and tinkering in the console.
-window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true) };
+window.__wildfire = { world, params, reset, step, launchMissile, lightning, setRunning, log, forceSettlers: () => updateSettlers(true), debugDragon: () => maybeDragon(true), seed: () => world.seed };
 
-// Boot
-reset(100);
+// Boot: a shared link carries the valley.
+let bootSeed, bootSize = 100;
+try {
+  const q = new URL(location.href).searchParams;
+  if (q.has('seed')) { const v = q.get('seed'); bootSeed = /^\d+$/.test(v) ? Number(v) >>> 0 : undefined; if (bootSeed === undefined) { let h = 2166136261; for (let k = 0; k < v.length; k++) { h ^= v.charCodeAt(k); h = Math.imul(h, 16777619); } bootSeed = h >>> 0; } }
+  if (q.has('size')) { const z = parseInt(q.get('size'), 10); if (z >= 30 && z <= 300) { bootSize = Math.round(z / 10) * 10; $('size').value = bootSize; $('size').dispatchEvent(new Event('input')); } }
+} catch (e) { /* ignore */ }
+reset(bootSize, bootSeed);
 setTimeout(() => launchMissile(randomFuelCell()), 600);
 requestAnimationFrame(frame);
 

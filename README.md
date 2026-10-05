@@ -89,7 +89,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   far more readily in wind or drought. Crown fire burns white-hot, spreads harder, shrugs
   off wet ground, runs along the tree line, and showers embers two to three times farther
   ahead of the front. Crews bail when it is next to them and engines struggle with it.
-- **Regrowth waits.** Burnt ground stays black for 300 to 420 ticks before anything
+- **Regrowth waits.** Burnt ground stays black for 120 to 220 ticks before anything
   greens, and each succession step waits its own delay. Meadows from the original terrain
   never grow trees.
 - **Settlers find their way.** Wagons use real pathfinding, wait for fire to clear, and turn
@@ -107,6 +107,10 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
 - **Dragon.** Rarely, and drawn to the richest towns (weighted by population squared), a
   dragon crosses the map, makes several passes over a town breathing fire, ignores wet
   ground, and leaves. There is no button for this. It just happens sometimes. Sorry.
+- **Shareable seeds.** The Seed field in the Terrain group shows the current valley's number.
+  Type a number or any words and press Enter (or Load) to rebuild that exact valley, towns
+  and all. Copy link puts `?seed=...&size=...` on the clipboard, and the address bar always
+  carries the current one. Same seed, same map. What happens next is still up to the dice.
 - **Shift + hover** over any cell to inspect it: terrain, fuel, fire state, wet or
   retardant timers, regrowth countdown, ground quality, which town it belongs to, and who
   is standing there (crews, engines, townsfolk, settlers).
