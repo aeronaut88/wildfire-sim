@@ -352,6 +352,8 @@
         <span class="ws" id="hudWind">0.50</span>
         <span class="sep"></span>
         <span class="tk" id="hudTick">t0</span>
+        <span class="sep"></span>
+        <span class="tk" id="hudSeed">#</span>
       </div>
       <div class="tip" id="tip"></div>
     </div>
@@ -378,6 +380,16 @@
         <label for="speed">Speed</label><output id="speedOut">4 t/s</output>
         <input type="range" id="speed" min="1" max="240" value="4">
       </div>
+    </div>
+
+    <div class="group">
+      <div class="title">Valley seed</div>
+      <div class="seedrow">
+        <input id="seed" type="text" inputmode="numeric" spellcheck="false" placeholder="type a seed, press Enter" title="Any number or words. Same seed, same valley.">
+        <button id="seedApply" title="Rebuild this valley from the seed">Load</button>
+        <button id="seedCopy" title="Copy a link to this valley">Copy link</button>
+      </div>
+      <div class="foot" style="margin-top:-2px">Every load and every New Forest rolls a fresh seed. Same seed, same valley. Copy link to share this one.</div>
     </div>
 
     <div class="group">
@@ -474,14 +486,6 @@
       <div class="control">
         <label for="density">Tree density</label><output id="densityOut">0.65</output>
         <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
-      </div>
-      <div class="control">
-        <label for="seed">Seed</label><output class="k" style="color:var(--ink-dim)">same seed = same valley</output>
-        <div class="seedrow" style="grid-column:1/-1">
-          <input id="seed" type="text" inputmode="numeric" spellcheck="false" title="Type a seed and press Enter to rebuild this valley">
-          <button id="seedApply" title="Rebuild from this seed">Load</button>
-          <button id="seedCopy" title="Copy a link to this valley">Copy link</button>
-        </div>
       </div>
       <div class="legend" id="legend"></div>
     </div>
@@ -2927,7 +2931,7 @@ $('wind').addEventListener('input', () => {
 });
 
 // Weather / wind HUD in the map corner, and the compass mirror while on auto.
-const hudEls = { weather: $('hudWeather'), vane: $('hudVane'), wind: $('hudWind'), tick: $('hudTick') };
+const hudEls = { weather: $('hudWeather'), vane: $('hudVane'), wind: $('hudWind'), tick: $('hudTick'), seed: $('hudSeed') };
 let lastHud = '';
 function updateHud() {
   const wk = world.weather.kind;
@@ -3099,12 +3103,7 @@ function reset(n, seed) {
 const seedEl = $('seed'), seedCopyBtn = $('seedCopy');
 function syncSeedUi() {
   seedEl.value = String(world.seed);
-  try {
-    const u = new URL(location.href);
-    u.searchParams.set('seed', String(world.seed));
-    u.searchParams.set('size', String(world.n));
-    history.replaceState(null, '', u);
-  } catch (e) { /* file:// or sandboxed: ignore */ }
+  hudEls.seed.textContent = '#' + world.seed;
 }
 function loadSeedFromField() {
   const raw = seedEl.value.trim();
@@ -3158,6 +3157,7 @@ try {
   if (q.has('size')) { const z = parseInt(q.get('size'), 10); if (z >= 30 && z <= 300) { bootSize = Math.round(z / 10) * 10; $('size').value = bootSize; $('size').dispatchEvent(new Event('input')); } }
 } catch (e) { /* ignore */ }
 reset(bootSize, bootSeed);
+try { if (location.search) history.replaceState(null, '', location.pathname); } catch (e) { /* ignore */ }
 setTimeout(() => launchMissile(randomFuelCell()), 600);
 requestAnimationFrame(frame);
 
