@@ -158,6 +158,41 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   Columns that march into a wildfire take losses and re-route.
 - **Settlements panel** shows alignment, militia, walls, tech, buildings, wars, allies and feuds.
 
+## The land itself
+
+- **Elevation.** Every cell has a height, shown as a subtle hillshade. Rock sits on the tops,
+  lakes in the hollows.
+- **The river finds its valley.** Instead of a wobbly line, the river is a least-cost path
+  from a high point on one edge to a low point on the opposite edge, so it follows the low
+  ground. Every river cell knows which way it flows (Shift+hover shows it). Sometimes a
+  tributary joins from a third edge.
+- **Beavers.** A colony appears on a wooded stretch of river, chews for a while (you can
+  see them), and finishes a dam. The ground upstream below the new water line floods into
+  a pond, which is a firebreak until fire reaches the dam or the beavers move on, after
+  which the pond drains to mud and the mud dries to grass.
+- **Floods.** Rain or storm over a river whose banks are burn scar makes the river burst its
+  banks: low ground beside it goes under, buildings in the way are flooded out, and it
+  drains to mud when the rain stops.
+- **Bridges.** When a town's road hits a short span of water with land beyond, it throws a
+  wooden bridge. Bridges carry warbands, settlers and wagons, and they burn.
+- **Farms and food.** Towns clear fields on open ground beside their roads. Each farm feeds
+  twelve, fishing boats add a little, foraging covers a few, and the weather and season set
+  the yield. Growth is capped by food as well as housing. Too many mouths means famine:
+  people die slowly until the fields catch up, and drought cuts the harvest nearly in half.
+- **Seasons.** A year is 1,200 ticks: spring (rain, fast growth), summer (drought and fire
+  season), autumn (harvest), winter (snow: fire barely spreads, nothing grows, the stored
+  harvest carries the town). The HUD shows the season and a fire danger rating.
+- **Trade roads.** Allied towns build a road between them, bridging the river if it is
+  short, and wagons run it. Each delivery feeds both ends and shares a little learning.
+  Plague rides the wagons too.
+- **Chronicles.** Click a town in the settlements panel for its own history.
+- **Achievements.** Twenty-eight badges, unlocked by things that happen in the valley,
+  stored in this browser's local storage across valleys.
+- **Dragons have names** ("Solul the Twilight", "Kazgon Hoardlord"), are rarer, and a dragon
+  driven off remembers the town that did it. **Sacks** now burn a third to two thirds of a
+  town, wreck its workshops, carry people off, and an evil conqueror puts more to the
+  sword. A town left with nothing is razed.
+
 ## More life
 
 - **More towns, softer cap.** The Max living towns slider (default 5, more on big maps)
