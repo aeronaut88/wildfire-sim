@@ -43,7 +43,7 @@ function updateMilitia(t) {
   else if (t.militia > target) t.militia = target;
   if (t.raidCooldown > 0) t.raidCooldown--;
   // Lawful towns wall themselves in once they can afford it. Walls also stop fire.
-  if (t.align.order > 0 && t.popLeft >= 60 && t.R >= 3 && (t.wallR === 0 || t.R > t.wallR + 2) && Math.random() < 0.15) buildWall(t);
+  if (t.align.order > 0 && t.popLeft >= 60 && t.R >= 3 && (t.wallR === 0 || t.R > t.wallR + 2) && canAfford(t, COST.wall) && Math.random() < 0.15) { pay(t, COST.wall); buildWall(t); } // a town that outgrows its wall rings a new one; the old ring stays as a firebreak
 }
 
 function buildWall(t) {
@@ -132,7 +132,7 @@ function maybeRaid(t) {
   if (!path) return;
   t.militia -= size; t.raidCooldown = 120 + Math.floor(Math.random() * 120); t.raidsMade++;
   let armour = t.mil >= 5 ? 1 + Math.floor(size / 12) : 0, guns = t.mil >= 3 && t.mil < 5 ? 1 + Math.floor(size / 15) : 0;
-  const fuel = t.res.oil >= 2 ? 'oil' : 'coal', perTank = fuel === 'oil' ? 2 : 3;
+  const fuel = 'oil', perTank = 2; // tanks burn oil; a town without it marches on foot
   armour = Math.min(armour, Math.floor(t.res.iron / 10), Math.floor(t.res[fuel] / perTank)); // tanks are iron and fuel
   guns = Math.min(guns, Math.floor((t.res.iron - armour * 10) / 6));
   pay(t, { iron: armour * 10 + guns * 6, [fuel]: armour * perTank });

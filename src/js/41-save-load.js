@@ -31,7 +31,7 @@ function snapshot() {
     towns: world.towns.map(t => ({ ...t, ring: undefined, claimed: [...t.claimed] })),
     air: world.air ? { ...world.air, plane: null } : null,
     settlers: world.settlers ? { ...world.settlers, town: townToId(world.settlers.town) } : null,
-    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
+    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, fighters: world.fighters || [], boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
     dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town), frames: undefined } : null,
     params: { ...params },
     log: logEntries.slice(),
@@ -123,10 +123,10 @@ function restore(d) {
   for (const t of world.towns) recomputeRing(t);
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
-  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
+  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.fighters = (d.fighters || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
   for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (!Number.isFinite(t.res[k])) t.res[k] = k === 'coin' ? 30 : k === 'water' ? 30 : k === 'grain' ? 20 : 0; if (!Number.isFinite(t.gathered[k])) t.gathered[k] = 0; } t.wells = t.wells || {}; t.sites = t.sites || {}; if (t.fed === undefined) t.fed = true; t.hunger = t.hunger || 0; t.temper = t.temper || { wood: 1, stone: 1, food: 1, build: 1, trade: 1 };
     if (t.livestock) for (const k of LIVESTOCK) if (!Number.isFinite(t.livestock[k])) t.livestock[k] = 0; t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (!t.people) seedPeople(t, Math.random); if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
-  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
+  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.bombers = t.bombers || 0; t.fighters = t.fighters || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;
   applySavedParams(d.params);

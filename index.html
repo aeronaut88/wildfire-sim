@@ -1047,6 +1047,7 @@ SPRITES.cannon = [
   '....KKKK........','..KKKK..........','.KK5555K........','.K555555K.......',
   '..K5555K........','...KKKK.........','................','................',
 ];
+SPRITES.fighter = SPRITES.plane.map(row => row.replace(/x/g, 'S').replace(/d/g, '0').replace(/l/g, '7')); // a grey jet with blue markings
 SPRITES.bomber = SPRITES.plane.map(row => row.replace(/x/g, '5').replace(/d/g, '9').replace(/l/g, '7'));
 // Raiders wear blue so you can tell the two sides apart.
 SPRITES.raider = SPRITES.soldier.map(row => row.replace(/d/g, 'u'));
@@ -1170,6 +1171,12 @@ SPRITES.jungle = [
   'gg{||||||||{{}gg','ggg||||TT|||gggg','gggggTTTTggggggg','ggggTgTTgTgggggg',
   'gggggTTTTggggggg','gggggTTTTggggggg','ggggghTThhgggggg','gggggggggggggggg',
 ];
+SPRITES.airbase = [
+  'gggggggggggggggg','gllllllllllllllg','glRRRRRRRRlllllg','glRrrrrrrRlllllg',
+  'glRrrddrrRllxllg','glRrrddrrRllxllg','glRrrrrrrRllxllg','glRRRRRRRRllxllg',
+  'glllllllllllxllg','gllllllllllllllg','glllllKKKlllxllg','gllllKKKKKllxllg',
+  'glllllKKKlllxllg','gllllllKllllxllg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
 SPRITES.felled = [
   'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
   'gggggggggggggggg','gggggggggggggggg','ggggggggggggtggg','ggggggVVVVggtggg',
@@ -1222,7 +1229,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1380,7 +1387,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1395,6 +1402,7 @@ const FUEL = {
   [T.HOUSE]:   { ignite: 0.6,  burn: [6, 10],  after: T.RUBBLE, spots: true },
   [T.STATION]: { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.HANGAR]:  { ignite: 0.45, burn: [8, 12],  after: T.RUBBLE, spots: true },
+  [T.AIRBASE]: { ignite: 0.4,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.TENEMENT]:   { ignite: 0.55, burn: [10, 16], after: T.RUBBLE, spots: true },
   [T.BARRACKS]:   { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.FORGE]:      { ignite: 0.6,  burn: [8, 14],  after: T.RUBBLE, spots: true },
@@ -1422,11 +1430,11 @@ const FUEL = {
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY;
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE;
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG || t === T.JUNGLE;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
@@ -1493,7 +1501,7 @@ const world = {
   buildingsTotal: 0, buildingsLeft: 0, popTotal: 0, popLeft: 0,
   buildingsLost: 0, deaths: 0,
   weather: { kind: 'clear', left: 150 },
-  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], boats: [], diploTimer: 60,
+  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], fighters: [], boats: [], diploTimer: 60,
   wind: { angle: 0, strength: 0.3, targetAngle: 0, targetStrength: 0.3, retarget: 0 },
 };
 
@@ -1728,7 +1736,7 @@ function generate(n, seed) {
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.boats = []; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.boats = []; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
   const a0 = Math.random() * Math.PI * 2;
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
@@ -2523,7 +2531,7 @@ function updateMilitia(t) {
   else if (t.militia > target) t.militia = target;
   if (t.raidCooldown > 0) t.raidCooldown--;
   // Lawful towns wall themselves in once they can afford it. Walls also stop fire.
-  if (t.align.order > 0 && t.popLeft >= 60 && t.R >= 3 && (t.wallR === 0 || t.R > t.wallR + 2) && Math.random() < 0.15) buildWall(t);
+  if (t.align.order > 0 && t.popLeft >= 60 && t.R >= 3 && (t.wallR === 0 || t.R > t.wallR + 2) && canAfford(t, COST.wall) && Math.random() < 0.15) { pay(t, COST.wall); buildWall(t); } // a town that outgrows its wall rings a new one; the old ring stays as a firebreak
 }
 
 function buildWall(t) {
@@ -2612,7 +2620,7 @@ function maybeRaid(t) {
   if (!path) return;
   t.militia -= size; t.raidCooldown = 120 + Math.floor(Math.random() * 120); t.raidsMade++;
   let armour = t.mil >= 5 ? 1 + Math.floor(size / 12) : 0, guns = t.mil >= 3 && t.mil < 5 ? 1 + Math.floor(size / 15) : 0;
-  const fuel = t.res.oil >= 2 ? 'oil' : 'coal', perTank = fuel === 'oil' ? 2 : 3;
+  const fuel = 'oil', perTank = 2; // tanks burn oil; a town without it marches on foot
   armour = Math.min(armour, Math.floor(t.res.iron / 10), Math.floor(t.res[fuel] / perTank)); // tanks are iron and fuel
   guns = Math.min(guns, Math.floor((t.res.iron - armour * 10) / 6));
   pay(t, { iron: armour * 10 + guns * 6, [fuel]: armour * perTank });
@@ -2903,6 +2911,14 @@ function updateTech(t) {
     pay(t, COST.nuke); t.nukes++; t.bombsBuilt = (t.bombsBuilt || 0) + 1;
     log(t.bombsBuilt === 1 ? `${t.name} has built a bomb. Nobody there knows what it will do to the land.` : `${t.name} completes another bomb`, 'nuke');
   }
+  if (t.mil >= 5 && hasType(t, T.AIRBASE) && (t.bombers || 0) < 3 && canAfford(t, COST.bomber) && Math.random() < 0.03) {
+    pay(t, COST.bomber); t.bombers = (t.bombers || 0) + 1; t.bombersBuilt = (t.bombersBuilt || 0) + 1; stat('ev', 'bombersBuilt');
+    log(t.bombersBuilt === 1 ? `A bomber rolls out of the hangar at ${t.name}. The neighbours take note.` : `Another bomber rolls out at ${t.name}`, 'war');
+  }
+  if (t.civ >= 5 && hasType(t, T.AIRBASE) && (t.fighters || 0) < 2 && canAfford(t, COST.fighter) && Math.random() < 0.03) {
+    pay(t, COST.fighter); t.fighters = (t.fighters || 0) + 1; t.fightersBuilt = (t.fightersBuilt || 0) + 1; stat('ev', 'fightersBuilt');
+    log(t.fightersBuilt === 1 ? `${t.name} rolls out a fighter jet. It was built for one thing, and everyone knows what.` : `${t.name} rolls out a second jet`, 'tech');
+  }
   if (t.shellCooldown > 0) t.shellCooldown--;
   if (t.nukeCooldown > 0) t.nukeCooldown--;
 }
@@ -2921,7 +2937,7 @@ function maybeBombard(t) {
     const p = (t.align.moral < 0 ? 0.0012 : 0.0002) * (desperate ? 4 : 1);
     if (Math.random() < p) { launchNuke(t, to); return; }
   }
-  if (t.mil >= 5 && !world.bombers.some(b => b.from === t.id) && canAfford(t, COST.bomber) && Math.random() < 0.0025) { pay(t, COST.bomber); launchBomber(t, to); return; }
+  if ((t.bombers || 0) > 0 && hasType(t, T.AIRBASE) && !world.bombers.some(b => b.from === t.id) && t.res.oil >= 2 && Math.random() < 0.004) { pay(t, { oil: 2 }); launchBomber(t, to); return; }
   if (t.shellCooldown <= 0 && t.res.iron >= 1 && Math.random() < 0.012) {
     t.res.iron--;
     t.shellCooldown = 10 + Math.floor(Math.random() * 20);
@@ -2935,15 +2951,27 @@ function maybeBombard(t) {
   }
 }
 
-// Bombers: a town with artillery-era tech at war flies a sortie over the enemy and drops a stick of bombs.
+// Bombers: a town at war with an air base flies a sortie over the enemy and drops a stick of bombs.
+// Two oil a sortie. Riflemen below can bring one down, and a bomber with no base to come home to is lost.
 function launchBomber(from, to) {
   stat('ev', 'bombers');
   const n = world.n;
+  const base = from.buildings.find(i => world.type[i] === T.AIRBASE);
+  const bx = base >= 0 && base !== undefined ? base % n : from.cx, by = base >= 0 && base !== undefined ? Math.floor(base / n) : from.cy;
   const ang = Math.random() * Math.PI * 2;
   const run = to.R + 6;
   const p0 = [to.cx - Math.cos(ang) * run, to.cy - Math.sin(ang) * run], p1 = [to.cx + Math.cos(ang) * run, to.cy + Math.sin(ang) * run];
-  world.bombers.push({ legs: [[from.cx, from.cy], p0, p1, [from.cx, from.cy]], leg: 0, t: 0, x: from.cx, y: from.cy, heading: 0, from: from.id, to: to.id, dropT: 0, dropped: 0 });
+  world.bombers.push({ legs: [[bx, by], p0, p1, [bx, by]], leg: 0, t: 0, x: bx, y: by, heading: 0, from: from.id, to: to.id, dropT: 0, dropped: 0 });
   log(`A bomber lifts off from ${from.name} bound for ${to.name}`, 'war');
+}
+function loseBomber(p, why) {
+  const from = world.towns[p.from];
+  if (from) from.bombers = Math.max(0, (from.bombers || 0) - 1);
+  stat('ev', 'bombersLost');
+  const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(p.x))), y = Math.max(0, Math.min(n - 1, Math.round(p.y)));
+  const [sx, sy] = cellCenter(y * n + x);
+  missiles.push({ sx, sy: sy - cellPx * 6, tx: sx, ty: sy, target: y * n + x, t0: performance.now(), dur: 500, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+  log(why, 'war');
 }
 function flyBombers(dtSec) {
   if (!world.bombers.length) return;
@@ -2966,11 +2994,18 @@ function flyBombers(dtSec) {
           const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(p.x))), y = Math.max(0, Math.min(n - 1, Math.round(p.y)));
           const [sx, sy] = cellCenter(y * n + x);
           missiles.push({ sx, sy: sy - cellPx * 6, tx: sx + (Math.random() - 0.5) * cellPx, ty: sy, target: y * n + x, t0: performance.now(), dur: 450, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+          // Riflemen fire back. One hit in twenty passes brings it down over the town.
+          if (to.mil >= 4 && to.militia >= 10 && Math.random() < 0.05) { p.shot = true; loseBomber(p, `${to.name}'s riflemen bring down ${world.towns[p.from].name}'s bomber over the rooftops`); break; }
         }
       }
       if (p.t >= 0.999) { p.leg++; p.t = 0; }
     }
-    if (p.leg >= p.legs.length - 1) { const to = world.towns[p.to]; log(`${world.towns[p.from].name}'s bomber returns, ${p.dropped} bombs on ${to.name}`, 'war'); continue; }
+    if (p.shot) continue;
+    if (p.leg >= p.legs.length - 1) {
+      const to = world.towns[p.to], from = world.towns[p.from];
+      if (!hasType(from, T.AIRBASE)) { loseBomber(p, `${from.name}'s bomber comes home to find the air base gone and goes down in the fields`); continue; }
+      log(`${from.name}'s bomber returns, ${p.dropped} bombs on ${to.name}`, 'war'); continue;
+    }
     keep.push(p);
   }
   world.bombers = keep;
@@ -3433,6 +3468,88 @@ function flyDragon(dtSec) {
   }
 }
 
+// The hoard changes everything for the town that brings it down.
+function slayDragon(d, town, byJet) {
+  d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
+  const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
+  town.popLeft += boom; town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; town.research += 2000; town.civPts = (town.civPts || 0) + 1000; town.milPts = (town.milPts || 0) + 1000;
+  town.res.coin += hoard; town.res.gold = Math.min(resCap(town, 'gold'), (town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
+  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet');
+  const hero = elect(town, 'slayer', true); deed(hero, `${byJet ? 'shot down' : 'slew'} ${d.name || 'the dragon'}`);
+  hero.story = byJet ? `flew the jet that brought down ${d.name || 'a dragon'} and still buys the first round` : `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
+  log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
+  const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
+  popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
+}
+
+// Fighters: the Aviation-era option. A town with an air base and jets scrambles one when a dragon comes
+// for it or for a friend, and the jet makes passes until the dragon is down, the jet is burnt, or the
+// dragon leaves. Four oil to build, two to fly.
+function scrambleFighters(d) {
+  if (!d || d.slain || d.leg < 1 || world.tick % 5 !== 0) return;
+  for (const t of world.towns) {
+    if (!isAlive(t) || !(t.fighters || 0) || !hasType(t, T.AIRBASE) || t.res.oil < 2) continue;
+    if (world.fighters.some(f => f.from === t.id)) continue;
+    const mine = d.targets.includes(t.id), friend = d.targets.some(id => world.towns[id] && world.towns[id] !== t && rel(t, world.towns[id]) >= 60 && Math.hypot(world.towns[id].cx - t.cx, world.towns[id].cy - t.cy) < 90);
+    if (!mine && !friend) continue;
+    if (!mine && Math.random() < 0.5) continue; // friends take a moment to decide
+    const base = t.buildings.find(i => world.type[i] === T.AIRBASE); if (base === undefined) continue;
+    const n = world.n, bx = base % n, by = Math.floor(base / n);
+    pay(t, { oil: 2 }); stat('ev', 'sorties');
+    world.fighters.push({ x: bx, y: by, home: base, from: t.id, heading: Math.atan2(d.y - by, d.x - bx), wp: null, passT: 0, hits: 0, state: 'out' });
+    log(`${t.name} scrambles a jet against ${d.name || 'the dragon'}${mine ? '' : ' for ' + world.towns[d.targets[0]].name}`, 'dragon');
+  }
+}
+function loseFighter(f, why) {
+  const t = world.towns[f.from];
+  if (t) t.fighters = Math.max(0, (t.fighters || 0) - 1);
+  stat('ev', 'fightersLost');
+  const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(f.x))), y = Math.max(0, Math.min(n - 1, Math.round(f.y)));
+  const [sx, sy] = cellCenter(y * n + x);
+  missiles.push({ sx, sy: sy - cellPx * 5, tx: sx, ty: sy, target: y * n + x, t0: performance.now(), dur: 500, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+  log(why, 'dragon');
+}
+function flyFighters(dtSec) {
+  if (!world.fighters || !world.fighters.length) return;
+  const d = world.dragon && !world.dragon.slain ? world.dragon : null;
+  const speed = Math.max(14, 3.5 * params.speed); // faster than any dragon
+  const keep = [];
+  for (const f of world.fighters) {
+    const t = world.towns[f.from];
+    if (!t) continue;
+    if (f.state === 'out' && (!d || d.leg >= d.legs.length - 1)) { f.state = 'home'; f.wp = null; }
+    if (f.state === 'out') {
+      f.passT += dtSec;
+      const dist = Math.hypot(d.x - f.x, d.y - f.y);
+      if (f.over > 0) f.over -= dtSec; else f.wp = [d.x + Math.cos(d.heading) * 1.5, d.y + Math.sin(d.heading) * 1.5]; // chase the dragon itself, not where it was
+      if (dist < 2.5 && f.passT > 0.7) {
+        f.passT = 0; f.over = 0.35;
+        f.wp = [f.x + Math.cos(f.heading) * 9, f.y + Math.sin(f.heading) * 9]; // overshoot, then come round again
+        const r = Math.random();
+        if (r < 0.3) {
+          f.hits++; shake = Math.max(shake, 0.2);
+          const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
+          for (let k = 0; k < 6; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0, max: 300, color: '#ffe866', size: Math.max(2, cellPx * 0.3), grav: 60 });
+          if (--d.hp <= 0) { slayDragon(d, t, true); f.state = 'home'; f.wp = null; }
+          else if (Math.random() < 0.4) log(`${t.name}'s jet rakes ${d.name || 'the dragon'} with cannon fire`, 'dragon');
+        } else if (r < 0.4) { loseFighter(f, `${d.name || 'The dragon'} turns and catches ${t.name}'s jet in its breath. The pilot does not get out.`); continue; }
+      }
+    }
+    if (f.state === 'home') {
+      const n = world.n;
+      if (world.type[f.home] !== T.AIRBASE) { loseFighter(f, `${t.name}'s jet comes home to a burnt air base and goes down in the fields`); continue; }
+      f.wp = [f.home % n, Math.floor(f.home / n)];
+      if (Math.hypot(f.wp[0] - f.x, f.wp[1] - f.y) < 0.8) { if (f.hits) log(`${t.name}'s jet lands with ${f.hits} hit${f.hits === 1 ? '' : 's'} to its name`, 'dragon'); continue; }
+    }
+    const target = Math.atan2(f.wp[1] - f.y, f.wp[0] - f.x);
+    let da = target - f.heading; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+    f.heading += da * Math.min(1, dtSec * 8);
+    const step = speed * dtSec;
+    f.x += Math.cos(f.heading) * step; f.y += Math.sin(f.heading) * step;
+    keep.push(f);
+  }
+  world.fighters = keep;
+}
 function breathe(d) {
   const n = world.n;
   const cx = Math.round(d.x), cy = Math.round(d.y);
@@ -3463,17 +3580,8 @@ function breathe(d) {
   if (d.town.militia >= 8 && Math.random() < Math.min(0.3, (d.town.militia / 250) * (1 + 0.6 * d.town.mil)) && --d.hp <= 0) {
     d.legs = [d.legs[Math.min(d.leg, d.legs.length - 1)], d.legs[d.legs.length - 1]]; d.leg = 0; d.t = 0; d.driven = true;
     const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost, 'dragon'); d.town.militia -= lost;
-    if (d.town.mil >= 4 && Math.random() < 0.35) {
-      // Rifles and up can bring it down. The hoard changes everything for the town.
-      d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
-      const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
-      d.town.popLeft += boom; d.town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; d.town.research += 2000; d.town.civPts = (d.town.civPts || 0) + 1000; d.town.milPts = (d.town.milPts || 0) + 1000;
-      d.town.res.coin += hoard; d.town.res.gold = Math.min(resCap(d.town, 'gold'), (d.town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
-      stat('ev', 'dragonsSlain'); const hero = elect(d.town, 'slayer', true); deed(hero, `slew ${d.name || 'the dragon'}`); hero.story = `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
-      log(`${d.town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
-      const [px, py] = cellCenter(Math.round(d.y) * world.n + Math.round(d.x));
-      popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
-    } else {
+    if (d.town.mil >= 4 && Math.random() < 0.35) slayDragon(d, d.town, false); // rifles and up can bring it down
+    else {
       stat('ev', 'dragonsDriven'); log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
       world.dragonGrudge = { town: d.town.id, tick: world.tick, kind: d.kind, name: d.name };
     }
@@ -3962,6 +4070,8 @@ function onBuildingDestroyed(i, cause) {
   world.buildingsLeft--; world.buildingsLost++;
   stat('lost', cause === 'blast' ? 'blast' : world.dragonfire ? 'dragon fire' : world.raidfire ? 'torched in a raid' : 'fire'); stat('lostTown', town.name);
   if (t === T.NUCLEAR) meltdown(i, town);
+  if (t === T.AIRBASE && town.fighters) { log(`${town.fighters} jet${town.fighters > 1 ? 's' : ''} burn on the apron at ${town.name}`, 'loss'); stat('ev', 'fightersLost', town.fighters); town.fighters = 0; }
+  if (t === T.AIRBASE && town.bombers) { log(`${town.bombers} bomber${town.bombers > 1 ? 's' : ''} burn in the hangars at ${town.name}`, 'loss'); stat('ev', 'bombersLost', town.bombers); town.bombers = 0; }
   if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
   else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');
@@ -4189,9 +4299,9 @@ const COST = {
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
-  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 },
+  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
-  bomber: { iron: 8, copper: 4, oil: 3 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
+  bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
 const WOOD_YIELD = { [T.PINE]: 3, [T.OAK]: 5, [T.BIGPINE]: 6, [T.BIRCH]: 2, [T.SNAG]: 2, [T.JUNGLE]: 6 };
 // What research alone cannot give you.
@@ -4703,7 +4813,7 @@ function holdMarket(tr, town) {
    Nothing appears out of nowhere. A placement pays its cost and leaves a timber frame; builders
    walk out and raise it over ticks, more of them when the town is big. Only the finished building
    counts, shelters anyone, or works. A frame that burns is lost. */
-const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20 };
+const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45 };
 // Turn a just-placed building into a site, taking back the counts the placement added.
 function toSite(town, i, finalType, counted) {
   const home = isHome(finalType);
@@ -5049,6 +5159,7 @@ function buildCivic(town) {
   if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
   if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
   if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.mil >= 5 && !hasPlanned(town, T.AIRBASE) && town.popLeft >= 120 && town.res.oil >= 4) want.push([T.AIRBASE, false, 'lays out a military air base']);
   if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
 
   if (town.popLeft >= 160 && countPlanned(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);
@@ -5824,6 +5935,7 @@ function spriteKey(i) {
     case T.CACTUS: return 'cactus';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
+    case T.AIRBASE: return 'airbase';
   }
   return 'ash';
 }
@@ -6127,6 +6239,18 @@ function render(now, tickFrac) {
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 0.3; ctx.drawImage(SIL16.plane, -s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s); ctx.globalAlpha = 1;
     ctx.drawImage(SPR16.bomber, -s / 2, -s / 2, s, s);
+    ctx.restore();
+  }
+
+  for (const f of world.fighters || []) {
+    const s = cellPx * 1.9;
+    if (!vis(f.x * cellPx, f.y * cellPx)) continue;
+    ctx.save();
+    ctx.translate((f.x + 0.5) * cellPx, (f.y + 0.5) * cellPx);
+    ctx.rotate(f.heading + Math.PI / 2);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.25; ctx.drawImage(SIL16.plane, -s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s); ctx.globalAlpha = 1;
+    ctx.drawImage(SPR16.fighter, -s / 2, -s / 2, s, s);
     ctx.restore();
   }
 
@@ -6457,7 +6581,7 @@ function statTipHtml(kind) {
   const row = (k, v) => `<div class="row"><span>${k}</span><b>${v}</b></div>`;
   if (kind === 'people') return `<h4>${world.deaths} dead, by cause</h4>${tipRows(st.deaths, 10, world.deaths)}<h4>by town</h4>${tipRows(st.deathsTown, 8, world.deaths)}<h4>alive</h4>${row('in the valley', world.popLeft)}${row('ever lived here', world.popTotal)}${world.towns.filter(isAlive).sort((a, b) => b.popLeft - a.popLeft).map(t => row(t.name, `${t.popLeft} <span class="dim">${Math.round(t.popLeft / Math.max(1, world.popLeft) * 100)}% of the living · ${Math.round(t.popLeft / Math.max(1, t.popTotal) * 100)}% of its own</span>`)).join('')}`;
   if (kind === 'buildings') return `<h4>${world.buildingsLost} lost, by cause</h4>${tipRows(st.lost, 8, world.buildingsLost)}<h4>by town</h4>${tipRows(st.lostTown, 8, world.buildingsLost)}<h4>standing</h4>${row('now', world.buildingsLeft)}${row('ever built', world.buildingsTotal)}`;
-  if (kind === 'tick') return `<h4>Year ${Math.floor(world.tick / YEAR) + 1}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('ticks', world.tick)}${row('towns founded', world.towns.length)}<h4>the sky and the earth</h4>${row('lightning strikes', `${ev.lightning || 0} <span class="dim">(${ev.lightningNatural || 0} natural, ${Math.max(0, (ev.lightning || 0) - (ev.lightningNatural || 0))} yours)</span>`)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}${row('floods', ev.floods || 0)}${row('beaver colonies', ev.beavers || 0)}${row('dragon visits', `${ev.dragons || 0} <span class="dim">(${ev.dragonsSlain || 0} slain, ${ev.dragonsDriven || 0} driven off)</span>`)}${row('stolen by dragons', (ev.dragonLoot || 0) + ' coin')}${row('won from hoards', (ev.dragonHoards || 0) + ' coin')}<h4>the people</h4>${row('fire alarms', ev.alarms || 0)}${row('wars declared', ev.wars || 0)}${row('battles', ev.battles || 0)}${row('towns sacked', ev.sacks || 0)}${row('annexations', ev.annexes || 0)}${row('bomber sorties', ev.bombers || 0)}${row('nukes launched', ev.nukes || 0)}${row('meltdowns', ev.meltdowns || 0)}${row('famines', ev.famines || 0)}${row('plagues', ev.plagues || 0)}${row('caravans', `${ev.caravans || 0} <span class="dim">(${ev.markets || 0} markets, ${ev.caravansRobbed || 0} robbed)</span>`)}<h4>the beasts</h4>${row('wild herds', (world.herds || []).length)}${row('animals hunted', ev.hunted || 0)}${row('brought home alive', ev.tamed || 0)}${row('born on pastures', ev.animalsBorn || 0)}${row('lost to fire', ev.animalsBurned || 0)}`;
+  if (kind === 'tick') return `<h4>Year ${Math.floor(world.tick / YEAR) + 1}, ${['spring', 'summer', 'autumn', 'winter'][season()]}</h4>${row('ticks', world.tick)}${row('towns founded', world.towns.length)}<h4>the sky and the earth</h4>${row('lightning strikes', `${ev.lightning || 0} <span class="dim">(${ev.lightningNatural || 0} natural, ${Math.max(0, (ev.lightning || 0) - (ev.lightningNatural || 0))} yours)</span>`)}${row('missiles', ev.missiles || 0)}${row('meteors', ev.meteors || 0)}${row('floods', ev.floods || 0)}${row('beaver colonies', ev.beavers || 0)}${row('dragon visits', `${ev.dragons || 0} <span class="dim">(${ev.dragonsSlain || 0} slain, ${ev.dragonsDriven || 0} driven off)</span>`)}${row('stolen by dragons', (ev.dragonLoot || 0) + ' coin')}${row('won from hoards', (ev.dragonHoards || 0) + ' coin')}<h4>the people</h4>${row('fire alarms', ev.alarms || 0)}${row('wars declared', ev.wars || 0)}${row('battles', ev.battles || 0)}${row('towns sacked', ev.sacks || 0)}${row('annexations', ev.annexes || 0)}${row('bombers built', ev.bombersBuilt || 0)}${row('bomber sorties', ev.bombers || 0)}${row('bombers lost', ev.bombersLost || 0)}${row('jets built', `${ev.fightersBuilt || 0} <span class="dim">(${ev.fightersLost || 0} lost, ${ev.dragonsJet || 0} dragons downed)</span>`)}${row('nukes launched', ev.nukes || 0)}${row('meltdowns', ev.meltdowns || 0)}${row('famines', ev.famines || 0)}${row('plagues', ev.plagues || 0)}${row('caravans', `${ev.caravans || 0} <span class="dim">(${ev.markets || 0} markets, ${ev.caravansRobbed || 0} robbed)</span>`)}<h4>the beasts</h4>${row('wild herds', (world.herds || []).length)}${row('animals hunted', ev.hunted || 0)}${row('brought home alive', ev.tamed || 0)}${row('born on pastures', ev.animalsBorn || 0)}${row('lost to fire', ev.animalsBurned || 0)}`;
   if (kind === 'beasts') {
     const byKind = {}; for (const h of world.herds || []) if (h.size > 0) { const k = h.kind === 'fowl' ? 'grouse' : h.kind === 'sheep' ? 'wild sheep' : h.kind === 'boar' ? 'wild boar' : h.kind; byKind[k] = (byKind[k] || 0) + h.size; }
     const kept = {}; for (const t of world.towns) if (t.livestock) for (const k of LIVESTOCK) if (t.livestock[k]) kept[`${t.name}: ${LIVESTOCK.filter(q => t.livestock[q]).map(q => `${t.livestock[q]} ${q}`).join(', ')}`] = 1;
@@ -6527,7 +6651,7 @@ function frame(now) {
       if (steps > 60) steps = 60;
       for (let k = 0; k < steps; k++) step();
     }
-    if (running) { flyPlane(dt); flyDragon(dt); flyBombers(dt); } // paused means paused, dragons included
+    if (running) { flyPlane(dt); flyDragon(dt); scrambleFighters(world.dragon); flyFighters(dt); flyBombers(dt); } // paused means paused, dragons included
 
     if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
     if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
@@ -6697,7 +6821,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
+Object.assign(TYPE_NAMES, { [T.AIRBASE]: 'Air base', [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -6888,7 +7012,9 @@ function cardHtml(t) {
     `<h4>food and water</h4><div class="grid">` + row('fed', t.famine ? 'famine' : t.fed === false ? 'hungry' : 'yes', t.fed === false ? 'd' : 'g') + row('eats per 16 ticks', Math.ceil(t.popLeft / 30)) + row('fields', `${countType(t, T.FARM)} <span class="dim">(${t.buildings.filter(i => world.type[i] === T.FARM && world.crop[i] >= 100).length} ripe)</span>`) + row('granaries', countType(t, T.GRANARY)) +
     row('water', `${t.res.water} / ${resCap(t, 'water')}`, t.water === false ? 'd' : '') + row('wells', `${countType(t, T.WELL)} <span class="dim">(${Object.values(t.wells || {}).filter(v => v <= 0).length} dry)</span>`) + (ls ? row('livestock', ls) : '') + `</div>` +
     `<h4>stores</h4><div class="grid">` + resLine + `</div>` + row('coin', t.res.coin) +
-    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + `</div>` +
+    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + `</div>` +
+    `<h4>tech</h4><div class="grid">` + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + row('research', `${Math.round(t.research || 0)} <span class="dim">(${Math.round(100 * Math.min(0.85, militarism(t)))}% to arms)</span>`) +
+    (hasType(t, T.AIRBASE) ? row('bombers', `${t.bombers || 0} / 3${world.bombers.some(b => b.from === t.id) ? ' <span class="dim">(one airborne)</span>' : ''}`) : '') + (hasType(t, T.AIRBASE) && t.civ >= 5 ? row('jets', `${t.fighters || 0} / 2${(world.fighters || []).some(f => f.from === t.id) ? ' <span class="dim">(scrambled)</span>' : ''}`) : '') + (t.nukes ? row('bombs', t.nukes, 'd') : '') + `</div>` +
     `<h4>neighbours</h4>` + (wars.length ? `<div class="d">at war with ${wars.join(', ')}</div>` : '') + (allies.length ? `<div class="g">allies: ${allies.join(', ')}</div>` : '') + (foes.length ? `<div>feuding with ${foes.join(', ')}</div>` : '') + (!wars.length && !allies.length && !foes.length ? '<div class="dim">keeps to itself</div>' : '') + (t.master >= 0 && world.towns[t.master] ? `<div class="d">pays tribute to ${world.towns[t.master].name}</div>` : '') + (t.covets && world.towns[t.covets.town] ? `<div>covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</div>` : '') +
     `<h4>folk</h4><div class="folk">${folk || '<div class="dim">nobody of note</div>'}</div>` +
     `<h4>lately</h4><div class="chron">${chron || '<div class="dim">nothing yet</div>'}</div>` +
@@ -7195,7 +7321,7 @@ function snapshot() {
     towns: world.towns.map(t => ({ ...t, ring: undefined, claimed: [...t.claimed] })),
     air: world.air ? { ...world.air, plane: null } : null,
     settlers: world.settlers ? { ...world.settlers, town: townToId(world.settlers.town) } : null,
-    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
+    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, fighters: world.fighters || [], boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
     dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town), frames: undefined } : null,
     params: { ...params },
     log: logEntries.slice(),
@@ -7287,10 +7413,10 @@ function restore(d) {
   for (const t of world.towns) recomputeRing(t);
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
-  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
+  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.fighters = (d.fighters || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
   for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (!Number.isFinite(t.res[k])) t.res[k] = k === 'coin' ? 30 : k === 'water' ? 30 : k === 'grain' ? 20 : 0; if (!Number.isFinite(t.gathered[k])) t.gathered[k] = 0; } t.wells = t.wells || {}; t.sites = t.sites || {}; if (t.fed === undefined) t.fed = true; t.hunger = t.hunger || 0; t.temper = t.temper || { wood: 1, stone: 1, food: 1, build: 1, trade: 1 };
     if (t.livestock) for (const k of LIVESTOCK) if (!Number.isFinite(t.livestock[k])) t.livestock[k] = 0; t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (!t.people) seedPeople(t, Math.random); if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
-  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
+  for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.bombers = t.bombers || 0; t.fighters = t.fighters || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }
   world.dragon = d.dragon ? { ...d.dragon, town: world.towns[d.dragon.town] } : null;
   if (world.dragon && !world.dragon.town) world.dragon = null;
   applySavedParams(d.params);

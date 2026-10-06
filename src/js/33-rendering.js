@@ -61,6 +61,7 @@ function spriteKey(i) {
     case T.CACTUS: return 'cactus';
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
+    case T.AIRBASE: return 'airbase';
   }
   return 'ash';
 }

@@ -235,6 +235,18 @@ function render(now, tickFrac) {
     ctx.restore();
   }
 
+  for (const f of world.fighters || []) {
+    const s = cellPx * 1.9;
+    if (!vis(f.x * cellPx, f.y * cellPx)) continue;
+    ctx.save();
+    ctx.translate((f.x + 0.5) * cellPx, (f.y + 0.5) * cellPx);
+    ctx.rotate(f.heading + Math.PI / 2);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = 0.25; ctx.drawImage(SIL16.plane, -s / 2 + s * 0.15, -s / 2 + s * 0.3, s, s); ctx.globalAlpha = 1;
+    ctx.drawImage(SPR16.fighter, -s / 2, -s / 2, s, s);
+    ctx.restore();
+  }
+
   if (world.air && world.air.plane) {
     const p = world.air.plane;
     const s = cellPx * 2.4;

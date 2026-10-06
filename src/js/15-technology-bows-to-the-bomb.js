@@ -73,6 +73,14 @@ function updateTech(t) {
     pay(t, COST.nuke); t.nukes++; t.bombsBuilt = (t.bombsBuilt || 0) + 1;
     log(t.bombsBuilt === 1 ? `${t.name} has built a bomb. Nobody there knows what it will do to the land.` : `${t.name} completes another bomb`, 'nuke');
   }
+  if (t.mil >= 5 && hasType(t, T.AIRBASE) && (t.bombers || 0) < 3 && canAfford(t, COST.bomber) && Math.random() < 0.03) {
+    pay(t, COST.bomber); t.bombers = (t.bombers || 0) + 1; t.bombersBuilt = (t.bombersBuilt || 0) + 1; stat('ev', 'bombersBuilt');
+    log(t.bombersBuilt === 1 ? `A bomber rolls out of the hangar at ${t.name}. The neighbours take note.` : `Another bomber rolls out at ${t.name}`, 'war');
+  }
+  if (t.civ >= 5 && hasType(t, T.AIRBASE) && (t.fighters || 0) < 2 && canAfford(t, COST.fighter) && Math.random() < 0.03) {
+    pay(t, COST.fighter); t.fighters = (t.fighters || 0) + 1; t.fightersBuilt = (t.fightersBuilt || 0) + 1; stat('ev', 'fightersBuilt');
+    log(t.fightersBuilt === 1 ? `${t.name} rolls out a fighter jet. It was built for one thing, and everyone knows what.` : `${t.name} rolls out a second jet`, 'tech');
+  }
   if (t.shellCooldown > 0) t.shellCooldown--;
   if (t.nukeCooldown > 0) t.nukeCooldown--;
 }
@@ -91,7 +99,7 @@ function maybeBombard(t) {
     const p = (t.align.moral < 0 ? 0.0012 : 0.0002) * (desperate ? 4 : 1);
     if (Math.random() < p) { launchNuke(t, to); return; }
   }
-  if (t.mil >= 5 && !world.bombers.some(b => b.from === t.id) && canAfford(t, COST.bomber) && Math.random() < 0.0025) { pay(t, COST.bomber); launchBomber(t, to); return; }
+  if ((t.bombers || 0) > 0 && hasType(t, T.AIRBASE) && !world.bombers.some(b => b.from === t.id) && t.res.oil >= 2 && Math.random() < 0.004) { pay(t, { oil: 2 }); launchBomber(t, to); return; }
   if (t.shellCooldown <= 0 && t.res.iron >= 1 && Math.random() < 0.012) {
     t.res.iron--;
     t.shellCooldown = 10 + Math.floor(Math.random() * 20);
@@ -105,15 +113,27 @@ function maybeBombard(t) {
   }
 }
 
-// Bombers: a town with artillery-era tech at war flies a sortie over the enemy and drops a stick of bombs.
+// Bombers: a town at war with an air base flies a sortie over the enemy and drops a stick of bombs.
+// Two oil a sortie. Riflemen below can bring one down, and a bomber with no base to come home to is lost.
 function launchBomber(from, to) {
   stat('ev', 'bombers');
   const n = world.n;
+  const base = from.buildings.find(i => world.type[i] === T.AIRBASE);
+  const bx = base >= 0 && base !== undefined ? base % n : from.cx, by = base >= 0 && base !== undefined ? Math.floor(base / n) : from.cy;
   const ang = Math.random() * Math.PI * 2;
   const run = to.R + 6;
   const p0 = [to.cx - Math.cos(ang) * run, to.cy - Math.sin(ang) * run], p1 = [to.cx + Math.cos(ang) * run, to.cy + Math.sin(ang) * run];
-  world.bombers.push({ legs: [[from.cx, from.cy], p0, p1, [from.cx, from.cy]], leg: 0, t: 0, x: from.cx, y: from.cy, heading: 0, from: from.id, to: to.id, dropT: 0, dropped: 0 });
+  world.bombers.push({ legs: [[bx, by], p0, p1, [bx, by]], leg: 0, t: 0, x: bx, y: by, heading: 0, from: from.id, to: to.id, dropT: 0, dropped: 0 });
   log(`A bomber lifts off from ${from.name} bound for ${to.name}`, 'war');
+}
+function loseBomber(p, why) {
+  const from = world.towns[p.from];
+  if (from) from.bombers = Math.max(0, (from.bombers || 0) - 1);
+  stat('ev', 'bombersLost');
+  const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(p.x))), y = Math.max(0, Math.min(n - 1, Math.round(p.y)));
+  const [sx, sy] = cellCenter(y * n + x);
+  missiles.push({ sx, sy: sy - cellPx * 6, tx: sx, ty: sy, target: y * n + x, t0: performance.now(), dur: 500, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+  log(why, 'war');
 }
 function flyBombers(dtSec) {
   if (!world.bombers.length) return;
@@ -136,11 +156,18 @@ function flyBombers(dtSec) {
           const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(p.x))), y = Math.max(0, Math.min(n - 1, Math.round(p.y)));
           const [sx, sy] = cellCenter(y * n + x);
           missiles.push({ sx, sy: sy - cellPx * 6, tx: sx + (Math.random() - 0.5) * cellPx, ty: sy, target: y * n + x, t0: performance.now(), dur: 450, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+          // Riflemen fire back. One hit in twenty passes brings it down over the town.
+          if (to.mil >= 4 && to.militia >= 10 && Math.random() < 0.05) { p.shot = true; loseBomber(p, `${to.name}'s riflemen bring down ${world.towns[p.from].name}'s bomber over the rooftops`); break; }
         }
       }
       if (p.t >= 0.999) { p.leg++; p.t = 0; }
     }
-    if (p.leg >= p.legs.length - 1) { const to = world.towns[p.to]; log(`${world.towns[p.from].name}'s bomber returns, ${p.dropped} bombs on ${to.name}`, 'war'); continue; }
+    if (p.shot) continue;
+    if (p.leg >= p.legs.length - 1) {
+      const to = world.towns[p.to], from = world.towns[p.from];
+      if (!hasType(from, T.AIRBASE)) { loseBomber(p, `${from.name}'s bomber comes home to find the air base gone and goes down in the fields`); continue; }
+      log(`${from.name}'s bomber returns, ${p.dropped} bombs on ${to.name}`, 'war'); continue;
+    }
     keep.push(p);
   }
   world.bombers = keep;

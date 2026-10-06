@@ -36,6 +36,8 @@ function onBuildingDestroyed(i, cause) {
   world.buildingsLeft--; world.buildingsLost++;
   stat('lost', cause === 'blast' ? 'blast' : world.dragonfire ? 'dragon fire' : world.raidfire ? 'torched in a raid' : 'fire'); stat('lostTown', town.name);
   if (t === T.NUCLEAR) meltdown(i, town);
+  if (t === T.AIRBASE && town.fighters) { log(`${town.fighters} jet${town.fighters > 1 ? 's' : ''} burn on the apron at ${town.name}`, 'loss'); stat('ev', 'fightersLost', town.fighters); town.fighters = 0; }
+  if (t === T.AIRBASE && town.bombers) { log(`${town.bombers} bomber${town.bombers > 1 ? 's' : ''} burn in the hangars at ${town.name}`, 'loss'); stat('ev', 'bombersLost', town.bombers); town.bombers = 0; }
   if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
   else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');

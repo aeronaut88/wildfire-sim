@@ -114,6 +114,88 @@ function flyDragon(dtSec) {
   }
 }
 
+// The hoard changes everything for the town that brings it down.
+function slayDragon(d, town, byJet) {
+  d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
+  const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
+  town.popLeft += boom; town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; town.research += 2000; town.civPts = (town.civPts || 0) + 1000; town.milPts = (town.milPts || 0) + 1000;
+  town.res.coin += hoard; town.res.gold = Math.min(resCap(town, 'gold'), (town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
+  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet');
+  const hero = elect(town, 'slayer', true); deed(hero, `${byJet ? 'shot down' : 'slew'} ${d.name || 'the dragon'}`);
+  hero.story = byJet ? `flew the jet that brought down ${d.name || 'a dragon'} and still buys the first round` : `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
+  log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
+  const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
+  popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
+}
+
+// Fighters: the Aviation-era option. A town with an air base and jets scrambles one when a dragon comes
+// for it or for a friend, and the jet makes passes until the dragon is down, the jet is burnt, or the
+// dragon leaves. Four oil to build, two to fly.
+function scrambleFighters(d) {
+  if (!d || d.slain || d.leg < 1 || world.tick % 5 !== 0) return;
+  for (const t of world.towns) {
+    if (!isAlive(t) || !(t.fighters || 0) || !hasType(t, T.AIRBASE) || t.res.oil < 2) continue;
+    if (world.fighters.some(f => f.from === t.id)) continue;
+    const mine = d.targets.includes(t.id), friend = d.targets.some(id => world.towns[id] && world.towns[id] !== t && rel(t, world.towns[id]) >= 60 && Math.hypot(world.towns[id].cx - t.cx, world.towns[id].cy - t.cy) < 90);
+    if (!mine && !friend) continue;
+    if (!mine && Math.random() < 0.5) continue; // friends take a moment to decide
+    const base = t.buildings.find(i => world.type[i] === T.AIRBASE); if (base === undefined) continue;
+    const n = world.n, bx = base % n, by = Math.floor(base / n);
+    pay(t, { oil: 2 }); stat('ev', 'sorties');
+    world.fighters.push({ x: bx, y: by, home: base, from: t.id, heading: Math.atan2(d.y - by, d.x - bx), wp: null, passT: 0, hits: 0, state: 'out' });
+    log(`${t.name} scrambles a jet against ${d.name || 'the dragon'}${mine ? '' : ' for ' + world.towns[d.targets[0]].name}`, 'dragon');
+  }
+}
+function loseFighter(f, why) {
+  const t = world.towns[f.from];
+  if (t) t.fighters = Math.max(0, (t.fighters || 0) - 1);
+  stat('ev', 'fightersLost');
+  const n = world.n, x = Math.max(0, Math.min(n - 1, Math.round(f.x))), y = Math.max(0, Math.min(n - 1, Math.round(f.y)));
+  const [sx, sy] = cellCenter(y * n + x);
+  missiles.push({ sx, sy: sy - cellPx * 5, tx: sx, ty: sy, target: y * n + x, t0: performance.now(), dur: 500, arc: 0, lastSmoke: 0, radius: 1, nuke: false });
+  log(why, 'dragon');
+}
+function flyFighters(dtSec) {
+  if (!world.fighters || !world.fighters.length) return;
+  const d = world.dragon && !world.dragon.slain ? world.dragon : null;
+  const speed = Math.max(14, 3.5 * params.speed); // faster than any dragon
+  const keep = [];
+  for (const f of world.fighters) {
+    const t = world.towns[f.from];
+    if (!t) continue;
+    if (f.state === 'out' && (!d || d.leg >= d.legs.length - 1)) { f.state = 'home'; f.wp = null; }
+    if (f.state === 'out') {
+      f.passT += dtSec;
+      const dist = Math.hypot(d.x - f.x, d.y - f.y);
+      if (f.over > 0) f.over -= dtSec; else f.wp = [d.x + Math.cos(d.heading) * 1.5, d.y + Math.sin(d.heading) * 1.5]; // chase the dragon itself, not where it was
+      if (dist < 2.5 && f.passT > 0.7) {
+        f.passT = 0; f.over = 0.35;
+        f.wp = [f.x + Math.cos(f.heading) * 9, f.y + Math.sin(f.heading) * 9]; // overshoot, then come round again
+        const r = Math.random();
+        if (r < 0.3) {
+          f.hits++; shake = Math.max(shake, 0.2);
+          const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
+          for (let k = 0; k < 6; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0, max: 300, color: '#ffe866', size: Math.max(2, cellPx * 0.3), grav: 60 });
+          if (--d.hp <= 0) { slayDragon(d, t, true); f.state = 'home'; f.wp = null; }
+          else if (Math.random() < 0.4) log(`${t.name}'s jet rakes ${d.name || 'the dragon'} with cannon fire`, 'dragon');
+        } else if (r < 0.4) { loseFighter(f, `${d.name || 'The dragon'} turns and catches ${t.name}'s jet in its breath. The pilot does not get out.`); continue; }
+      }
+    }
+    if (f.state === 'home') {
+      const n = world.n;
+      if (world.type[f.home] !== T.AIRBASE) { loseFighter(f, `${t.name}'s jet comes home to a burnt air base and goes down in the fields`); continue; }
+      f.wp = [f.home % n, Math.floor(f.home / n)];
+      if (Math.hypot(f.wp[0] - f.x, f.wp[1] - f.y) < 0.8) { if (f.hits) log(`${t.name}'s jet lands with ${f.hits} hit${f.hits === 1 ? '' : 's'} to its name`, 'dragon'); continue; }
+    }
+    const target = Math.atan2(f.wp[1] - f.y, f.wp[0] - f.x);
+    let da = target - f.heading; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;
+    f.heading += da * Math.min(1, dtSec * 8);
+    const step = speed * dtSec;
+    f.x += Math.cos(f.heading) * step; f.y += Math.sin(f.heading) * step;
+    keep.push(f);
+  }
+  world.fighters = keep;
+}
 function breathe(d) {
   const n = world.n;
   const cx = Math.round(d.x), cy = Math.round(d.y);
@@ -144,17 +226,8 @@ function breathe(d) {
   if (d.town.militia >= 8 && Math.random() < Math.min(0.3, (d.town.militia / 250) * (1 + 0.6 * d.town.mil)) && --d.hp <= 0) {
     d.legs = [d.legs[Math.min(d.leg, d.legs.length - 1)], d.legs[d.legs.length - 1]]; d.leg = 0; d.t = 0; d.driven = true;
     const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost, 'dragon'); d.town.militia -= lost;
-    if (d.town.mil >= 4 && Math.random() < 0.35) {
-      // Rifles and up can bring it down. The hoard changes everything for the town.
-      d.legs = [[d.x, d.y], [d.x, d.y]]; d.leg = 1; d.slain = true;
-      const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
-      d.town.popLeft += boom; d.town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; d.town.research += 2000; d.town.civPts = (d.town.civPts || 0) + 1000; d.town.milPts = (d.town.milPts || 0) + 1000;
-      d.town.res.coin += hoard; d.town.res.gold = Math.min(resCap(d.town, 'gold'), (d.town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
-      stat('ev', 'dragonsSlain'); const hero = elect(d.town, 'slayer', true); deed(hero, `slew ${d.name || 'the dragon'}`); hero.story = `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
-      log(`${d.town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
-      const [px, py] = cellCenter(Math.round(d.y) * world.n + Math.round(d.x));
-      popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
-    } else {
+    if (d.town.mil >= 4 && Math.random() < 0.35) slayDragon(d, d.town, false); // rifles and up can bring it down
+    else {
       stat('ev', 'dragonsDriven'); log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
       world.dragonGrudge = { town: d.town.id, tick: world.tick, kind: d.kind, name: d.name };
     }
