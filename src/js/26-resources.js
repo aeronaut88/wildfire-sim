@@ -11,7 +11,7 @@ const COST = {
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
-  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 },
+  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 }, [T.CISTERN]: { stone: 6, wood: 2 }, [T.TOWER_W]: { stone: 10, iron: 4, wood: 4 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -21,7 +21,7 @@ const MIL_NEED = [null, { iron: 10 }, null, { coal: 8 }, { iron: 15 }, { iron: 2
 const CIV_NEED = [null, { wood: 10 }, { copper: 8, stone: 10 }, { stone: 6 }, { iron: 12, copper: 8 }, { oil: 10, iron: 20, copper: 10 }]; // no aviation without hydrocarbons
 function resCap(t, kind) {
   if (kind === 'coin') return 1e9;
-  if (kind === 'water') return 40 + 30 * countType(t, T.WELL) + (t.civ >= 2 ? 40 : 0); // the cistern
+  if (kind === 'water') return 40 + 30 * countType(t, T.WELL) + (t.civ >= 2 ? 40 : 0) + 60 * countType(t, T.CISTERN) + 150 * countType(t, T.TOWER_W); // storage against the dry months
   if (kind === 'fish' || kind === 'game') return 40 + 20 * countType(t, T.GRANARY); // the smokehouse shares the storehouse
   if (kind === 'grain') return 60 + 120 * countType(t, T.GRANARY); // a town that outgrows its granaries builds more
   if (kind === 'oil') return 30 + 20 * countType(t, T.DERRICK);
@@ -29,7 +29,7 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell]));
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT, T.CISTERN, T.TOWER_W].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell]));
 // Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
 // the way a player saves for an upgrade, except for the works that bring resources in.
 function canAfford(t, cost) {
@@ -223,6 +223,18 @@ function buildSites(town) {
       if (countPlanned(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80) + (wanted ? 1 : 0)) { if (wanted) continue; break; }
       const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
       if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
+    }
+  }
+  {
+    const cisterns = countPlanned(town, T.CISTERN), towers = countPlanned(town, T.TOWER_W), cap = resCap(town, 'water');
+    const worried = town.thirsted || world.weather.kind === 'drought' || town.res.water < cap * 0.5;
+    if (town.civ >= 2 && town.popLeft >= 80 && worried && towers < 1 + Math.floor(town.popLeft / 400) && canAfford(town, COST[T.TOWER_W]) && Math.random() < 0.5) {
+      const i = placeCivic(town, T.TOWER_W, false);
+      if (i >= 0) { pay(town, COST[T.TOWER_W]); log(`${town.name} raises a water tower${world.weather.kind === 'drought' ? ' with the drought on' : ''}`, 'build'); return; }
+    }
+    if (town.popLeft >= 30 && worried && cisterns < 1 + Math.floor(town.popLeft / 120) && canAfford(town, COST[T.CISTERN]) && Math.random() < 0.5) {
+      const i = placeCivic(town, T.CISTERN, false);
+      if (i >= 0) { pay(town, COST[T.CISTERN]); log(cisterns ? `${town.name} builds another cistern` : `${town.name} builds a cistern against the dry months`, 'build'); return; }
     }
   }
   const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;

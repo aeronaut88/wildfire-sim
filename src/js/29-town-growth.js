@@ -28,7 +28,7 @@ function growTown(town) {
   updateExtraction(town);
   if (town.civ >= 4 && town.res.oil > 0) for (const tr of town.trucks) if (tr.cap < 40) tr.cap = 40; // motor pumps
   if (!town.water && Math.random() < (world.weather.kind === 'drought' ? 0.25 : 0.1)) {
-    applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.02)), 'thirst');
+    applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.02)), 'thirst'); town.thirsted = true; // a town remembers, and builds storage
     if (!town.dryLogged || world.tick - town.dryLogged > 400) { town.dryLogged = world.tick; log(`The cistern at ${town.name} is empty. People are dying of thirst.`, 'loss'); }
   }
   if (town.master >= 0) { // a conquered town sends tribute to its master

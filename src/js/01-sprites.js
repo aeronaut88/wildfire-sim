@@ -516,6 +516,18 @@ SPRITES.gaol = [
   'gg455555555554gg','gg455557775554gg','gg455557775554gg','gg455557775554gg',
   'gg444444444444gg','gg444444444444gg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
+SPRITES.cistern = [
+  'gggggggggggggggg','gggggggggggggggg','gggggg4444gggggg','gggg44444444gggg',
+  'ggg4400000044ggg','ggg4400000044ggg','ggg4455555544ggg','ggg4455555544ggg',
+  'ggg4455555544ggg','ggg4455555544ggg','ggg4455555544ggg','gggg44444444gggg',
+  'gggggg4444gggggg','gggggggggggggggg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+SPRITES.watertower = [
+  'gggggggggggggggg','gggg44444444gggg','ggg4400000044ggg','ggg4400000044ggg',
+  'ggg4400000044ggg','ggg4455555544ggg','gggg44444444gggg','gggggm4444mggggg',
+  'gggggmg44gmggggg','ggggmggmmggmgggg','ggggmgmggmgmgggg','gggmggmggggmgggg',
+  'gggmgmggggmgmggg','ggmggmggggmggmgg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
 SPRITES.felled = [
   'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
   'gggggggggggggggg','gggggggggggggggg','ggggggggggggtggg','ggggggVVVVggtggg',
@@ -568,4 +580,4 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower']) SPR16[k] = buildSprite16(SPRITES[k]);

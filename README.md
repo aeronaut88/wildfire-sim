@@ -271,7 +271,10 @@ what paces a town's recovery.
   time. Seams are finite; when one is dug to nothing the mine is worked out. Uranium is rare
   and only a town that knows what it is will dig for it.
 - **Water.** A town needs a river, a lake or a well. Without one it stays small, and a drought
-  kills.
+  kills. Wells draw on a finite aquifer, only as fast as the cistern can take it; a well holds
+  a few years of thirst, refills in rain and seeps back slowly. A town that has been thirsty,
+  or watches a drought set in, builds a cistern (sixty water) and, once it knows waterworks, a
+  water tower (a hundred and fifty), and the carriers work to keep them full.
 - **Power.** Water wheels, boilers that burn coal or, failing that, timber (an early and easy
   road to electricity: a powered town learns faster and can open a factory sooner), hydroelectric dams on the river (weaker
   in drought and hard frost), solar arrays that follow the sky, and reactors that burn uranium
