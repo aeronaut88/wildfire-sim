@@ -473,6 +473,21 @@ its capacity, coin, its workshops, power, arms and learning, who it is at war or
 every named resident with a bio and last deed, and its latest chronicle. Buttons fire a
 missile or a lightning strike at it, or jump to its line in the history. Escape closes it.
 
+## Everything has a body
+
+No line without a figure on the map. A sentence is a walk: the constable brings the prisoner to
+the gallows (raised in the square the first time a town hangs someone, and it stays), to the gaol,
+to the quarry where the convict works a real shift every day, or to the edge of town, with a crowd
+gathered for a hanging. Exiles walk into the woods and live there; in time they knock at another
+town's gate and are taken in or turned away, and winter finds some of them. Deserters march as a
+band of soldiers that the constable can ride down on the road. A spy snoops around the barracks,
+the hall and the granary looking like anyone else, and every so often slips out toward the enemy
+and back, which is when they are easiest to catch. Diplomacy is an envoy on the road, and a
+wedding is a party that walks to the other town and a person who stays there. Healers walk house
+to house during a plague. Market day draws a crowd to the square; the last weeks of a good autumn
+bring a harvest festival with a bonfire that now and then gets away. Towns lay out a graveyard that
+grows with their dead, bury their notables, and raise a statue to a dragonslayer.
+
 ## Watching
 
 Every log line knows where it happened: click it and the view jumps there at a close zoom with

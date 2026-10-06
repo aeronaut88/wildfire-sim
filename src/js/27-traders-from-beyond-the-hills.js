@@ -89,6 +89,7 @@ function holdMarket(tr, town) {
     town.res[k] -= amt; town.res.coin += amt * PRICE[k]; tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
   stat('ev', 'markets');
+  spawnCrowd(town, town.cy * world.n + town.cx, 25, 4 + Math.floor(Math.random() * 4));
   maybeSmuggle(tr, town);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'MARKET', color: '#f5a623', t0: performance.now(), dur: 2000 });
   if (!bought.length && !sold.length) log(`Market day at ${town.name}, but nobody has anything the other wants`, 'build');

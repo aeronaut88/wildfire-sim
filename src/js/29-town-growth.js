@@ -15,6 +15,9 @@ function growTown(town) {
   leaderActs(town);
   updateLaw(town);
   updateHealer(town);
+  updateFestival(town);
+  updateGraves(town);
+  updateRounds(town);
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   if (town.popLeft < 0) { world.popLeft -= town.popLeft; town.popLeft = 0; }
   for (const k of RES_KINDS) if (k !== 'coin' && town.res[k] > resCap(town, k)) town.res[k] = resCap(town, k); // nowhere to keep it

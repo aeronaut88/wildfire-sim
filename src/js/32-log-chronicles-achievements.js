@@ -15,6 +15,8 @@ function whereOf(text, at) {
   else if (/scrambles a jet/.test(text) && world.fighters.length) f('fighter', world.fighters[world.fighters.length - 1].from);
   else if (/firebug driven out|slips away into the hills|walks into the hills/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
   else if (/settlers|refugees/.test(text) && world.settlers) f('settlers', 0);
+  else if (/envoy sets out|wedding party sets out/.test(text) && (world.travellers || []).length) f('traveller', world.travellers[world.travellers.length - 1].id);
+  else if (/cast out of/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
   else if (/^Constable|slips out of|walks out of|goes looking for|starts asking/.test(text) && town) f('law', town.id);
   else if (/fireboat|fishing boat/.test(text) && world.boats.length) f('boat', world.boats[world.boats.length - 1].town);
   else if (/wagons|Wagons/.test(text) && (world.wagons || []).length) f('wagon', 0);
@@ -41,6 +43,7 @@ function followPos(f) {
     case 'fighter': { const p = w.fighters.find(q => q.from === f.id); return p ? [p.x, p.y] : null; }
     case 'firebug': { const b = (w.firebugs || []).find(q => q.name === f.id); return b ? [b.x, b.y] : null; }
     case 'settlers': return w.settlers ? [w.settlers.x, w.settlers.y] : null;
+    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? [v.x, v.y] : null; }
     case 'law': { const t = w.towns[f.id]; if (!t) return null; const x = t.workers.find(q => q.job === 'fugitive') || t.workers.find(q => q.job === 'constable'); return x ? [x.x, x.y] : null; }
     case 'boat': { const b = w.boats.find(q => q.town === f.id); return b ? [b.x, b.y] : null; }
     case 'wagon': { const g = (w.wagons || [])[0]; return g ? [g.x, g.y] : null; }
@@ -58,6 +61,7 @@ function followName(f) {
     case 'fighter': return `${w.towns[f.id] ? w.towns[f.id].name + "'s" : 'a'} jet`;
     case 'firebug': return f.id;
     case 'settlers': return 'the settlers';
+    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? (v.kind === 'wedding' ? 'the wedding party' : 'the envoy') : 'the envoy'; }
     case 'law': { const t = w.towns[f.id]; return t && t.case ? t.case.who : 'the fugitive'; }
     case 'boat': return 'the boat';
     case 'wagon': return 'the wagons';

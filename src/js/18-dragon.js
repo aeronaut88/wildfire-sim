@@ -126,6 +126,7 @@ function slayDragon(d, town, byJet) {
   log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
   const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
   popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
+  raiseMonument(town, `${town.name} raises a statue of ${hero.name} in the square, one foot on ${d.name || 'the dragon'}'s skull`);
 }
 
 // Fighters: the Aviation-era option. A town with an air base and jets scrambles one when a dragon comes

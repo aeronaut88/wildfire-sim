@@ -31,6 +31,7 @@ function updateWorkers(town) {
   for (const w of town.workers) {
     w.px = w.x; w.py = w.y;
     if (burnLeft[w.y * n + w.x] > 0) continue; // ran inside
+    if (w.crowd) { if (updateCrowd(town, w)) keep.push(w); continue; }
     if (w.law) { if (updateLawWorker(town, w)) keep.push(w); continue; }
     if (w.gather) { if (updateGatherer(town, w)) keep.push(w); continue; }
     if (w.soldier) {

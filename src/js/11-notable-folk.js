@@ -107,6 +107,7 @@ function killNotable(town, cause) {
   const p = living[Math.floor(Math.random() * living.length)];
   p.alive = false; p.died = world.tick; p.cause = cause; stat('ev', 'notableDeaths');
   log(`${p.name}, ${roleLabel(p)} of ${town.name}, ${DEATH_VERB[cause] || 'dies'} at ${personAge(p)}`, 'loss');
+  funeral(town, p, false);
   if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role);
   else if (p.role === 'firebug') elect(town, 'firebug', true);
 }
@@ -115,6 +116,7 @@ function agePeople(town) {
   for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < (0.08 + (personAge(p) - 72) * 0.02) * (hasType(town, T.HEALER) ? 0.6 : 1)) {
     p.alive = false; p.died = world.tick; p.cause = 'old age'; stat('ev', 'notableDeaths');
     log(`${p.name}, ${roleLabel(p)} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+    funeral(town, p, false);
     if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role); else if (p.role === 'firebug') elect(town, 'firebug', true);
   }
 }

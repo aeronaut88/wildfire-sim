@@ -147,6 +147,7 @@ function step() {
   updateWagons();
   updateTrader();
   updateFirebugs();
+  updateTravellers();
   maybeDragon();
 }
 

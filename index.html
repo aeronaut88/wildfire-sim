@@ -1174,6 +1174,7 @@ SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
 SPRITES.forager = SPRITES.worker.map(r => r.replace(/u/g, 'O').replace(/m/g, 'c')); // green smock, a basket
+SPRITES.healer = SPRITES.worker.map(r => r.replace(/u/g, 'S').replace(/m/g, 'x')); // white coat
 SPRITES.constable = SPRITES.soldier.map(r => r.replace(/d/g, '0').replace(/l/g, '7')); // blue coat, dark helmet
 SPRITES.fugitive = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'K')); // dark coat, hood up
 SPRITES.carrier = SPRITES.worker.map(r => r.replace(/u/g, 'W'));
@@ -1218,6 +1219,24 @@ SPRITES.hospital = [
   'g8SSSSdddSSSSS8g','g8SSSSSdSSSSSS8g','g8SSSSSSSSSSSS8g','g8S0S0S0S0S0SS8g',
   'g8SSSSSSSSSSSS8g','g8S0S0S0S0S0SS8g','g8SSSSSSSSSSSS8g','g8SSSSS77SSSSS8g',
   'g8SSSSS77SSSSS8g','g88888888888888g','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+SPRITES.gallows = [
+  'gggggggggggggggg','gggggggggggggggg','gggmmmmmmmmmmggg','gggmggggggggmggg',
+  'gggmggggggggmggg','gggmgggggkggmggg','gggmgggggkggmggg','gggmggggkkkgmggg',
+  'gggmggggkkkgmggg','gggmgggggkggmggg','gggmggggkgkgmggg','gggmggggggggmggg',
+  'gmmmmmmmmmmmmmmg','gmmmmmmmmmmmmmmg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+SPRITES.grave = [
+  'gggggggggggggggg','gggggggggggggggg','ggg4ggggggg4gggg','gg444ggggg444ggg',
+  'ggg4ggggggg4gggg','ggg4ggg4ggg4gggg','gggggg444ggggggg','ggggggg4gggggggg',
+  'ggg4ggg4ggg4gggg','gg444ggggg444ggg','ggg4ggggggg4gggg','ggg4ggggggg4gggg',
+  'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
+];
+SPRITES.monument = [
+  'gggggggggggggggg','gggggggggggggggg','ggggggg66ggggggg','gggggg6666gggggg',
+  'ggggggg66ggggggg','gggggg6666gggggg','ggggg666666ggggg','gggggg6666gggggg',
+  'gggggg6666gggggg','gggggg6666gggggg','ggggg444444ggggg','gggg44444444gggg',
+  'ggg4444444444ggg','ggg4444444444ggg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
 SPRITES.felled = [
   'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
@@ -1271,7 +1290,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1429,7 +1448,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49, GAOL: 50, CISTERN: 51, TOWER_W: 52, HEALER: 53, HOSPITAL: 54 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49, GAOL: 50, CISTERN: 51, TOWER_W: 52, HEALER: 53, HOSPITAL: 54, GALLOWS: 55, GRAVE: 56, MONUMENT: 57 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1450,6 +1469,9 @@ const FUEL = {
   [T.TOWER_W]: { ignite: 0.25, burn: [5, 8],   after: T.RUBBLE, spots: false },
   [T.HEALER]:  { ignite: 0.35, burn: [5, 8],   after: T.RUBBLE, spots: false },
   [T.HOSPITAL]: { ignite: 0.25, burn: [6, 10],  after: T.RUBBLE, spots: false },
+  [T.GALLOWS]: { ignite: 0.4,  burn: [3, 5],   after: T.ASH, spots: false },
+  [T.GRAVE]:   { ignite: 0.08, burn: [2, 3],   after: T.GRAVE, spots: false },
+  [T.MONUMENT]: { ignite: 0.02, burn: [2, 3],  after: T.MONUMENT, spots: false },
   [T.TENEMENT]:   { ignite: 0.55, burn: [10, 16], after: T.RUBBLE, spots: true },
   [T.BARRACKS]:   { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.FORGE]:      { ignite: 0.6,  burn: [8, 14],  after: T.RUBBLE, spots: true },
@@ -1477,11 +1499,11 @@ const FUEL = {
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE || t === T.GAOL || t === T.CISTERN || t === T.TOWER_W || t === T.HEALER || t === T.HOSPITAL;
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE || t === T.GAOL || t === T.CISTERN || t === T.TOWER_W || t === T.HEALER || t === T.HOSPITAL || t === T.GALLOWS || t === T.GRAVE || t === T.MONUMENT;
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital', [T.GALLOWS]: 'Gallows', [T.GRAVE]: 'Graveyard', [T.MONUMENT]: 'Monument' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG || t === T.JUNGLE;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
@@ -1548,7 +1570,7 @@ const world = {
   buildingsTotal: 0, buildingsLeft: 0, popTotal: 0, popLeft: 0,
   buildingsLost: 0, deaths: 0,
   weather: { kind: 'clear', left: 150 },
-  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], fighters: [], firebugs: [], boats: [], diploTimer: 60,
+  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], fighters: [], firebugs: [], travellers: [], boats: [], diploTimer: 60,
   wind: { angle: 0, strength: 0.3, targetAngle: 0, targetStrength: 0.3, retarget: 0 },
 };
 
@@ -1783,7 +1805,7 @@ function generate(n, seed) {
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.boats = []; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.boats = []; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
   const a0 = Math.random() * Math.PI * 2;
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
@@ -2203,6 +2225,7 @@ function killNotable(town, cause) {
   const p = living[Math.floor(Math.random() * living.length)];
   p.alive = false; p.died = world.tick; p.cause = cause; stat('ev', 'notableDeaths');
   log(`${p.name}, ${roleLabel(p)} of ${town.name}, ${DEATH_VERB[cause] || 'dies'} at ${personAge(p)}`, 'loss');
+  funeral(town, p, false);
   if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role);
   else if (p.role === 'firebug') elect(town, 'firebug', true);
 }
@@ -2211,6 +2234,7 @@ function agePeople(town) {
   for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < (0.08 + (personAge(p) - 72) * 0.02) * (hasType(town, T.HEALER) ? 0.6 : 1)) {
     p.alive = false; p.died = world.tick; p.cause = 'old age'; stat('ev', 'notableDeaths');
     log(`${p.name}, ${roleLabel(p)} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+    funeral(town, p, false);
     if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role); else if (p.role === 'firebug') elect(town, 'firebug', true);
   }
 }
@@ -2533,6 +2557,7 @@ function step() {
   updateWagons();
   updateTrader();
   updateFirebugs();
+  updateTravellers();
   maybeDragon();
 }
 
@@ -2620,10 +2645,18 @@ function updateDiplomacy() {
     if (atWar(a, b)) d -= 2;
     setRel(a, b, rel(a, b) + d);
     // Events.
-    if (Math.random() < 0.10) {
+    if (Math.random() < 0.06) {
       const good = Math.random() < 0.5 + 0.15 * (a.align.moral + b.align.moral) - (atWar(a, b) ? 0.3 : 0);
-      if (good) { setRel(a, b, rel(a, b) + 12); log(`${a.name} and ${b.name} ${DIPLO_GOOD[Math.floor(Math.random() * DIPLO_GOOD.length)]}`, 'diplo'); }
-      else { setRel(a, b, rel(a, b) - 14); log(`${a.name} and ${b.name} ${DIPLO_BAD[Math.floor(Math.random() * DIPLO_BAD.length)]}`, 'diplo'); }
+      const [x, y] = Math.random() < 0.5 ? [a, b] : [b, a];
+      if (good) {
+        const what = DIPLO_GOOD[Math.floor(Math.random() * DIPLO_GOOD.length)];
+        if (/marry/.test(what)) { if (sendTraveller(x, y, 'wedding', { delta: 12 })) log(`A wedding party sets out from ${x.name} for ${y.name}`, 'diplo'); }
+        else if (sendTraveller(x, y, 'envoy', { delta: 12, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}`, 'diplo');
+      } else {
+        const what = DIPLO_BAD[Math.floor(Math.random() * DIPLO_BAD.length)];
+        if (/river crossing|market day/.test(what)) { setRel(a, b, rel(a, b) - 14); log(`${a.name} and ${b.name} ${what}`, 'diplo'); }
+        else if (sendTraveller(x, y, 'envoy', { delta: -14, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}, and nobody expects good news`, 'diplo');
+      }
     }
     // Envy: a militaristic town that cannot reach a metal its neighbour digs sours on that neighbour.
     for (const [x, y] of [[a, b], [b, a]]) {
@@ -2709,7 +2742,7 @@ function updateWarbands() {
       if (nx !== b.x) b.face = Math.sign(nx - b.x);
       b.x = nx; b.y = ny; b.pi++;
     }
-    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { startBattle(b, from, to); continue; }
+    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { if (b.defect) { to.militia += b.size; log(`${from.name}'s deserters reach ${to.name}'s lines, ${b.size} spears for the other side`, 'war'); continue; } startBattle(b, from, to); continue; }
     keep.push(b);
   }
   world.warbands = keep;
@@ -3533,6 +3566,7 @@ function slayDragon(d, town, byJet) {
   log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
   const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
   popups.push({ x: px, y: py, text: 'DRAGON SLAIN', color: '#a7e36f', t0: performance.now(), dur: 4000 });
+  raiseMonument(town, `${town.name} raises a statue of ${hero.name} in the square, one foot on ${d.name || 'the dragon'}'s skull`);
 }
 
 // Fighters: the Aviation-era option. A town with an air base and jets scrambles one when a dragon comes
@@ -4274,6 +4308,7 @@ function updateWorkers(town) {
   for (const w of town.workers) {
     w.px = w.x; w.py = w.y;
     if (burnLeft[w.y * n + w.x] > 0) continue; // ran inside
+    if (w.crowd) { if (updateCrowd(town, w)) keep.push(w); continue; }
     if (w.law) { if (updateLawWorker(town, w)) keep.push(w); continue; }
     if (w.gather) { if (updateGatherer(town, w)) keep.push(w); continue; }
     if (w.soldier) {
@@ -4881,6 +4916,7 @@ function holdMarket(tr, town) {
     town.res[k] -= amt; town.res.coin += amt * PRICE[k]; tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
   stat('ev', 'markets');
+  spawnCrowd(town, town.cy * world.n + town.cx, 25, 4 + Math.floor(Math.random() * 4));
   maybeSmuggle(tr, town);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'MARKET', color: '#f5a623', t0: performance.now(), dur: 2000 });
   if (!bought.length && !sold.length) log(`Market day at ${town.name}, but nobody has anything the other wants`, 'build');
@@ -5007,6 +5043,9 @@ function growTown(town) {
   leaderActs(town);
   updateLaw(town);
   updateHealer(town);
+  updateFestival(town);
+  updateGraves(town);
+  updateRounds(town);
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   if (town.popLeft < 0) { world.popLeft -= town.popLeft; town.popLeft = 0; }
   for (const k of RES_KINDS) if (k !== 'coin' && town.res[k] > resCap(town, k)) town.res[k] = resCap(town, k); // nowhere to keep it
@@ -5917,7 +5956,9 @@ function updateLaw(town) {
     // A spy at work: the enemy learns what the town learns, and the constable may notice a stranger asking too many questions.
     const e = world.towns[town.spy.from];
     if (e && isAlive(e)) { const take = Math.min(town.milPts || 0, 2); town.milPts -= take; e.milPts = (e.milPts || 0) + take; }
-    let notice = 0.012 * (town.align.order > 0 ? 1.5 : 1) * (hasType(town, T.TOWER) ? 1.3 : 1) * ((town.unrest || 0) >= 50 ? 0.6 : 1) * (person(town, 'constable') ? 1 : 0.3);
+    if (!town.mobilized && !town.workers.some(w => w.job === 'spy')) { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: town.spy.who, runAt: world.tick + 200 }); }
+    const spw = town.workers.find(w => w.job === 'spy');
+    let notice = 0.012 * (town.align.order > 0 ? 1.5 : 1) * (hasType(town, T.TOWER) ? 1.3 : 1) * ((town.unrest || 0) >= 50 ? 0.6 : 1) * (person(town, 'constable') ? 1 : 0.3) * (spw && spw.run ? 3 : 1);
     if (Math.random() < notice) { const sp = findPerson(town, town.spy.who); if (sp) { log(`A stranger in ${town.name} has been asking about the walls and the granary. ${sp.name}, they call themselves.`, 'arson'); openCase(town, 'spying', sp, town.cy * world.n + town.cx, { witnessed: true }); return; } }
   }
   if (enemies.length) {
@@ -5925,15 +5966,18 @@ function updateLaw(town) {
     const losing = town.militia * 2 < o.militia || town.popLeft < o.popLeft * 0.5;
     if (town.militia >= 6 && ((town.unrest || 0) >= 50 || losing) && r < 0.005) {
       const n = Math.min(Math.floor(town.militia / 2), 2 + Math.floor(Math.random() * 4));
-      town.militia -= n; o.militia += n; stat('ev', 'desertions');
+      const path = findPath(town.cx, town.cy, o.cx, o.cy); if (!path) return;
+      town.militia -= n; stat('ev', 'desertions');
       const who = makePerson(Math.random, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
-      log(`${who.name} walks out of ${town.name} in the night with ${n} soldiers and goes over to ${o.name}`, 'war');
-      openCase(town, 'treason', who, hideout(town), { witnessed: true, loot: n, flee: o.id });
+      world.warbands.push({ from: town.id, to: o.id, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, path, pi: 0, size: n, wait: 0, armour: 0, guns: 0, defect: true, captain: who.name });
+      log(`${who.name} walks out of ${town.name} in the night with ${n} soldiers, bound for ${o.name}'s lines`, 'war');
+      openCase(town, 'treason', who, hideout(town), { witnessed: true, loot: n, flee: o.id, band: true });
       return;
     }
     if (!town.spy && !(o.spyPlanted && world.tick - o.spyPlanted < 3000) && o.militia >= 4 && Math.random() < 0.004) {
       const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
       town.people.push(sp); town.spy = { from: o.id, who: sp.name, since: world.tick }; o.spyPlanted = world.tick; stat('ev', 'spies');
+      { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: sp.name, runAt: world.tick + 200 + Math.floor(Math.random() * 300) }); }
       log(`${o.name} sends someone to live quietly in ${town.name}`, 'war'); // the player sees this; the town does not
       return;
     }
@@ -5968,7 +6012,8 @@ function thiefOf(town, story) {
 // restless that people hide them. Most cases close inside a few hundred ticks; some go cold.
 function updateCase(town) {
   const c = town.case, who = findPerson(town, c.who);
-  if (!who || !who.alive) { town.case = null; return; }
+  if (!who || !who.alive) { town.workers = town.workers.filter(w => !w.law); town.case = null; return; }
+  if (c.phase === 'procession') { updateProcession(town); return; }
   const age = world.tick - c.started;
   if (!c.hunt) {
     const con = constableOf(town);
@@ -5978,7 +6023,7 @@ function updateCase(town) {
   }
   if (!town.mobilized) {
     if (!town.workers.some(w => w.job === 'constable')) { const h = campPoint(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'constable', law: true }); }
-    if (!town.workers.some(w => w.job === 'fugitive')) { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'fugitive', law: true }); }
+    if (!town.workers.some(w => w.job === 'fugitive') && !c.band) { const spw = town.workers.find(w => w.job === 'spy'); if (spw && c.kind === 'spying') { spw.job = 'fugitive'; spw.target = -1; } else { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'fugitive', law: true }); } }
   }
   let p = 0.015 * Math.min(2.5, 1 + town.militia / 40);
   if (hasType(town, T.TOWER)) p *= 1.5;
@@ -5990,10 +6035,19 @@ function updateCase(town) {
   const con = town.workers.find(w => w.job === 'constable'), fug = town.workers.find(w => w.job === 'fugitive');
   if (con && fug && Math.hypot(con.x - fug.x, con.y - fug.y) <= 2) p *= 4; // a chase in the open
   if (c.flee !== undefined) {
-    // A deserter runs for the enemy's lines. Past the town's reach, they are gone.
-    if (fug) fug.flee = c.flee;
-    if (fug && Math.hypot(fug.x - town.cx, fug.y - town.cy) > town.R + 12) { const o = world.towns[c.flee]; defect(town, who, o, c); return; }
+    // Deserters march for the enemy's lines as a band. Past the town's reach, they are gone; caught, the men come home and the captain answers for it.
+    const band = world.warbands.find(b => b.defect && b.from === town.id && b.captain === who.name);
+    if (!band) { const o = world.towns[c.flee]; defect(town, who, o, c); return; }
+    town.workers = town.workers.filter(w => w.job !== 'fugitive');
+    if (Math.hypot(band.x - town.cx, band.y - town.cy) > town.R + 12) { const o = world.towns[c.flee]; defect(town, who, o, c); return; }
     p *= 2;
+    if (Math.random() < p) {
+      world.warbands = world.warbands.filter(b => b !== band); town.militia += band.size;
+      const n = world.n; town.workers.push({ x: band.x, y: band.y, px: band.x, py: band.y, target: -1, linger: 0, face: 1, job: 'fugitive', law: true });
+      log(`${town.name}'s constable rides down the deserters on the road; ${band.size} soldiers come back shamefaced`, 'win');
+      capture(town, c, who);
+    }
+    return;
   } else if (c.fled === undefined && age > 400 && Math.random() < 0.03) {
     const o = world.towns.filter(t => t !== town && isAlive(t) && Math.hypot(t.cx - town.cx, t.cy - town.cy) < 70).sort((a, b) => Math.hypot(a.cx - town.cx, a.cy - town.cy) - Math.hypot(b.cx - town.cx, b.cy - town.cy))[0];
     if (o) { c.fled = o.id; c.fledAt = world.tick; town.workers = town.workers.filter(w => w.job !== 'fugitive'); log(`${who.name} slips out of ${town.name} on the road to ${o.name}`, 'arson'); return; }
@@ -6026,6 +6080,87 @@ function defect(town, who, o, c) {
   if (o && isAlive(o)) { who.role = 'townsfolk'; who.revealed = true; who.story = `came over from ${town.name} in the war with ${c.loot} soldiers at their back`; o.people.push(who); log(`${who.name} reaches ${o.name}'s lines. ${town.name} will not forget it.`, 'war'); }
   deed(who, `deserted ${town.name} for ${o ? o.name : 'the enemy'}`);
 }
+// Exiles: cast out, they walk the woods, and in time knock at another town's gate. Winter is hard on them.
+function exile(town, who, how) {
+  const n = world.n, h = hideout(town); if (h < 0) return;
+  world.firebugs = world.firebugs || [];
+  world.firebugs.push({ kind: 'exile', name: who.name, from: town.id, x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), face: 1, target: -1, next: world.tick + 400 + Math.floor(Math.random() * 1200), town: -1, stuck: 0, story: who.story, role: who.role });
+  stat('ev', 'exiles');
+  log(`${who.name} ${how}`, 'arson');
+}
+// Graveyards grow with the dead; notables get a funeral; a dragon gets a statue.
+function updateGraves(town) {
+  if (town.popLeft < 20 || (town.deaths || 0) < 10) return;
+  const want = Math.min(12, Math.floor(town.deaths / 15)), have = countType(town, T.GRAVE);
+  if (have >= want || town.mobilized) return;
+  const n = world.n;
+  let spot = -1;
+  if (have) { for (const g of town.buildings) { if (world.type[g] !== T.GRAVE) continue; for (const [ox, oy] of OFFS8) { const x = g % n + ox, y = Math.floor(g / n) + oy; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue; const i = y * n + x; const t = world.type[i]; if ((t === T.GRASS || t === T.SCRUB || t === T.ASH) && !world.road[i] && world.burnLeft[i] <= 0) { spot = i; break; } } if (spot >= 0) break; } }
+  if (spot < 0) { spot = placeCivic(town, T.GRAVE, false); if (spot >= 0) { finishSite(town, spot); log(`${town.name} lays out a graveyard on the edge of town`, 'build'); return; } }
+  if (spot < 0) return;
+  world.type[spot] = T.GRAVE; world.townOf[spot] = town.id; if (!town.buildings.includes(spot)) town.buildings.push(spot); world.buildingsTotal++; world.buildingsLeft++; dirty.add(spot); forgetCounts(town);
+}
+function funeral(town, p, hanged) {
+  const g = town.buildings.find(i => world.type[i] === T.GRAVE);
+  if (g === undefined || town.mobilized) return;
+  spawnCrowd(town, g, 25, hanged ? 2 : 3 + Math.floor(Math.random() * 3));
+  if (!hanged && Math.random() < 0.5) log(`${town.name} buries ${p.name} ${['under a grey sky', 'in the rain', 'on a bright morning', 'as the snow comes down', 'at dusk'][Math.floor(Math.random() * 5)]}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+}
+function raiseMonument(town, text) {
+  if (hasType(town, T.MONUMENT)) return;
+  const i = placeCivic(town, T.MONUMENT, true);
+  if (i >= 0) { finishSite(town, i); log(text, 'build'); spawnCrowd(town, i, 40, 6); }
+}
+// Harvest festival: the last weeks of autumn, if the stores are full and nobody is at war. A bonfire in the square.
+function updateFestival(town) {
+  const year = Math.floor(world.tick / YEAR), inYear = world.tick % YEAR;
+  if (town.festivalYear === year || inYear < YEAR * 0.7 || inYear > YEAR * 0.75 || town.mobilized || town.famine || !town.fed || town.popLeft < 25) return;
+  if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > 0.2) return;
+  town.festivalYear = year;
+  const centre = town.cy * world.n + town.cx;
+  spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40));
+  town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals');
+  const [px, py] = cellCenter(centre); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'FESTIVAL', color: '#ffd166', t0: performance.now(), dur: 3000 });
+  for (let k = 0; k < 10; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 40, life: 0, max: 600, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.3), grav: -10 });
+  log(`${town.name} brings in the harvest and lights a bonfire in the square. ${['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.'][Math.floor(Math.random() * 5)]}`, 'good');
+  if (Math.random() < 0.05) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`The bonfire at ${town.name} gets away from them`, 'alarm'); } }
+}
+// The healer walks house to house while the plague is in town.
+function updateRounds(town) {
+  const sick = (town.plagueUntil || 0) > world.tick, h = person(town, 'healer');
+  const has_ = town.workers.some(w => w.job === 'rounds');
+  if (sick && h && !has_ && !town.mobilized) { const home = town.buildings.find(i => world.type[i] === T.HEALER || world.type[i] === T.HOSPITAL); if (home !== undefined) town.workers.push({ x: home % world.n, y: Math.floor(home / world.n), px: home % world.n, py: Math.floor(home / world.n), target: -1, linger: 0, face: 1, job: 'rounds', crowd: true, until: town.plagueUntil, rounds: true, spread: 0 }); }
+}
+// Envoys and wedding parties walk between towns; what they carry happens when they arrive.
+function sendTraveller(a, b, kind, payload) {
+  const path = findPath(a.cx, a.cy, b.cx, b.cy); if (!path) return false;
+  world.travellers = world.travellers || [];
+  world.travellers.push({ id: (world.travellerSeq = (world.travellerSeq || 0) + 1), kind, from: a.id, to: b.id, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, path, pi: 0, wait: 0, payload });
+  return true;
+}
+function updateTravellers() {
+  const list = world.travellers; if (!list || !list.length) return;
+  const n = world.n, keep = [];
+  for (const v of list) {
+    v.px = v.x; v.py = v.y;
+    const a = world.towns[v.from], b = world.towns[v.to];
+    if (!a || !b || !isAlive(b)) continue;
+    if (world.burnLeft[v.y * n + v.x] > 0) { log(v.kind === 'wedding' ? `The wedding party from ${a.name} is caught by the fire on the road to ${b.name}` : `${a.name}'s envoy to ${b.name} is caught by the fire on the road and never arrives`, 'loss'); setRel(a, b, rel(a, b) - 4); continue; }
+    if (v.pi < v.path.length) {
+      const next = v.path[v.pi];
+      if (world.burnLeft[next] > 0 || !passable(world.type[next])) { if (++v.wait > 40) { const alt = findPath(v.x, v.y, b.cx, b.cy); if (alt) { v.path = alt; v.pi = 0; v.wait = 0; } else if (v.wait > 120) continue; } keep.push(v); continue; }
+      if (world.tick % 2) { keep.push(v); continue; } // envoys walk, they do not run
+      v.wait = 0; const nx = next % n, ny = (next - nx) / n; if (nx !== v.x) v.face = Math.sign(nx - v.x); v.x = nx; v.y = ny; v.pi++;
+      keep.push(v); continue;
+    }
+    // Arrived.
+    const p = v.payload || {};
+    if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
+    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePerson(Math.random, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
+  }
+  world.travellers = keep;
+}
+
 // Banished and escaped arsonists do not vanish. They wander the woods, and one day they come back to somebody's town.
 function roam(town, who, how) {
   const n = world.n, h = hideout(town); if (h < 0) return;
@@ -6043,12 +6178,29 @@ function updateFirebugs() {
     // Fire nearby: run the other way, whatever the errand.
     { let fx = 0, fy = 0, hot = 0; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; if (world.burnLeft[y * n + x] > 0) { fx += dx; fy += dy; hot++; } }
       if (hot) { const len = Math.hypot(fx, fy) || 1; const tx = Math.max(1, Math.min(n - 2, Math.round(b.x - fx / len * 6))), ty = Math.max(1, Math.min(n - 2, Math.round(b.y - fy / len * 6))); if (passable(world.type[ty * n + tx])) { stepToward(b, tx, ty, 2, false); b.target = -1; keep.push(b); continue; } } }
+    if (b.kind === 'exile' && (world.snowCover || 0) > 0.8 && Math.random() < 0.0015) { log(`${b.name}, cast out of ${world.towns[b.from] ? world.towns[b.from].name : 'a town'}, is found frozen in the woods when the snow goes`, 'loss'); stat('ev', 'exileDeaths'); continue; }
+    if (b.kind === 'exile' && b.town >= 0) {
+      const t = world.towns[b.town];
+      if (!t || !isAlive(t)) { b.town = -1; b.next = world.tick + 600; keep.push(b); continue; }
+      if (Math.hypot(b.x - t.cx, b.y - t.cy) <= t.R + 2) {
+        const from = world.towns[b.from];
+        if (t.align.moral >= 0 && (!from || rel(t, from) > -20 || t.align.moral > 0)) {
+          const p = makePerson(Math.random, 'townsfolk', 25 + Math.random() * 30); p.name = b.name; p.story = `was cast out of ${from ? from.name : 'another valley'} and taken in here, and is grateful for it`; t.people = t.people || []; t.people.push(p);
+          log(`${b.name}, cast out of ${from ? from.name : 'the hills'}, is taken in at ${t.name}`, 'good'); stat('ev', 'exilesTakenIn');
+        } else { log(`${t.name} turns ${b.name} away at the gate`, 'arson'); b.town = -1; b.next = world.tick + 800; b.tried = (b.tried || []).concat(t.id); keep.push(b); }
+        continue;
+      }
+      stepToward(b, t.cx, t.cy, 1, false);
+      if (b.stall > 6 || ++b.stuck > 600) { b.town = -1; b.next = world.tick + 500; b.stuck = 0; b.stall = 0; b.lastCell = -1; }
+      keep.push(b); continue;
+    }
     if (b.town < 0 && world.tick >= b.next) {
-      const pool = world.towns.filter(t => isAlive(t) && t.popLeft >= 10 && t.id !== b.from);
+      const pool = world.towns.filter(t => isAlive(t) && t.popLeft >= 10 && t.id !== b.from && !(b.tried || []).includes(t.id));
       const t = pool.length ? pool[Math.floor(Math.random() * pool.length)] : world.towns[b.from];
       if (t && isAlive(t)) { b.town = t.id; b.target = -1; }
       else b.next = world.tick + 1000;
     }
+    if (b.town >= 0 && b.kind === 'exile') { keep.push(b); continue; } // the exile's walk is handled above, next tick
     if (b.town >= 0) {
       const t = world.towns[b.town];
       if (!t || !isAlive(t)) { b.town = -1; b.next = world.tick + 800; keep.push(b); continue; }
@@ -6109,8 +6261,31 @@ function hideout(town) {
 }
 // The constable walks the streets and gives chase; the fugitive keeps to the edge of town and runs when the law comes near.
 function updateLawWorker(town, w) {
-  if (!town.case) return false;
   const n = world.n, type = world.type;
+  if (w.job === 'spy') {
+    if (!town.spy || town.spy.who !== w.name) return false;
+    // Snoop around the places worth knowing about; every so often, slip out toward the enemy with what was learned, and come back.
+    const e = world.towns[town.spy.from];
+    if (!w.run && world.tick >= w.runAt && e) { w.run = true; const d = Math.hypot(e.cx - town.cx, e.cy - town.cy) || 1; const k = Math.min(d - 2, town.R + 10); const tx = Math.max(1, Math.min(n - 2, Math.round(town.cx + (e.cx - town.cx) / d * k))), ty = Math.max(1, Math.min(n - 2, Math.round(town.cy + (e.cy - town.cy) / d * k))); w.target = ty * n + tx; w.lastCell = -1; }
+    if (w.run) {
+      if (w.target < 0) { w.run = false; w.runAt = world.tick + 400 + Math.floor(Math.random() * 400); }
+      else if (w.x === w.target % n && w.y === Math.floor(w.target / n)) { if (++w.linger > 6) { w.linger = 0; w.target = -1; stat('ev', 'courierRuns'); } }
+      else { stepToward(w, w.target % n, Math.floor(w.target / n), 1, false); if (w.stall > 8) { w.stall = 0; w.target = -1; } }
+      if (w.target < 0 && !w.run) { const h = campPoint(town); w.target = h; }
+      return true;
+    }
+    if (w.target < 0 || (w.x === w.target % n && w.y === Math.floor(w.target / n) && ++w.linger > 8 + Math.floor(Math.random() * 12))) {
+      const spots = town.buildings.filter(i => { const t = type[i]; return t === T.BARRACKS || t === T.TOWNHALL || t === T.GRANARY || t === T.WALL || t === T.SILO || t === T.FACTORY; });
+      const roads = roadCells(town);
+      const pick = spots.length && Math.random() < 0.6 ? spots[Math.floor(Math.random() * spots.length)] : roads.length ? roads[Math.floor(Math.random() * roads.length)] : -1;
+      w.target = pick; w.linger = 0;
+    }
+    if (w.target >= 0 && !(w.x === w.target % n && w.y === Math.floor(w.target / n))) { stepToward(w, w.target % n, Math.floor(w.target / n), 1, false); if (w.stall > 4) { w.stall = 0; w.target = -1; w.lastCell = -1; } }
+    return true;
+  }
+  if (!town.case) return false;
+  if (w.job === 'convict') { if (w.target >= 0 && !(w.x === w.target % n && w.y === Math.floor(w.target / n))) { stepToward(w, w.target % n, Math.floor(w.target / n), 1, false); if (w.stall > 6) { w.stall = 0; w.lastCell = -1; } } return true; }
+  if (w.job === 'constable' && town.case.phase === 'procession') { const t = town.case.dest; if (!(w.x === t % n && w.y === Math.floor(t / n))) { stepToward(w, t % n, Math.floor(t / n), 1, false); if (w.stall > 6) { w.stall = 0; w.lastCell = -1; } } return true; }
   const other = town.workers.find(o => o.law && o !== w);
   const near = other ? Math.hypot(other.x - w.x, other.y - w.y) : 99;
   if (w.job === 'constable') {
@@ -6145,9 +6320,55 @@ function capture(town, c, who) {
   const [px, py] = cellCenter(town.cy * world.n + town.cx);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'CAUGHT', color: '#a7e36f', t0: performance.now(), dur: 2200 });
   const where = c.kind === 'arson' ? 'in the woods above the town' : 'at the edge of town';
-  log(`${con ? `Constable ${con.name}` : `${town.name}'s militia`} takes ${who.name} ${where} for ${CRIME_LABEL[c.kind]}`, 'win');
-  applySentence(town, c, who, s);
+  const l = leader(town);
+  log(`${con ? `Constable ${con.name}` : `${town.name}'s militia`} takes ${who.name} ${where} for ${CRIME_LABEL[c.kind]}. ${l ? l.name : 'The elder'}'s word is ${SENTENCE_LABEL[s]}.`, 'win');
+  startProcession(town, c, who, s);
+}
+// Where a sentence is carried out, and the walk there with the constable at the prisoner's elbow.
+function sentenceGround(town, s) {
+  const n = world.n;
+  if (s === 'execution') { let g = town.buildings.find(i => world.type[i] === T.GALLOWS); if (g === undefined) { g = placeCivic(town, T.GALLOWS, true); if (g >= 0) { finishSite(town, g); log(`A gallows goes up in the square at ${town.name}`, 'build'); } } return g >= 0 ? g : town.cy * n + town.cx; }
+  if (s === 'mob') { let best = -1, bd = 99; for (let dy = -town.R - 4; dy <= town.R + 4; dy++) for (let dx = -town.R - 4; dx <= town.R + 4; dx++) { const x = town.cx + dx, y = town.cy + dy; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue; const i = y * n + x; if (isTree(world.type[i]) && world.burnLeft[i] <= 0) { const d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = i; } } } return best >= 0 ? best : town.cy * n + town.cx; }
+  if (s === 'gaol') { const g = town.buildings.find(i => world.type[i] === T.GAOL); return g !== undefined ? g : (town.buildings.find(i => world.type[i] === T.TOWNHALL) ?? town.cy * n + town.cx); }
+  if (s === 'labour') { const q = town.buildings.find(i => world.type[i] === T.QUARRY); return q !== undefined ? q : town.cy * n + town.cx; }
+  if (s === 'banish') { const h = hideout(town); return h >= 0 ? h : town.cy * n + town.cx; }
+  const hall = town.buildings.find(i => world.type[i] === T.TOWNHALL); return hall !== undefined ? hall : town.cy * n + town.cx;
+}
+function startProcession(town, c, who, s) {
+  const n = world.n;
+  c.phase = 'procession'; c.sentence = s; c.dest = sentenceGround(town, s); c.since = world.tick;
+  let fug = town.workers.find(w => w.job === 'fugitive');
+  if (!fug) { const h = campPoint(town); if (h >= 0) { fug = { x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: -1, linger: 0, face: 1, job: 'fugitive', law: true }; town.workers.push(fug); } }
+  if (fug) { fug.job = 'convict'; fug.name = who.name; fug.target = c.dest; fug.lastCell = -1; fug.stall = 0; }
+  const con = town.workers.find(w => w.job === 'constable'); if (con) { con.target = c.dest; con.lastCell = -1; }
+  if (s === 'execution' || s === 'mob' || s === 'pardon' || s === 'warden') spawnCrowd(town, c.dest, 60, 5 + Math.floor(Math.random() * 5));
+}
+function updateProcession(town) {
+  const c = town.case, who = findPerson(town, c.who), n = world.n;
+  if (!who) { town.workers = town.workers.filter(w => !w.law); town.case = null; return; }
+  const fug = town.workers.find(w => w.job === 'convict');
+  const arrived = !fug || Math.max(Math.abs(fug.x - c.dest % n), Math.abs(fug.y - Math.floor(c.dest / n))) <= 1 || world.tick - c.since > 400 || town.mobilized;
+  if (!arrived) return;
+  town.workers = town.workers.filter(w => !w.law);
+  applySentence(town, c, who, c.sentence);
   town.case = null; town.lawCooldown = world.tick + 200;
+}
+// Crowds: townsfolk who walk to a spot, stand a while, and go home.
+function spawnCrowd(town, dest, linger, count) {
+  const n = world.n;
+  if (town.mobilized || town.popLeft < 10) return;
+  for (let k = 0; k < count; k++) { const h = campPoint(town); if (h < 0) break; town.workers.push({ x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: dest, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + linger + Math.floor(Math.random() * 20), spread: k }); }
+}
+function updateCrowd(town, w) {
+  const n = world.n;
+  if (w.job === 'home') { const hx = w.target % n, hy = Math.floor(w.target / n); if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) return false; stepToward(w, hx, hy, 1, false); return w.stall < 12; }
+  if (world.tick >= w.until) { const h = campPoint(town); if (h < 0) return false; w.target = h; w.job = 'home'; w.lastCell = -1; w.stall = 0; return true; }
+  if (w.rounds && (w.target < 0 || (w.x === w.target % n && w.y === Math.floor(w.target / n) && ++w.linger > 6))) { const homes = town.buildings.filter(i => isHome(world.type[i])); if (!homes.length) return false; w.target = homes[Math.floor(Math.random() * homes.length)]; w.linger = 0; w.lastCell = -1; }
+  if (w.target < 0) return false;
+  const tx = w.target % n, ty = Math.floor(w.target / n);
+  if (Math.max(Math.abs(w.x - tx), Math.abs(w.y - ty)) <= 1 + (w.spread % 3)) { if (Math.random() < 0.08) w.face = -w.face; return true; } // standing about
+  stepToward(w, tx, ty, 1, false); if (w.stall > 8) { w.until = world.tick; }
+  return true;
 }
 function applySentence(town, c, who, s) {
   const l = leader(town), ln = l ? l.name : 'the elder', kind = CRIME_LABEL[c.kind];
@@ -6160,21 +6381,26 @@ function applySentence(town, c, who, s) {
       if (!hasType(town, T.GAOL)) { town.wantGaol = true; log(`${who.name} is tried for ${kind} and locked in the cellar of the hall for ${Math.round(term / YEAR * 12)} months; ${town.name} needs a gaol`, 'arson'); }
       else log(`${who.name} is tried for ${kind} and sent to the gaol for ${Math.round(term / YEAR * 12)} months`, 'arson');
       break;
-    case 'labour':
+    case 'labour': {
       who.role = 'convict'; who.until = world.tick + term; who.labour = true; who.wasRole = wasFirebug ? 'firebug' : 'thief';
-      log(`${who.name} gets ${Math.round(term / YEAR * 12)} months of hard labour at the quarry for ${kind}`, 'arson');
+      const q = town.buildings.find(i => world.type[i] === T.QUARRY), n = world.n, h = campPoint(town);
+      if (h >= 0) town.workers.push({ x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: -1, linger: 0, face: 1, job: q !== undefined ? 'quarry' : 'log', gather: true, site: q !== undefined ? q : -1, siteType: q !== undefined ? T.QUARRY : 0, home: h, phase: 'out', work: 0, carry: 0, stuck: 0, convict: who.name });
+      log(`${who.name} gets ${Math.round(term / YEAR * 12)} months of hard labour ${q !== undefined ? 'at the quarry' : 'in the timber'} for ${kind}`, 'arson');
       break;
+    }
     case 'execution': {
       const feared = c.kind === 'arson' && (who.arsons || 0) >= 2;
       who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged');
       town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + (feared ? -4 : 6))); town.fear = world.tick + 2000;
-      log(`${ln} of ${town.name} has ${who.name} hanged in the square for ${kind}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      log(`${ln} of ${town.name} has ${who.name} hanged ${hasType(town, T.GALLOWS) ? 'on the gallows' : 'in the square'} for ${kind}${town.workers.filter(w => w.crowd).length >= 4 ? ' with the whole town watching' : ''}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      if (hasType(town, T.GRAVE)) funeral(town, who, true);
       break;
     }
     case 'banish':
       stat('ev', 'banished');
-      if (c.kind === 'arson' && Math.random() < 0.6) { town.people = town.people.filter(p => p !== who); roam(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`); }
-      else { who.alive = false; who.died = world.tick; who.cause = 'banished'; log(`${who.name} is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`, 'arson'); }
+      town.people = town.people.filter(p => p !== who);
+      if (c.kind === 'arson' && Math.random() < 0.6) roam(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
+      else exile(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
       break;
     case 'fine': {
       const fine = 10 + Math.floor(Math.random() * 20); town.res.coin += fine; who.role = 'townsfolk';
@@ -6234,8 +6460,8 @@ function updateHealer(town) {
 function releaseConvicts(town) {
   for (const p of town.people || []) {
     if (!p.alive || p.role !== 'convict') continue;
-    if (p.labour && hasType(town, T.QUARRY) && Math.random() < 0.5) addRes(town, 'stone', 1);
     if (world.tick >= p.until) {
+      town.workers = town.workers.filter(w => w.convict !== p.name);
       const reformed = Math.random() < 0.7, from = p.labour ? 'the quarry' : 'the gaol';
       p.role = reformed ? 'townsfolk' : p.wasRole || 'townsfolk'; p.revealed = !reformed; p.labour = false;
       log(reformed ? `${p.name} comes out of ${from} at ${town.name} a changed person` : `${p.name} is let out of ${from} at ${town.name} and has learned nothing`, 'build');
@@ -6341,6 +6567,8 @@ function whereOf(text, at) {
   else if (/scrambles a jet/.test(text) && world.fighters.length) f('fighter', world.fighters[world.fighters.length - 1].from);
   else if (/firebug driven out|slips away into the hills|walks into the hills/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
   else if (/settlers|refugees/.test(text) && world.settlers) f('settlers', 0);
+  else if (/envoy sets out|wedding party sets out/.test(text) && (world.travellers || []).length) f('traveller', world.travellers[world.travellers.length - 1].id);
+  else if (/cast out of/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
   else if (/^Constable|slips out of|walks out of|goes looking for|starts asking/.test(text) && town) f('law', town.id);
   else if (/fireboat|fishing boat/.test(text) && world.boats.length) f('boat', world.boats[world.boats.length - 1].town);
   else if (/wagons|Wagons/.test(text) && (world.wagons || []).length) f('wagon', 0);
@@ -6367,6 +6595,7 @@ function followPos(f) {
     case 'fighter': { const p = w.fighters.find(q => q.from === f.id); return p ? [p.x, p.y] : null; }
     case 'firebug': { const b = (w.firebugs || []).find(q => q.name === f.id); return b ? [b.x, b.y] : null; }
     case 'settlers': return w.settlers ? [w.settlers.x, w.settlers.y] : null;
+    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? [v.x, v.y] : null; }
     case 'law': { const t = w.towns[f.id]; if (!t) return null; const x = t.workers.find(q => q.job === 'fugitive') || t.workers.find(q => q.job === 'constable'); return x ? [x.x, x.y] : null; }
     case 'boat': { const b = w.boats.find(q => q.town === f.id); return b ? [b.x, b.y] : null; }
     case 'wagon': { const g = (w.wagons || [])[0]; return g ? [g.x, g.y] : null; }
@@ -6384,6 +6613,7 @@ function followName(f) {
     case 'fighter': return `${w.towns[f.id] ? w.towns[f.id].name + "'s" : 'a'} jet`;
     case 'firebug': return f.id;
     case 'settlers': return 'the settlers';
+    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? (v.kind === 'wedding' ? 'the wedding party' : 'the envoy') : 'the envoy'; }
     case 'law': { const t = w.towns[f.id]; return t && t.case ? t.case.who : 'the fugitive'; }
     case 'boat': return 'the boat';
     case 'wagon': return 'the wagons';
@@ -6607,6 +6837,9 @@ function spriteKey(i) {
     case T.TOWER_W: return 'watertower';
     case T.HEALER: return 'healer';
     case T.HOSPITAL: return 'hospital';
+    case T.GALLOWS: return 'gallows';
+    case T.GRAVE: return 'grave';
+    case T.MONUMENT: return 'monument';
   }
   return 'ash';
 }
@@ -6770,7 +7003,7 @@ function render(now, tickFrac) {
     if (t.workers && !tiny) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
       if (!vis(x, y)) continue;
-      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' ? SPR.fugitive : w.job === 'forage' ? SPR.forager : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' || w.job === 'convict' || w.convict ? SPR.fugitive : w.job === 'rounds' ? SPR.healer : w.job === 'forage' ? SPR.forager : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.job === 'forage' ? '#4ea955' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
@@ -6902,6 +7135,12 @@ function render(now, tickFrac) {
     else ctx.drawImage(SPR16.trader, x, y - (sz - cellPx), sz, sz);
   }
 
+  for (const v of world.travellers || []) {
+    const x = (v.px + (v.x - v.px) * tickFrac) * cellPx, y = (v.py + (v.y - v.py) * tickFrac) * cellPx;
+    if (!vis(x, y)) continue;
+    ctx.drawImage(v.kind === 'exile' ? SPR.fugitive : SPR.worker, x, y);
+    if (v.kind === 'wedding') ctx.drawImage(SPR.worker, x + cellPx * 0.6, y);
+  }
   for (const b of world.firebugs || []) {
     const x = (b.px + (b.x - b.px) * tickFrac) * cellPx, y = (b.py + (b.y - b.py) * tickFrac) * cellPx;
     if (!vis(x, y)) continue;
@@ -7506,7 +7745,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital', [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
+Object.assign(TYPE_NAMES, { [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital', [T.GALLOWS]: 'Gallows', [T.GRAVE]: 'Graveyard', [T.MONUMENT]: 'Monument', [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -7842,7 +8081,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('crimes', `${ev.crimes || 0} <span class="dim">(${ev.caught || 0} caught, ${ev.hanged || 0} hanged, ${ev.banished || 0} banished)</span>`) + row('spies / deserters', `${ev.spies || 0} <span class="dim">(${ev.spiesCaught || 0} caught)</span> / ${ev.desertions || 0}`) + row('smuggled goods', ev.smuggled || 0) + row('saved by healers', `${ev.healed || 0} <span class="dim">(${ev.foraged || 0} herbs gathered)</span>`) + row('firebugs loose', `${ev.firebugsLoose || 0} <span class="dim">(${ev.firebugFires || 0} fires set)</span>`) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('crimes', `${ev.crimes || 0} <span class="dim">(${ev.caught || 0} caught, ${ev.hanged || 0} hanged, ${ev.banished || 0} banished)</span>`) + row('spies / deserters', `${ev.spies || 0} <span class="dim">(${ev.spiesCaught || 0} caught)</span> / ${ev.desertions || 0}`) + row('smuggled goods', ev.smuggled || 0) + row('saved by healers', `${ev.healed || 0} <span class="dim">(${ev.foraged || 0} herbs gathered)</span>`) + row('festivals', ev.festivals || 0) + row('exiles', `${ev.exiles || 0} <span class="dim">(${ev.exilesTakenIn || 0} taken in, ${ev.exileDeaths || 0} lost)</span>`) + row('firebugs loose', `${ev.firebugsLoose || 0} <span class="dim">(${ev.firebugFires || 0} fires set)</span>`) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
 }
 function renderHistControls() {
   renderHistFacts();
@@ -8011,7 +8250,7 @@ function snapshot() {
     towns: world.towns.map(t => ({ ...t, ring: undefined, claimed: [...t.claimed] })),
     air: world.air ? { ...world.air, plane: null } : null,
     settlers: world.settlers ? { ...world.settlers, town: townToId(world.settlers.town) } : null,
-    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, fighters: world.fighters || [], firebugs: world.firebugs || [], boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
+    warbands: world.warbands, battles: world.battles.map(b => ({ ...b, proj: [] })), bombers: world.bombers, fighters: world.fighters || [], firebugs: world.firebugs || [], travellers: world.travellers || [], boats: world.boats, dragonGrudge: world.dragonGrudge || null, diploTimer: world.diploTimer,
     dragon: world.dragon ? { ...world.dragon, town: townToId(world.dragon.town), frames: undefined } : null,
     params: { ...params },
     log: logEntries.slice(),
@@ -8103,7 +8342,7 @@ function restore(d) {
   for (const t of world.towns) recomputeRing(t);
   world.air = d.air ? { ...d.air, plane: null } : null;
   world.settlers = d.settlers ? { ...d.settlers, town: d.settlers.town >= 0 ? world.towns[d.settlers.town] : null } : null;
-  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.fighters = (d.fighters || []).slice(); world.firebugs = (d.firebugs || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
+  world.warbands = (d.warbands || []).slice(); world.battles = (d.battles || []).slice(); world.bombers = (d.bombers || []).slice(); world.fighters = (d.fighters || []).slice(); world.firebugs = (d.firebugs || []).slice(); world.travellers = (d.travellers || []).slice(); world.boats = (d.boats || []).slice(); world.dragonGrudge = d.dragonGrudge || null; world.diploTimer = d.diploTimer || 60;
   for (const t of world.towns) { t.res = t.res || { wood: 24, stone: 10 }; t.gathered = t.gathered || {}; for (const k of RES_KINDS) { if (!Number.isFinite(t.res[k])) t.res[k] = k === 'coin' ? 30 : k === 'water' ? 30 : k === 'grain' ? 20 : 0; if (!Number.isFinite(t.gathered[k])) t.gathered[k] = 0; } t.wells = t.wells || {}; t.sites = t.sites || {}; if (t.fed === undefined) t.fed = true; t.hunger = t.hunger || 0; t.temper = t.temper || { wood: 1, stone: 1, food: 1, build: 1, trade: 1 };
     if (t.livestock) for (const k of LIVESTOCK) if (!Number.isFinite(t.livestock[k])) t.livestock[k] = 0; t.deepSite = t.deepSite || {}; t.livestock = t.livestock || { cattle: 0, pigs: 0, sheep: 0, chickens: 0 }; if (!t.people) seedPeople(t, Math.random); if (t.master === undefined) t.master = -1; t.mineKind = t.mineKind || {}; t.spent = t.spent || {}; if (t.powerRatio === undefined) t.powerRatio = 1; }
   for (const t of world.towns) { t.align = t.align || rollAlignment(Math.random); t.relations = t.relations || {}; t.wars = t.wars || {}; t.militia = t.militia || 0; t.wallR = t.wallR || 0; t.raidCooldown = t.raidCooldown || 0; t.mil = t.mil || 0; t.civ = t.civ || 0; t.nukes = t.nukes || 0; t.bombers = t.bombers || 0; t.fighters = t.fighters || 0; t.research = t.research || 0; t.shellCooldown = t.shellCooldown || 0; t.nukeCooldown = t.nukeCooldown || 0; t.sick = t.sick || 0; }

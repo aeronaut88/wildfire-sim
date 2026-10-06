@@ -82,10 +82,18 @@ function updateDiplomacy() {
     if (atWar(a, b)) d -= 2;
     setRel(a, b, rel(a, b) + d);
     // Events.
-    if (Math.random() < 0.10) {
+    if (Math.random() < 0.06) {
       const good = Math.random() < 0.5 + 0.15 * (a.align.moral + b.align.moral) - (atWar(a, b) ? 0.3 : 0);
-      if (good) { setRel(a, b, rel(a, b) + 12); log(`${a.name} and ${b.name} ${DIPLO_GOOD[Math.floor(Math.random() * DIPLO_GOOD.length)]}`, 'diplo'); }
-      else { setRel(a, b, rel(a, b) - 14); log(`${a.name} and ${b.name} ${DIPLO_BAD[Math.floor(Math.random() * DIPLO_BAD.length)]}`, 'diplo'); }
+      const [x, y] = Math.random() < 0.5 ? [a, b] : [b, a];
+      if (good) {
+        const what = DIPLO_GOOD[Math.floor(Math.random() * DIPLO_GOOD.length)];
+        if (/marry/.test(what)) { if (sendTraveller(x, y, 'wedding', { delta: 12 })) log(`A wedding party sets out from ${x.name} for ${y.name}`, 'diplo'); }
+        else if (sendTraveller(x, y, 'envoy', { delta: 12, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}`, 'diplo');
+      } else {
+        const what = DIPLO_BAD[Math.floor(Math.random() * DIPLO_BAD.length)];
+        if (/river crossing|market day/.test(what)) { setRel(a, b, rel(a, b) - 14); log(`${a.name} and ${b.name} ${what}`, 'diplo'); }
+        else if (sendTraveller(x, y, 'envoy', { delta: -14, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}, and nobody expects good news`, 'diplo');
+      }
     }
     // Envy: a militaristic town that cannot reach a metal its neighbour digs sours on that neighbour.
     for (const [x, y] of [[a, b], [b, a]]) {
@@ -171,7 +179,7 @@ function updateWarbands() {
       if (nx !== b.x) b.face = Math.sign(nx - b.x);
       b.x = nx; b.y = ny; b.pi++;
     }
-    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { startBattle(b, from, to); continue; }
+    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { if (b.defect) { to.militia += b.size; log(`${from.name}'s deserters reach ${to.name}'s lines, ${b.size} spears for the other side`, 'war'); continue; } startBattle(b, from, to); continue; }
     keep.push(b);
   }
   world.warbands = keep;
