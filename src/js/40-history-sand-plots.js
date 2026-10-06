@@ -87,7 +87,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('crimes', `${ev.crimes || 0} <span class="dim">(${ev.caught || 0} caught, ${ev.hanged || 0} hanged, ${ev.banished || 0} banished)</span>`) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
 }
 function renderHistControls() {
   renderHistFacts();

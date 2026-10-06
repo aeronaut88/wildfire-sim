@@ -11,7 +11,7 @@ const COST = {
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
-  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 },
+  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -29,7 +29,7 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge]));
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell]));
 // Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
 // the way a player saves for an upgrade, except for the works that bring resources in.
 function canAfford(t, cost) {
@@ -53,23 +53,27 @@ function waterCellNear(t, from) {
   for (const i of world.water) { const x = i % n, y = (i - x) / n; if (Math.abs(x - t.cx) > R || Math.abs(y - t.cy) > R) continue; if (world.type[i] !== T.WATER || world.snow[i] >= ICE_AT) continue; const d = Math.hypot(x - fx, y - fy); if (d < bd) { bd = d; best = i; } }
   return best;
 }
-function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 150 + Math.floor(Math.random() * 150) : 400 + Math.floor(Math.random() * 400); }
+// What a well holds: a few years of a town's thirst in good country, far less in the desert. It used to hold a tenth of a season.
+function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 800 + Math.floor(Math.random() * 800) : 2500 + Math.floor(Math.random() * 3500); }
 // Wells draw on a finite aquifer that recharges a little in rain and a trickle otherwise; carriers
 // bring the rest from the river. People drink, and a dry cistern means thirst.
 function updateWater(t) {
   const wk = world.weather.kind, rain = wk === 'rain' || wk === 'storm' || wk === 'snow';
-  let got = 0;
+  const need = Math.ceil(t.popLeft / 40);
+  // Wells are pumped only for what the cistern can take: a full cistern draws nothing, so a well
+  // lasts as long as the town's thirst says, not a fixed count of ticks. Every well used to be
+  // pumped flat out whether or not anyone drank, so a town's wells all ran dry together.
+  let got = 0, want = Math.max(0, Math.min(resCap(t, 'water') - (t.res.water || 0), need * 2));
   for (const i of t.buildings) {
     if (world.type[i] !== T.WELL) continue;
     if (t.wells[i] === undefined) t.wells[i] = aquifer(t);
-    if (rain) t.wells[i] = Math.min(t.wells[i] + 3, 900); else if (world.tick % 128 < 16) t.wells[i] += 1;
-    if (t.wells[i] <= 0) continue;
-    const draw = Math.min(t.wells[i], wk === 'drought' ? 2 : 3);
-    t.wells[i] -= draw; got += draw;
+    if (rain) t.wells[i] = Math.min(t.wells[i] + 3, 6000); else if (world.tick % 8 === 0 && t.wells[i] < 3000) t.wells[i] += 1; // rain fills it, seepage brings a dry well back over a few years
+    if (t.wells[i] <= 0 || want <= 0) continue;
+    const draw = Math.min(t.wells[i], wk === 'drought' ? 2 : 3, want);
+    t.wells[i] -= draw; got += draw; want -= draw;
     if (t.wells[i] <= 0) { log(`${t.name}'s well runs dry`, 'loss'); stat('ev', 'wellsDry'); }
   }
   if (got) addRes(t, 'water', got);
-  const need = Math.ceil(t.popLeft / 40);
   t.res.water = Math.max(0, (t.res.water || 0) - need);
   t.water = t.res.water > 0;
 }
@@ -222,9 +226,9 @@ function buildSites(town) {
     }
   }
   const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
-  if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && canAfford(town, COST[T.WELL])) {
+  if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && (canAfford(town, COST[T.WELL]) || canAfford(town, COST.timberWell))) {
     const i = placeCivic(town, T.WELL, true);
-    if (i >= 0) { pay(town, COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well` : `${town.name} digs a well`, 'build'); return; }
+    if (i >= 0) { const timber = !canAfford(town, COST[T.WELL]); pay(town, timber ? COST.timberWell : COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well${timber ? ', lined with timber for want of stone' : ''}` : `${town.name} digs a well${timber ? ', lined with timber for want of stone' : ''}`, 'build'); return; }
   }
   if (town.civ >= 1 && !hasPlanned(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
     const i = placeSite(town, T.WHEEL, town.R + 6, t => t === T.WATER);

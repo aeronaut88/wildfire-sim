@@ -1164,6 +1164,8 @@ SPRITES.chicken = [
 SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
+SPRITES.constable = SPRITES.soldier.map(r => r.replace(/d/g, '0').replace(/l/g, '7')); // blue coat, dark helmet
+SPRITES.fugitive = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'K')); // dark coat, hood up
 SPRITES.carrier = SPRITES.worker.map(r => r.replace(/u/g, 'W'));
 SPRITES.jungle = [
   'ggg}}}}}}}}ggggg','gg}}}}{{}}}}}ggg','g}}}{{{{{{{}}}}g','g}}{{{{|{{{{}}}g',
@@ -1176,6 +1178,12 @@ SPRITES.airbase = [
   'glRrrddrrRllxllg','glRrrddrrRllxllg','glRrrrrrrRllxllg','glRRRRRRRRllxllg',
   'glllllllllllxllg','gllllllllllllllg','glllllKKKlllxllg','gllllKKKKKllxllg',
   'glllllKKKlllxllg','gllllllKllllxllg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+SPRITES.gaol = [
+  'gggggggggggggggg','gggggggggggggggg','gg444444444444gg','gg455555555554gg',
+  'gg45K5K5K5K554gg','gg45K5K5K5K554gg','gg45K5K5K5K554gg','gg455555555554gg',
+  'gg455555555554gg','gg455557775554gg','gg455557775554gg','gg455557775554gg',
+  'gg444444444444gg','gg444444444444gg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
 SPRITES.felled = [
   'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
@@ -1229,7 +1237,7 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive']) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1387,7 +1395,7 @@ function fbm(x, y, seed, octaves) {
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49, GAOL: 50 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -1403,6 +1411,7 @@ const FUEL = {
   [T.STATION]: { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.HANGAR]:  { ignite: 0.45, burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.AIRBASE]: { ignite: 0.4,  burn: [8, 12],  after: T.RUBBLE, spots: true },
+  [T.GAOL]:    { ignite: 0.15, burn: [4, 7],   after: T.RUBBLE, spots: false },
   [T.TENEMENT]:   { ignite: 0.55, burn: [10, 16], after: T.RUBBLE, spots: true },
   [T.BARRACKS]:   { ignite: 0.5,  burn: [8, 12],  after: T.RUBBLE, spots: true },
   [T.FORGE]:      { ignite: 0.6,  burn: [8, 14],  after: T.RUBBLE, spots: true },
@@ -1430,11 +1439,11 @@ const FUEL = {
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE;
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE || t === T.GAOL;
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG || t === T.JUNGLE;
 const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
 
@@ -2054,7 +2063,7 @@ function placeTowns(n) {
 const FIRST_NAMES = ['Agnes', 'Mattias', 'Rook', 'Ida', 'Tobias', 'Wren', 'Hollis', 'Marta', 'Ezra', 'Pim', 'Sunniva', 'Cormac', 'Dagny', 'Lucan', 'Bea', 'Otto', 'Freya', 'Silas', 'Nell', 'Ansel', 'Greta', 'Jory', 'Thea', 'Ambrose', 'Petra', 'Roan', 'Elspeth', 'Hugo', 'Maren', 'Caspar', 'Liv', 'Barnaby', 'Signe', 'Teodor', 'Hazel', 'Emrys', 'Rosalind', 'Finn', 'Ingrid', 'Oskar', 'Winnie', 'Lorcan', 'Astrid', 'Benedikt', 'Tamsin', 'Soren', 'Clem', 'Juniper', 'Rufus', 'Odile'];
 const LAST_NAMES = ['Thorne', 'Ashby', 'Fairweather', 'Coalbrook', 'Hollins', 'Marsh', 'Quill', 'Stannard', 'Greaves', 'Pike', 'Wexley', 'Oakes', 'Brandt', 'Fenwick', 'Larkspur', 'Dunmore', 'Haskell', 'Birchwood', 'Kettle', 'Ravel', 'Tolliver', 'Moss', 'Sedge', 'Hartigan', 'Bramble', 'Underhill', 'Crane', 'Fallow', 'Wick', 'Northey', 'Tully', 'Varga', 'Ellery', 'Blackwood', 'Hale', 'Pennyworth', 'Rourke', 'Stirling', 'Ashgrove', 'Lindqvist'];
 const BACKSTORIES = ['came over the pass with the first wagons', 'was born in a hard winter and has never minded the cold', 'once walked to the far side of the valley and back in a day', 'keeps bees and talks to them', 'has never trusted the river', 'lost a childhood home to fire and still smells smoke in dreams', 'can name every tree within a mile', 'swears a dragon once looked them in the eye', 'won the pie contest nine years running', 'reads the weather in the way the pines move', 'was found as a baby on the north road', 'has buried two spouses and outlived them both cheerfully', 'carves animals out of birch and gives them away', 'taught half the town to swim', 'owes money in every town in the valley', 'claims to have seen the lights under the lake', 'fought in a war nobody else remembers', 'sings when the fire bell rings', 'has a scar from a boar and a story to match', 'planted the oak outside the hall', 'never sleeps on the night of the first snow', 'grew up in a wagon and still cannot sit still', 'keeps the only clock in town', 'has argued with the elder for thirty years', 'knows where the old mine shaft goes and will not say', 'brews something in the cellar that the chief pretends not to know about', 'walked away from a town that burned and never speaks its name', 'counts the geese every autumn and writes it down', 'was struck by lightning once and says it improved them', 'sleeps with a bucket of water by the bed'];
-const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist' };
+const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk' };
 /* Leaders. Every elder has a trait, and the trait steers the town's choices, right or wrong:
    who it fights, what it builds, what it hoards, what draws the dragons. The people have a say
    too: famine, war, thirst and tyranny raise unrest, and an elder who lets it climb is thrown out. */
@@ -2097,7 +2106,7 @@ function seedPeople(town, rng) {
 }
 function person(town, role) { return town.people ? town.people.find(p => p.alive && p.role === role) : null; }
 function personAge(p) { return Math.max(0, Math.floor((world.tick - p.born) / YEAR)); }
-function roleLabel(p) { return p.role === 'firebug' && !p.revealed ? 'townsfolk' : ROLE_LABEL[p.role] || p.role; }
+function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : ROLE_LABEL[p.role] || p.role; }
 function deed(p, text) { if (!p) return; p.deeds.push({ tick: world.tick, text }); if (p.deeds.length > 6) p.deeds.shift(); }
 function elect(town, role, quiet, avoidTrait) {
   const p = makePerson(Math.random, role, 20 + Math.random() * 35);
@@ -2149,7 +2158,7 @@ function leaderActs(town) {
     const i = placeCivic(town, T.TOWER, false); if (i >= 0) { pay(town, COST[T.TOWER]); log(`${l.name} of ${town.name} orders a watchtower raised against the fire to come`, 'build'); }
   } else if (tr === 'tyrant' && town.res.coin >= 20) { const cut = Math.floor(town.res.coin * 0.1); town.res.coin -= cut; l.hoard = (l.hoard || 0) + cut; if (Math.random() < 0.3) log(`${l.name} of ${town.name} takes ${cut} coin from the chest for the palace`, 'loss'); }
 }
-const DEATH_VERB = { fire: 'dies in the fire', 'dragon fire': 'is taken by the dragon', 'torched in a raid': 'dies when the raiders torch the town', famine: 'starves', battle: 'falls in battle', 'put to the sword': 'is put to the sword', plague: 'dies of the plague', thirst: 'dies of thirst', fallout: 'wastes away from the fallout', blast: 'is killed in the blast', dragon: 'is killed by the dragon', 'fire crews lost': 'is lost with the fire crews' };
+const DEATH_VERB = { hanged: 'is hanged', banished: 'is banished', fire: 'dies in the fire', 'dragon fire': 'is taken by the dragon', 'torched in a raid': 'dies when the raiders torch the town', famine: 'starves', battle: 'falls in battle', 'put to the sword': 'is put to the sword', plague: 'dies of the plague', thirst: 'dies of thirst', fallout: 'wastes away from the fallout', blast: 'is killed in the blast', dragon: 'is killed by the dragon', 'fire crews lost': 'is lost with the fire crews' };
 function killNotable(town, cause) {
   const living = (town.people || []).filter(p => p.alive); if (!living.length) return;
   const p = living[Math.floor(Math.random() * living.length)];
@@ -4222,6 +4231,7 @@ function updateWorkers(town) {
   for (const w of town.workers) {
     w.px = w.x; w.py = w.y;
     if (burnLeft[w.y * n + w.x] > 0) continue; // ran inside
+    if (w.law) { if (updateLawWorker(town, w)) keep.push(w); continue; }
     if (w.gather) { if (updateGatherer(town, w)) keep.push(w); continue; }
     if (w.soldier) {
       // Drill in a loose square around the barracks.
@@ -4300,7 +4310,7 @@ const COST = {
   [T.SILO]: { stone: 12, iron: 8, uranium: 10 }, [T.LUMBERYARD]: { wood: 6 }, [T.MINE]: { wood: 8, stone: 2 }, [T.QUARRY]: { wood: 4 },
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
-  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 },
+  [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -4318,7 +4328,7 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge]));
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell]));
 // Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
 // the way a player saves for an upgrade, except for the works that bring resources in.
 function canAfford(t, cost) {
@@ -4342,23 +4352,27 @@ function waterCellNear(t, from) {
   for (const i of world.water) { const x = i % n, y = (i - x) / n; if (Math.abs(x - t.cx) > R || Math.abs(y - t.cy) > R) continue; if (world.type[i] !== T.WATER || world.snow[i] >= ICE_AT) continue; const d = Math.hypot(x - fx, y - fy); if (d < bd) { bd = d; best = i; } }
   return best;
 }
-function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 150 + Math.floor(Math.random() * 150) : 400 + Math.floor(Math.random() * 400); }
+// What a well holds: a few years of a town's thirst in good country, far less in the desert. It used to hold a tenth of a season.
+function aquifer(t) { return biomeAt(t.cx, t.cy) === 5 ? 800 + Math.floor(Math.random() * 800) : 2500 + Math.floor(Math.random() * 3500); }
 // Wells draw on a finite aquifer that recharges a little in rain and a trickle otherwise; carriers
 // bring the rest from the river. People drink, and a dry cistern means thirst.
 function updateWater(t) {
   const wk = world.weather.kind, rain = wk === 'rain' || wk === 'storm' || wk === 'snow';
-  let got = 0;
+  const need = Math.ceil(t.popLeft / 40);
+  // Wells are pumped only for what the cistern can take: a full cistern draws nothing, so a well
+  // lasts as long as the town's thirst says, not a fixed count of ticks. Every well used to be
+  // pumped flat out whether or not anyone drank, so a town's wells all ran dry together.
+  let got = 0, want = Math.max(0, Math.min(resCap(t, 'water') - (t.res.water || 0), need * 2));
   for (const i of t.buildings) {
     if (world.type[i] !== T.WELL) continue;
     if (t.wells[i] === undefined) t.wells[i] = aquifer(t);
-    if (rain) t.wells[i] = Math.min(t.wells[i] + 3, 900); else if (world.tick % 128 < 16) t.wells[i] += 1;
-    if (t.wells[i] <= 0) continue;
-    const draw = Math.min(t.wells[i], wk === 'drought' ? 2 : 3);
-    t.wells[i] -= draw; got += draw;
+    if (rain) t.wells[i] = Math.min(t.wells[i] + 3, 6000); else if (world.tick % 8 === 0 && t.wells[i] < 3000) t.wells[i] += 1; // rain fills it, seepage brings a dry well back over a few years
+    if (t.wells[i] <= 0 || want <= 0) continue;
+    const draw = Math.min(t.wells[i], wk === 'drought' ? 2 : 3, want);
+    t.wells[i] -= draw; got += draw; want -= draw;
     if (t.wells[i] <= 0) { log(`${t.name}'s well runs dry`, 'loss'); stat('ev', 'wellsDry'); }
   }
   if (got) addRes(t, 'water', got);
-  const need = Math.ceil(t.popLeft / 40);
   t.res.water = Math.max(0, (t.res.water || 0) - need);
   t.water = t.res.water > 0;
 }
@@ -4511,9 +4525,9 @@ function buildSites(town) {
     }
   }
   const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
-  if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && canAfford(town, COST[T.WELL])) {
+  if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && (canAfford(town, COST[T.WELL]) || canAfford(town, COST.timberWell))) {
     const i = placeCivic(town, T.WELL, true);
-    if (i >= 0) { pay(town, COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well` : `${town.name} digs a well`, 'build'); return; }
+    if (i >= 0) { const timber = !canAfford(town, COST[T.WELL]); pay(town, timber ? COST.timberWell : COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well${timber ? ', lined with timber for want of stone' : ''}` : `${town.name} digs a well${timber ? ', lined with timber for want of stone' : ''}`, 'build'); return; }
   }
   if (town.civ >= 1 && !hasPlanned(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
     const i = placeSite(town, T.WHEEL, town.R + 6, t => t === T.WATER);
@@ -4814,7 +4828,7 @@ function holdMarket(tr, town) {
    Nothing appears out of nowhere. A placement pays its cost and leaves a timber frame; builders
    walk out and raise it over ticks, more of them when the town is big. Only the finished building
    counts, shelters anyone, or works. A frame that burns is lost. */
-const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45 };
+const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45, [T.GAOL]: 24 };
 // Turn a just-placed building into a site, taking back the counts the placement added.
 function toSite(town, i, finalType, counted) {
   const home = isHome(finalType);
@@ -4928,6 +4942,7 @@ function growTown(town) {
   agePeople(town);
   updateUnrest(town);
   leaderActs(town);
+  updateLaw(town);
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   if (town.popLeft < 0) { world.popLeft -= town.popLeft; town.popLeft = 0; }
   for (const k of RES_KINDS) if (k !== 'coin' && town.res[k] > resCap(town, k)) town.res[k] = resCap(town, k); // nowhere to keep it
@@ -5160,6 +5175,7 @@ function buildCivic(town) {
   if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
   if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
   if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.wantGaol && town.align.order > 0 && !hasPlanned(town, T.GAOL) && town.popLeft >= 30) want.push([T.GAOL, true, 'builds a gaol']);
   if (town.mil >= 5 && !hasPlanned(town, T.AIRBASE) && town.popLeft >= 120 && town.res.oil >= 4) want.push([T.AIRBASE, false, 'lays out a military air base']);
   if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
 
@@ -5390,7 +5406,7 @@ function maybeArson(town) {
   const weatherMul = wk === 'drought' ? 2.5 : (wk === 'clear' ? 1 : 0.15);
   const r = Math.random();
   let cause = null;
-  if (r < 0.00012 * (town.align.moral < 0 ? 3 : town.align.moral > 0 ? 0.5 : 1)) cause = 'arson';
+  if (r < 0.00012 * (town.align.moral < 0 ? 3 : town.align.moral > 0 ? 0.5 : 1) * arsonMul(town)) cause = 'arson';
   else if (r < 0.00012 + 0.00018 * weatherMul) cause = 'accident';
   if (!cause) return;
   const n = world.n;
@@ -5404,14 +5420,12 @@ function maybeArson(town) {
     const [px, py] = cellCenter(i);
     if (cause === 'arson') {
       popups.push({ x: px, y: py, text: 'ARSON', color: '#ff6ad5', t0: performance.now(), dur: 2200 });
-      const bug = person(town, 'firebug');
-      if (!bug) log(`Someone from ${town.name} set a fire on the edge of town`, 'arson');
-      else {
-        bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
-        if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
-        else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
-        else { bug.revealed = true; log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson'); if (Math.random() < 0.5) { bug.alive = false; bug.died = world.tick; bug.cause = 'run out of town'; log(`${town.name} runs ${bug.name} out of town for good`, 'win'); elect(town, 'firebug', true); } }
-      }
+      const bug = person(town, 'firebug') || elect(town, 'firebug', true);
+      bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
+      if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
+      else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
+      else log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson');
+      if (!town.case) openCase(town, 'arson', bug, i);
     } else {
       popups.push({ x: px, y: py, text: 'OOPS', color: '#ffb627', t0: performance.now(), dur: 1800 });
       log(ACCIDENTS[Math.floor(Math.random() * ACCIDENTS.length)].replace('%s', town.name), 'alarm');
@@ -5706,6 +5720,239 @@ function spray(i) {
   for (let k = 0; k < 3; k++) particles.push({ x, y, vx: (Math.random() - 0.5) * 40, vy: -20 - Math.random() * 20, life: 0, max: 350, color: '#8fd3ff', size: Math.max(1.5, cellPx * 0.22), grav: 120 });
 }
 
+/* ───────────────────────── Law and order ─────────────────────────
+   Crimes breed from hunger, unrest, fat treasuries and bad elders. Each one gets a named culprit, a
+   constable who takes a while to find them, and a sentence set by the town's law and whoever is in
+   charge, right or wrong. All of it shows: the constable walks, the fugitive runs, the log keeps the
+   record, and the town card says what the law is here. */
+
+const SENTENCE_LABEL = { gaol: 'trial and the gaol', labour: 'hard labour at the quarry', execution: 'the rope', banish: 'banishment', fine: 'a fine', mob: 'whatever the mob decides', pressed: 'the militia', pardon: 'mercy', warden: 'a strange reward' };
+const CRIME_LABEL = { arson: 'arson', theft: 'theft from the stores', embezzle: 'robbing the coin room' };
+// What the law says before the elder has a word. Order sets the method, morals the severity.
+function lawOf(town) {
+  const o = town.align.order, m = town.align.moral;
+  if (o > 0) return m > 0 ? 'gaol' : m < 0 ? 'execution' : 'labour';
+  if (o < 0) return m > 0 ? 'banish' : m < 0 ? 'pressed' : 'mob';
+  return m < 0 ? 'execution' : 'fine';
+}
+const LEADER_BEND = { tyrant: ['execution', 1, 'hangs them all'], peacemaker: ['pardon', 0.7, 'would rather forgive'], merchant: ['fine', 0.7, 'prefers a fine'], warmonger: ['pressed', 0.7, 'wants them in the ranks'], builder: ['labour', 0.6, 'puts them to work'], prophet: ['banish', 0.6, 'casts them out'], madman: ['warden', 0.5, 'does something strange'] };
+function lawLabel(town) {
+  const bend = LEADER_BEND[trait(town)];
+  return SENTENCE_LABEL[lawOf(town)] + (bend ? `, though the elder ${bend[2]}` : '');
+}
+function decideSentence(town, c, who) {
+  const r = Math.random();
+  if (c.kind === 'theft' && c.hungry && town.align.moral > 0 && r < 0.8) return 'pardon';
+  const bend = LEADER_BEND[trait(town)];
+  if (bend && r < bend[1]) return bend[0];
+  return lawOf(town);
+}
+// How likely a fire-setter is here: the gallows and the gaol discourage it, unrest and a soft elder invite it.
+function arsonMul(town) {
+  let m = 1;
+  if (hasType(town, T.GAOL)) m *= 0.7;
+  if (town.fear > world.tick) m *= 0.5;
+  if (has(town, 'peacemaker')) m *= 1.3;
+  if ((town.unrest || 0) >= 60) m *= 1.8;
+  return m;
+}
+function findPerson(town, name) { return (town.people || []).find(p => p.name === name) || null; }
+function constableOf(town) {
+  let c = person(town, 'constable');
+  if (!c && (hasType(town, T.TOWNHALL) || hasType(town, T.BARRACKS) || town.militia >= 4)) c = elect(town, 'constable', true);
+  return c;
+}
+// A crime has happened: name the culprit and start the case.
+function openCase(town, kind, who, cell, extra) {
+  const c = Object.assign({ kind, who: who.name, started: world.tick, cell, witnessed: false, hunt: false, loot: 0, hungry: false }, extra || {});
+  if (kind === 'arson') c.witnessed = (who.arsons || 0) >= 2 || Math.random() < 0.15;
+  else if (kind === 'theft') c.witnessed = Math.random() < 0.3;
+  town.case = c;
+  town.crimes = (town.crimes || 0) + 1; stat('ev', 'crimes'); stat('crime', CRIME_LABEL[kind]);
+  const con = constableOf(town);
+  if (con) { c.hunt = true; log(`Constable ${con.name} of ${town.name} ${c.witnessed ? `goes looking for ${who.name}; people saw them` : 'starts asking questions'}`, 'arson'); }
+  else log(`Nobody in ${town.name} is going after whoever did it`, 'arson');
+}
+// Crimes that breed from the town's condition. Called every sixteen ticks a town.
+function updateLaw(town) {
+  if (town.popLeft <= 0) return;
+  if (town.case) { updateCase(town); return; }
+  releaseConvicts(town);
+  if ((town.lawCooldown || 0) > world.tick) return;
+  const hungry = town.famine || town.fed === false, food = (town.res.grain || 0) + (town.res.fish || 0) + (town.res.game || 0);
+  const r = Math.random();
+  if (hungry && food >= 3 && r < 0.05) {
+    const take = Math.min(food, 2 + Math.floor(Math.random() * 5)); let left = take;
+    for (const k of ['grain', 'fish', 'game']) { const a = Math.min(town.res[k] || 0, left); town.res[k] -= a; left -= a; if (!left) break; }
+    const who = thiefOf(town, 'took to the granary at night when the children were hungry');
+    log(`Someone has been at the granary in ${town.name}: ${take} food gone in the night`, 'arson');
+    openCase(town, 'theft', who, town.cy * world.n + town.cx, { loot: take, hungry: true });
+  } else if (!hungry && (town.unrest || 0) >= 60 && food >= 20 && r < 0.012) {
+    const take = 3 + Math.floor(Math.random() * 6); town.res.grain = Math.max(0, (town.res.grain || 0) - take);
+    const who = thiefOf(town, 'thinks the stores belong to whoever can carry them');
+    log(`${take} grain missing from the granary in ${town.name}`, 'arson');
+    openCase(town, 'theft', who, town.cy * world.n + town.cx, { loot: take });
+  } else if (town.res.coin >= 120 && ((town.unrest || 0) >= 45 || has(town, 'miser') || has(town, 'tyrant')) && r < 0.012) {
+    const take = Math.floor(town.res.coin * (0.1 + Math.random() * 0.2)); town.res.coin -= take;
+    const who = thiefOf(town, 'kept the ledgers at the hall and kept a little of what they counted');
+    log(`The chest at ${town.name} is light: ${take} coin missing from the coin room`, 'arson');
+    openCase(town, 'embezzle', who, town.cy * world.n + town.cx, { loot: take });
+  }
+}
+function thiefOf(town, story) {
+  const known = (town.people || []).find(p => p.alive && p.role === 'thief');
+  if (known && Math.random() < 0.6) return known;
+  const p = makePerson(Math.random, 'thief', 16 + Math.random() * 40); p.story = story; p.revealed = false;
+  town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
+  return p;
+}
+// The hunt: a constable on the streets, the culprit keeping to the edges, and a roll every sixteen
+// ticks that favours militia, towers, a fire warden and a lawful town, and goes against a town so
+// restless that people hide them. Most cases close inside a few hundred ticks; some go cold.
+function updateCase(town) {
+  const c = town.case, who = findPerson(town, c.who);
+  if (!who || !who.alive) { town.case = null; return; }
+  const age = world.tick - c.started;
+  if (!c.hunt) {
+    const con = constableOf(town);
+    if (con) { c.hunt = true; log(`Constable ${con.name} takes up the case of ${CRIME_LABEL[c.kind]} in ${town.name}`, 'arson'); }
+    else if (age > 300) { town.case = null; town.lawCooldown = world.tick + 400; return; }
+    else return;
+  }
+  if (!town.mobilized) {
+    if (!town.workers.some(w => w.job === 'constable')) { const h = campPoint(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'constable', law: true }); }
+    if (!town.workers.some(w => w.job === 'fugitive')) { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'fugitive', law: true }); }
+  }
+  let p = 0.015 * Math.min(2.5, 1 + town.militia / 40);
+  if (hasType(town, T.TOWER)) p *= 1.5;
+  if (has(town, 'firewatch')) p *= 1.5;
+  if (hasType(town, T.GAOL)) p *= 1.2;
+  p *= town.align.order > 0 ? 1.3 : town.align.order < 0 ? 0.7 : 1;
+  const u = town.unrest || 0; if (u >= 60) p *= 0.4; else if (u >= 40) p *= 0.7;
+  if (c.witnessed) p *= 2.5;
+  const con = town.workers.find(w => w.job === 'constable'), fug = town.workers.find(w => w.job === 'fugitive');
+  if (con && fug && Math.hypot(con.x - fug.x, con.y - fug.y) <= 2) p *= 4; // a chase in the open
+  if (Math.random() < p) { capture(town, c, who); return; }
+  if (age > 2000) {
+    town.case = null; town.lawCooldown = world.tick + 300; who.revealed = c.witnessed; who.escaped = (who.escaped || 0) + 1;
+    town.workers = town.workers.filter(w => !w.law);
+    log(`The trail goes cold in ${town.name}. ${c.witnessed ? `${who.name} is still about, and everyone knows it` : 'Whoever it was is still about'}.`, 'arson');
+  }
+}
+function hideout(town) {
+  const n = world.n;
+  for (let tries = 0; tries < 30; tries++) {
+    const a = Math.random() * Math.PI * 2, d = town.R + 1 + Math.random() * 4;
+    const x = Math.round(town.cx + Math.cos(a) * d), y = Math.round(town.cy + Math.sin(a) * d);
+    if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
+    const i = y * n + x; if (passable(world.type[i]) && !isBuilding(world.type[i]) && world.burnLeft[i] <= 0) return i;
+  }
+  return -1;
+}
+// The constable walks the streets and gives chase; the fugitive keeps to the edge of town and runs when the law comes near.
+function updateLawWorker(town, w) {
+  if (!town.case) return false;
+  const n = world.n, type = world.type;
+  const other = town.workers.find(o => o.law && o !== w);
+  const near = other ? Math.hypot(other.x - w.x, other.y - w.y) : 99;
+  if (w.job === 'constable') {
+    if (near <= 8 && other) { w.target = other.y * n + other.x; w.linger = 0; }
+    else if (w.target < 0 || (w.x === w.target % n && w.y === Math.floor(w.target / n) && ++w.linger > 2 + Math.floor(Math.random() * 4))) {
+      const roads = roadCells(town); const edge = Math.random() < 0.5 ? hideout(town) : -1;
+      w.target = edge >= 0 ? edge : roads.length ? roads[Math.floor(Math.random() * roads.length)] : -1; w.linger = 0;
+    }
+  } else {
+    if (near <= 4 && other) {
+      const dx = w.x - other.x, dy = w.y - other.y, len = Math.hypot(dx, dy) || 1;
+      const tx = Math.max(1, Math.min(n - 2, Math.round(w.x + dx / len * 5))), ty = Math.max(1, Math.min(n - 2, Math.round(w.y + dy / len * 5)));
+      if (passable(type[ty * n + tx])) { w.target = ty * n + tx; w.linger = 0; }
+    } else if (w.target < 0 || (w.x === w.target % n && w.y === Math.floor(w.target / n) && ++w.linger > 4 + Math.floor(Math.random() * 10))) { w.target = hideout(town); w.linger = 0; }
+  }
+  if (w.target >= 0 && !(w.x === w.target % n && w.y === Math.floor(w.target / n))) { stepToward(w, w.target % n, Math.floor(w.target / n), w.job === 'fugitive' && near <= 4 ? 2 : 1, false); if (w.stall > 3) { w.stall = 0; w.target = -1; w.lastCell = -1; } }
+  return true;
+}
+function capture(town, c, who) {
+  const con = person(town, 'constable');
+  town.workers = town.workers.filter(w => !w.law);
+  town.caught = (town.caught || 0) + 1; stat('ev', 'caught');
+  who.revealed = true;
+  if (con) deed(con, `caught ${who.name} for ${CRIME_LABEL[c.kind]}`);
+  deed(who, `was caught for ${CRIME_LABEL[c.kind]}`);
+  if (c.loot && c.kind === 'embezzle') { const back = Math.floor(c.loot * 0.8); town.res.coin += back; log(`${back} of the ${c.loot} coin is found under ${who.name}'s floor`, 'win'); }
+  const s = decideSentence(town, c, who);
+  const [px, py] = cellCenter(town.cy * world.n + town.cx);
+  popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'CAUGHT', color: '#a7e36f', t0: performance.now(), dur: 2200 });
+  const where = c.kind === 'arson' ? 'in the woods above the town' : 'at the edge of town';
+  log(`${con ? `Constable ${con.name}` : `${town.name}'s militia`} takes ${who.name} ${where} for ${CRIME_LABEL[c.kind]}`, 'win');
+  applySentence(town, c, who, s);
+  town.case = null; town.lawCooldown = world.tick + 200;
+}
+function applySentence(town, c, who, s) {
+  const l = leader(town), ln = l ? l.name : 'the elder', kind = CRIME_LABEL[c.kind];
+  stat('sentence', SENTENCE_LABEL[s]);
+  const wasFirebug = who.role === 'firebug';
+  const term = 600 + Math.floor(Math.random() * 900);
+  switch (s) {
+    case 'gaol':
+      who.role = 'convict'; who.until = world.tick + term; who.wasRole = wasFirebug ? 'firebug' : 'thief';
+      if (!hasType(town, T.GAOL)) { town.wantGaol = true; log(`${who.name} is tried for ${kind} and locked in the cellar of the hall for ${Math.round(term / YEAR * 12)} months; ${town.name} needs a gaol`, 'arson'); }
+      else log(`${who.name} is tried for ${kind} and sent to the gaol for ${Math.round(term / YEAR * 12)} months`, 'arson');
+      break;
+    case 'labour':
+      who.role = 'convict'; who.until = world.tick + term; who.labour = true; who.wasRole = wasFirebug ? 'firebug' : 'thief';
+      log(`${who.name} gets ${Math.round(term / YEAR * 12)} months of hard labour at the quarry for ${kind}`, 'arson');
+      break;
+    case 'execution': {
+      const feared = c.kind === 'arson' && (who.arsons || 0) >= 2;
+      who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged');
+      town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + (feared ? -4 : 6))); town.fear = world.tick + 2000;
+      log(`${ln} of ${town.name} has ${who.name} hanged in the square for ${kind}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      break;
+    }
+    case 'banish':
+      who.alive = false; who.died = world.tick; who.cause = 'banished'; stat('ev', 'banished');
+      log(`${who.name} is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`, 'arson');
+      break;
+    case 'fine': {
+      const fine = 10 + Math.floor(Math.random() * 20); town.res.coin += fine; who.role = 'townsfolk';
+      log(`${who.name} pays ${town.name} ${fine} coin for ${kind} and goes home`, 'arson');
+      break;
+    }
+    case 'mob':
+      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); }
+      else { who.role = 'townsfolk'; log(`A mob in ${town.name} beats ${who.name} for ${kind} and lets them go, and some of them are laughing`, 'arson'); }
+      break;
+    case 'pressed': {
+      const add = world.towns.some(o => o !== town && atWar(town, o)) ? 2 : 1; town.militia += add; who.role = 'soldier';
+      log(`${who.name} is given a spear and a place in ${town.name}'s militia for ${kind}. ${add > 1 ? 'There is a war on; nobody asks questions.' : 'It is cheaper than a gaol.'}`, 'arson');
+      break;
+    }
+    case 'pardon':
+      town.unrest = Math.max(0, (town.unrest || 0) - 3); who.role = 'townsfolk';
+      log(c.hungry ? `${ln} of ${town.name} says a hungry parent is no thief and sends ${who.name} home with a loaf` : `${ln} of ${town.name} pardons ${who.name} for ${kind}`, 'good');
+      break;
+    case 'warden': {
+      const chief = person(town, 'chief'); if (chief) chief.role = 'townsfolk';
+      who.role = 'chief'; who.fires = who.fires || 0;
+      log(`${ln} of ${town.name} says it takes one to know one and makes ${who.name} the fire chief. The town is not sure what to think.`, 'arson');
+      break;
+    }
+  }
+  deed(who, `${s === 'execution' ? 'was hanged' : s === 'banish' ? 'was banished' : s === 'gaol' ? 'was gaoled' : s === 'labour' ? 'was sent to the quarry' : s === 'pressed' ? 'was pressed into the militia' : s === 'pardon' ? 'was pardoned' : s === 'warden' ? 'was made fire chief' : 'was punished'} for ${kind}`);
+  if (wasFirebug && who.role !== 'firebug' && Math.random() < 0.6) elect(town, 'firebug', true); // someone else picks up the matches, sooner or later
+}
+// Convicts serve their time. Hard labour means stone, as long as the town has a quarry to work.
+function releaseConvicts(town) {
+  for (const p of town.people || []) {
+    if (!p.alive || p.role !== 'convict') continue;
+    if (p.labour && hasType(town, T.QUARRY) && Math.random() < 0.5) addRes(town, 'stone', 1);
+    if (world.tick >= p.until) {
+      const reformed = Math.random() < 0.7, from = p.labour ? 'the quarry' : 'the gaol';
+      p.role = reformed ? 'townsfolk' : p.wasRole || 'townsfolk'; p.revealed = !reformed; p.labour = false;
+      log(reformed ? `${p.name} comes out of ${from} at ${town.name} a changed person` : `${p.name} is let out of ${from} at ${town.name} and has learned nothing`, 'build');
+    }
+  }
+}
 /* ───────────────────────── Air tanker ───────────────────────── */
 
 function updateAir() {
@@ -5827,6 +6074,8 @@ const ACHIEVEMENTS = [
   ['university', '🎓', 'Enlightenment', 'A university is founded', /founds a university/],
   ['factory', '🏭', 'Industry', 'A factory opens', /opens a factory/],
   ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague/],
+  ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
+  ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
   ['crown', '🌲', 'Crown Fire', 'Fire crowns in the timber', /crowning in the timber/],
   ['snow', '❄️', 'First Snow', 'Winter comes', /Snow falls on the valley/],
   ['fireboat', '🚤', 'Harbourmaster', 'A town launches a fireboat', /launches a fireboat/],
@@ -5937,6 +6186,7 @@ function spriteKey(i) {
     case T.PAD: return 'pad';
     case T.HANGAR: return 'hangar';
     case T.AIRBASE: return 'airbase';
+    case T.GAOL: return 'gaol';
   }
   return 'ash';
 }
@@ -6100,7 +6350,7 @@ function render(now, tickFrac) {
     if (t.workers && !tiny) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
       if (!vis(x, y)) continue;
-      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' ? SPR.fugitive : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
@@ -6822,7 +7072,7 @@ canvas.addEventListener('mousemove', ev => {
 const TYPE_NAMES = { [T.WATER]: 'Water', [T.ROCK]: 'Rock', [T.GRASS]: 'Grass', [T.PINE]: 'Pine', [T.OAK]: 'Oak', [T.ASH]: 'Ash',
   [T.STUMP]: 'Burnt tree', [T.HOUSE]: 'House', [T.STATION]: 'Fire station', [T.RUBBLE]: 'Rubble', [T.DIRT]: 'Bare dirt',
   [T.PAD]: 'Airstrip', [T.HANGAR]: 'Hangar', [T.BIGPINE]: 'Big pine', [T.WALL]: 'Stone wall', [T.BIRCH]: 'Birch', [T.SCRUB]: 'Dry scrub', [T.SNAG]: 'Dead snag', [T.FARM]: 'Farm', [T.BRIDGE]: 'Wooden bridge', [T.DAM]: 'Beaver dam', [T.MUD]: 'Mud flat', [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall' };
-Object.assign(TYPE_NAMES, { [T.AIRBASE]: 'Air base', [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
+Object.assign(TYPE_NAMES, { [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.REEDS]: 'Reeds', [T.SAND]: 'Sand', [T.JUNGLE]: 'Jungle tree', [T.CACTUS]: 'Cactus', [T.SITE]: 'Building site', [T.GRANARY]: 'Granary', [T.FELLED]: 'Fresh stump' });
 function updateTip() {
   const show = shiftDown && hover >= 0 && hover < world.n * world.n;
   tipEl.classList.toggle('show', show);
@@ -7016,6 +7266,10 @@ function cardHtml(t) {
     `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + `</div>` +
     `<h4>tech</h4><div class="grid">` + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + row('research', `${Math.round(t.research || 0)} <span class="dim">(${Math.round(100 * Math.min(0.85, militarism(t)))}% to arms)</span>`) +
     (hasType(t, T.AIRBASE) ? row('bombers', `${t.bombers || 0} / 3${world.bombers.some(b => b.from === t.id) ? ' <span class="dim">(one airborne)</span>' : ''}`) : '') + (hasType(t, T.AIRBASE) && t.civ >= 5 ? row('jets', `${t.fighters || 0} / 2${(world.fighters || []).some(f => f.from === t.id) ? ' <span class="dim">(scrambled)</span>' : ''}`) : '') + (t.nukes ? row('bombs', t.nukes, 'd') : '') + `</div>` +
+    `<h4>law</h4><div class="grid">` + row('the law here', lawLabel(t)) + row('record', `${t.crimes || 0} crimes <span class="dim">(${t.caught || 0} caught)</span>`) +
+    (t.case ? row('open case', `${CRIME_LABEL[t.case.kind]}${t.case.hunt ? `, hunting ${t.case.who}` : ', nobody on it'} <span class="dim">(${world.tick - t.case.started} ticks)</span>`, 'd') : '') +
+    ((t.people || []).some(p => p.alive && p.role === 'convict') ? row('serving time', (t.people || []).filter(p => p.alive && p.role === 'convict').map(p => `${p.name}${p.labour ? ' (quarry)' : ''}`).join(', ')) : '') +
+    (t.fear > world.tick ? row('mood', 'the gallows are fresh', 'd') : '') + `</div>` +
     `<h4>neighbours</h4>` + (wars.length ? `<div class="d">at war with ${wars.join(', ')}</div>` : '') + (allies.length ? `<div class="g">allies: ${allies.join(', ')}</div>` : '') + (foes.length ? `<div>feuding with ${foes.join(', ')}</div>` : '') + (!wars.length && !allies.length && !foes.length ? '<div class="dim">keeps to itself</div>' : '') + (t.master >= 0 && world.towns[t.master] ? `<div class="d">pays tribute to ${world.towns[t.master].name}</div>` : '') + (t.covets && world.towns[t.covets.town] ? `<div>covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</div>` : '') +
     `<h4>folk</h4><div class="folk">${folk || '<div class="dim">nobody of note</div>'}</div>` +
     `<h4>lately</h4><div class="chron">${chron || '<div class="dim">nothing yet</div>'}</div>` +
@@ -7153,7 +7407,7 @@ function renderHistFacts() {
     `<h4>the people</h4>` +
     row('dead', world.deaths) + (deadliest ? row('deadliest cause', `${deadliest[0]}, ${deadliest[1]}`) : '') + row('notable deaths', ev.notableDeaths || 0) + row('fire alarms', ev.alarms || 0) +
     row('wars / battles', `${ev.wars || 0} / ${ev.battles || 0}`) + row('sacks / annexations', `${ev.sacks || 0} / ${ev.annexes || 0}`) + row('nukes / meltdowns', `${ev.nukes || 0} / ${ev.meltdowns || 0}`) +
-    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
+    row('famines / plagues', `${ev.famines || 0} / ${ev.plagues || 0}`) + row('fields withered', ev.fieldsWithered || 0) + row('revolts', ev.overthrows || 0) + row('crimes', `${ev.crimes || 0} <span class="dim">(${ev.caught || 0} caught, ${ev.hanged || 0} hanged, ${ev.banished || 0} banished)</span>`) + row('work roads laid', ev.workRoads || 0) + row('wells run dry', ev.wellsDry || 0) + row('buildings raised', ev.built || 0) + row('harvests', ev.harvests || 0) + row('caravans / markets', `${ev.caravans || 0} / ${ev.markets || 0}`) + row('caravans robbed', ev.caravansRobbed || 0) + row('coin minted from gold', ev.minted || 0) + row('coin paid between towns', ev.tradeCoin || 0);
 }
 function renderHistControls() {
   renderHistFacts();

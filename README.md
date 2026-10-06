@@ -413,6 +413,29 @@ twenty, and a town that outgrows its stores raises another before it builds more
 Anything above what a town can store rots. There is no artificial cap on how big a town
 grows; timber, food, water, plague and sprawl fires are the limits.
 
+## Law and order
+
+Crimes breed from the town's condition and each one gets a face. A hungry town has someone at
+the granary in the night; a restless one loses grain from a full store; a fat treasury under a
+resented or grasping elder gets its coin room robbed; and the hidden fire-setter every town has
+sets a blaze on the edge of town more often when unrest is high. A constable, named like the
+rest of the notables, takes up the case and walks the streets while the culprit keeps to the
+edges and runs when the law comes near. The roll to catch them favours militia, a watchtower,
+a fire warden and a lawful town, and goes against a town so restless that people hide them;
+most cases close inside a few hundred ticks, and some go cold.
+
+The sentence is the town's law bent by whoever is in charge. Lawful good means a trial and the
+gaol (built once a town has a convict to put in it); lawful neutral means hard labour at the
+quarry, which is free stone; lawful evil means the rope. Chaotic good banishes, chaotic neutral
+leaves it to the mob, chaotic evil hands them a spear. Neutral towns fine. A tyrant hangs
+everyone, a peacemaker pardons, a merchant fines, a warmonger presses them into the ranks, a
+builder puts them to work, a prophet casts them out, and a madman has been known to make the
+arsonist fire chief. Good towns usually forgive a hungry thief. A hanging frightens off
+arsonists for a while and sours the mood unless the victim was feared; a gaol discourages them
+for good. Convicts come out changed, or not. The card shows the law, the open case, who is
+serving time, and the town's record; the ledger counts crimes, captures, hangings and
+banishments.
+
 ## The town card
 
 Click a town on the map (or its row in the Towns tab) for the whole picture: who runs it and

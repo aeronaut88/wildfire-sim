@@ -13,6 +13,7 @@ function growTown(town) {
   agePeople(town);
   updateUnrest(town);
   leaderActs(town);
+  updateLaw(town);
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   if (town.popLeft < 0) { world.popLeft -= town.popLeft; town.popLeft = 0; }
   for (const k of RES_KINDS) if (k !== 'coin' && town.res[k] > resCap(town, k)) town.res[k] = resCap(town, k); // nowhere to keep it
@@ -245,6 +246,7 @@ function buildCivic(town) {
   if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
   if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
   if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.wantGaol && town.align.order > 0 && !hasPlanned(town, T.GAOL) && town.popLeft >= 30) want.push([T.GAOL, true, 'builds a gaol']);
   if (town.mil >= 5 && !hasPlanned(town, T.AIRBASE) && town.popLeft >= 120 && town.res.oil >= 4) want.push([T.AIRBASE, false, 'lays out a military air base']);
   if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
 

@@ -37,6 +37,8 @@ const ACHIEVEMENTS = [
   ['university', '🎓', 'Enlightenment', 'A university is founded', /founds a university/],
   ['factory', '🏭', 'Industry', 'A factory opens', /opens a factory/],
   ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague/],
+  ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
+  ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
   ['crown', '🌲', 'Crown Fire', 'Fire crowns in the timber', /crowning in the timber/],
   ['snow', '❄️', 'First Snow', 'Winter comes', /Snow falls on the valley/],
   ['fireboat', '🚤', 'Harbourmaster', 'A town launches a fireboat', /launches a fireboat/],

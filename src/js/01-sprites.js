@@ -495,6 +495,8 @@ SPRITES.chicken = [
 SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
+SPRITES.constable = SPRITES.soldier.map(r => r.replace(/d/g, '0').replace(/l/g, '7')); // blue coat, dark helmet
+SPRITES.fugitive = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'K')); // dark coat, hood up
 SPRITES.carrier = SPRITES.worker.map(r => r.replace(/u/g, 'W'));
 SPRITES.jungle = [
   'ggg}}}}}}}}ggggg','gg}}}}{{}}}}}ggg','g}}}{{{{{{{}}}}g','g}}{{{{|{{{{}}}g',
@@ -507,6 +509,12 @@ SPRITES.airbase = [
   'glRrrddrrRllxllg','glRrrddrrRllxllg','glRrrrrrrRllxllg','glRRRRRRRRllxllg',
   'glllllllllllxllg','gllllllllllllllg','glllllKKKlllxllg','gllllKKKKKllxllg',
   'glllllKKKlllxllg','gllllllKllllxllg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+SPRITES.gaol = [
+  'gggggggggggggggg','gggggggggggggggg','gg444444444444gg','gg455555555554gg',
+  'gg45K5K5K5K554gg','gg45K5K5K5K554gg','gg45K5K5K5K554gg','gg455555555554gg',
+  'gg455555555554gg','gg455557775554gg','gg455557775554gg','gg455557775554gg',
+  'gg444444444444gg','gg444444444444gg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
 SPRITES.felled = [
   'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
@@ -560,4 +568,4 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive']) SPR16[k] = buildSprite16(SPRITES[k]);

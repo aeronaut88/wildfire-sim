@@ -22,7 +22,7 @@ function maybeArson(town) {
   const weatherMul = wk === 'drought' ? 2.5 : (wk === 'clear' ? 1 : 0.15);
   const r = Math.random();
   let cause = null;
-  if (r < 0.00012 * (town.align.moral < 0 ? 3 : town.align.moral > 0 ? 0.5 : 1)) cause = 'arson';
+  if (r < 0.00012 * (town.align.moral < 0 ? 3 : town.align.moral > 0 ? 0.5 : 1) * arsonMul(town)) cause = 'arson';
   else if (r < 0.00012 + 0.00018 * weatherMul) cause = 'accident';
   if (!cause) return;
   const n = world.n;
@@ -36,14 +36,12 @@ function maybeArson(town) {
     const [px, py] = cellCenter(i);
     if (cause === 'arson') {
       popups.push({ x: px, y: py, text: 'ARSON', color: '#ff6ad5', t0: performance.now(), dur: 2200 });
-      const bug = person(town, 'firebug');
-      if (!bug) log(`Someone from ${town.name} set a fire on the edge of town`, 'arson');
-      else {
-        bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
-        if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
-        else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
-        else { bug.revealed = true; log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson'); if (Math.random() < 0.5) { bug.alive = false; bug.died = world.tick; bug.cause = 'run out of town'; log(`${town.name} runs ${bug.name} out of town for good`, 'win'); elect(town, 'firebug', true); } }
-      }
+      const bug = person(town, 'firebug') || elect(town, 'firebug', true);
+      bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
+      if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
+      else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
+      else log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson');
+      if (!town.case) openCase(town, 'arson', bug, i);
     } else {
       popups.push({ x: px, y: py, text: 'OOPS', color: '#ffb627', t0: performance.now(), dur: 1800 });
       log(ACCIDENTS[Math.floor(Math.random() * ACCIDENTS.length)].replace('%s', town.name), 'alarm');
