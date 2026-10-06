@@ -58,6 +58,7 @@ function elect(town, role, quiet, avoidTrait) {
   if (role === 'elder') p.trait = rollTrait(town, avoidTrait);
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   if (!quiet) log(role === 'elder' ? `${town.name} chooses ${p.name} as elder, ${/^[aeiou]/.test(TRAITS[p.trait].label) ? 'an' : 'a'} ${TRAITS[p.trait].label} who ${TRAITS[p.trait].blurb}` : role === 'chief' ? `${p.name} takes over as ${town.name}'s fire chief` : `${p.name} becomes ${town.name}'s ${ROLE_LABEL[role]}`, 'build');
+  if (role === 'elder' && !quiet && town.align.moral > 0 && (p.trait === 'peacemaker' || Math.random() < 0.5)) amnesty(town, `${p.name}'s first act as elder`);
   return p;
 }
 // Unrest: hunger, thirst, war and tyranny push it up; peace, bread and a loved elder bring it down.

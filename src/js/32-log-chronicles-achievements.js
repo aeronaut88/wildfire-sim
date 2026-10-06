@@ -16,7 +16,8 @@ function whereOf(text, at) {
   else if (/firebug driven out|slips away into the hills|walks into the hills/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
   else if (/settlers|refugees/.test(text) && world.settlers) f('settlers', 0);
   else if (/envoy sets out|wedding party sets out/.test(text) && (world.travellers || []).length) f('traveller', world.travellers[world.travellers.length - 1].id);
-  else if (/cast out of/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
+  else if (/cast out of|takes to the woods|'s gang/.test(text) && (world.firebugs || []).length) { const g = /'s gang/.test(text) ? (world.firebugs || []).find(q => q.kind === 'gang' && text.startsWith(q.name)) : null; f('firebug', g ? g.name : world.firebugs[world.firebugs.length - 1].name); }
+  else if (/posse/.test(text) && world.warbands.some(b => b.posse)) { const b = world.warbands.filter(q => q.posse).slice(-1)[0]; f('warband', b.from + ':' + b.to); }
   else if (/^Constable|slips out of|walks out of|goes looking for|starts asking/.test(text) && town) f('law', town.id);
   else if (/fireboat|fishing boat/.test(text) && world.boats.length) f('boat', world.boats[world.boats.length - 1].town);
   else if (/wagons|Wagons/.test(text) && (world.wagons || []).length) f('wagon', 0);
@@ -131,7 +132,9 @@ const ACHIEVEMENTS = [
   ['factory', '🏭', 'Industry', 'A factory opens', /opens a factory/],
   ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague|Sickness runs|of plague/],
   ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
-  ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
+  ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|hanged on the gallows|drags .* to the old oak/],
+  ['wrong', '😶', 'Miscarriage', 'A town punishes the wrong person', /the wrong person/],
+  ['posse', '🐎', 'Posse', 'A posse rides out after a gang', /^A posse of/],
   ['healer', '🌿', 'Physician', 'A healer hangs out a sign', /hangs out a healer's sign/],
   ['hospital', '🏥', 'Ward', 'A town opens a hospital', /opens a hospital/],
   ['spy', '🕵️', 'Counter-Intelligence', 'A spy is unmasked', /was unmasked|for spying for the enemy/],

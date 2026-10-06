@@ -441,6 +441,19 @@ for good. Convicts come out changed, or not. The card shows the law, the open ca
 serving time, and the town's record; the ledger counts crimes, captures, hangings and
 banishments.
 
+Justice goes wrong the way it does. When nobody saw who did it, the constable takes whoever
+looks right, and about a quarter of the time that is the wrong person, more under a tyrant or in
+a chaotic town, less with a watchtower. The fires go on, and when the real culprit strikes again
+the town realises what it hanged or cast out: unrest jumps, the constable's record carries it,
+and in a good town the constable hands in the badge. A merchant's elder can be bought: a purse
+changes hands and the thief is home by supper. A tyrant has people seized for a word said at the
+well, and a grudge is reason enough. Petty thieves and smugglers in a mild town stand a day in the
+pillory. Kin break a gaoled convict out at night; the town posts a bounty, and a neighbour that
+hands the fugitive back claims it. A thief the law could not hold twice takes to the woods with a
+few hard cases: the gang camps above the town, stops caravans and wagons on the road, raids the
+town's edge, and in time a posse rides out from the town to a fight in the trees. A new elder in
+a good town often opens the gaol as a first act, and a festival brings mercy too.
+
 War brings its own crimes. A losing or restless militia loses a captain and a few soldiers who go
 over to the enemy in the night; caught before they are past the town's reach, it is treason, and
 only a peacemaker or a chaotic good town lets them live. An enemy at war sends a spy to live

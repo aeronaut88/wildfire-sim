@@ -155,6 +155,14 @@ function updateWarbands() {
   for (const b of world.warbands) {
     const from = world.towns[b.from], to = world.towns[b.to];
     b.px = b.x; b.py = b.y;
+    if (b.posse) {
+      const gang = (world.firebugs || []).find(g => g.kind === 'gang' && g.name === b.posse);
+      if (!gang) { from.militia += b.size; continue; }
+      if (Math.hypot(b.x - gang.x, b.y - gang.y) <= 2) { posseArrives(b, gang); continue; }
+      if (b.pi >= b.path.length || Math.hypot(b.path[b.path.length - 1] % n - gang.x, Math.floor(b.path[b.path.length - 1] / n) - gang.y) > 4) { const alt = findPath(b.x, b.y, gang.x, gang.y); if (alt) { b.path = alt; b.pi = 0; } else { from.militia += b.size; log(`${from.name}'s posse loses the trail and rides home`, 'war'); continue; } }
+      const next = b.path[b.pi]; if (next !== undefined && passable(world.type[next]) && world.burnLeft[next] <= 0) { const nx = next % n, ny = (next - nx) / n; if (nx !== b.x) b.face = Math.sign(nx - b.x); b.x = nx; b.y = ny; b.pi++; }
+      keep.push(b); continue;
+    }
     if (!isAlive(to)) { from.militia += b.size; continue; } // nothing left to raid, go home
     if (world.burnLeft[b.y * n + b.x] > 0) {
       const dead = Math.max(1, Math.ceil(b.size * 0.25));

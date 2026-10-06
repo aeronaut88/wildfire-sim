@@ -234,6 +234,7 @@ function render(now, tickFrac) {
     const x = (b.px + (b.x - b.px) * tickFrac) * cellPx, y = (b.py + (b.y - b.py) * tickFrac) * cellPx;
     if (!vis(x, y)) continue;
     ctx.drawImage(SPR.fugitive, x, y);
+    if (b.kind === 'gang') for (let k = 1; k < Math.min(3, b.size || 3); k++) ctx.drawImage(SPR.fugitive, x + k * cellPx * 0.7, y + (k % 2) * cellPx * 0.4);
   }
 
   for (const p of world.bombers) {
