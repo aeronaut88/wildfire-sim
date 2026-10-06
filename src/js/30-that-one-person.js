@@ -77,14 +77,69 @@ function terrainSpeed(i) {
   if (world.snowLv && world.snowLv[i] >= 3) v *= 0.6; // wading through snow
   return v;
 }
+// A least-cost route for a walker: roads are cheap, forest and marsh are dear, so the planner takes
+// the road when the road is faster and cuts across when it is not. Bounded to a box around the trip.
+function walkPath(sx, sy, tx, ty, allowBurning) {
+  const n = world.n, type = world.type, burnLeft = world.burnLeft;
+  const x0 = Math.max(0, Math.min(sx, tx) - 12), y0 = Math.max(0, Math.min(sy, ty) - 12), x1 = Math.min(n - 1, Math.max(sx, tx) + 12), y1 = Math.min(n - 1, Math.max(sy, ty) + 12);
+  const W = x1 - x0 + 1, H = y1 - y0 + 1, M = W * H;
+  const g = new Float32Array(M).fill(Infinity), prev = new Int32Array(M).fill(-1), closed = new Uint8Array(M);
+  const heap = []; const hk = [];
+  const push = (f, i) => { heap.push(i); hk.push(f); let k = heap.length - 1; while (k > 0) { const q = (k - 1) >> 1; if (hk[q] <= hk[k]) break; [hk[q], hk[k]] = [hk[k], hk[q]]; [heap[q], heap[k]] = [heap[k], heap[q]]; k = q; } };
+  const pop = () => { const top = heap[0]; const li = heap.pop(), lf = hk.pop(); if (heap.length) { heap[0] = li; hk[0] = lf; let k = 0; for (;;) { const l = 2 * k + 1, r = l + 1; let m = k; if (l < heap.length && hk[l] < hk[m]) m = l; if (r < heap.length && hk[r] < hk[m]) m = r; if (m === k) break; [hk[m], hk[k]] = [hk[k], hk[m]]; [heap[m], heap[k]] = [heap[k], heap[m]]; k = m; } } return top; };
+  const start = (sy - y0) * W + (sx - x0), goal = (ty - y0) * W + (tx - x0);
+  const hcost = i => { const x = i % W, y = (i - x) / W; return Math.max(Math.abs(x - (tx - x0)), Math.abs(y - (ty - y0))) * 0.6; };
+  g[start] = 0; push(hcost(start), start);
+  let expanded = 0;
+  while (heap.length) {
+    const i = pop(); if (closed[i]) continue; closed[i] = 1;
+    if (i === goal) break;
+    if (++expanded > 6000) return null;
+    const x = i % W, y = (i - x) / W;
+    for (let d = 0; d < 8; d++) {
+      const nx = x + OFFS8[d][0], ny = y + OFFS8[d][1];
+      if (nx < 0 || ny < 0 || nx >= W || ny >= H) continue;
+      const j = ny * W + nx; if (closed[j]) continue;
+      const cell = (ny + y0) * n + nx + x0;
+      if (!passable(type[cell]) || (!allowBurning && burnLeft[cell] > 0)) continue;
+      const step = (d >= 4 ? 1.41 : 1) / terrainSpeed(cell);
+      const ng = g[i] + step;
+      if (ng < g[j]) { g[j] = ng; prev[j] = i; push(ng + hcost(j), j); }
+    }
+  }
+  if (prev[goal] < 0) return null;
+  const path = []; for (let k = goal; k !== start; k = prev[k]) { const x = k % W, y = (k - x) / W; path.push((y + y0) * n + x + x0); }
+  return path.reverse();
+}
 function stepToward(a, tx, ty, speed, allowBurning) {
   const n = world.n, type = world.type;
   // Movement is a budget: fast ground earns more than a step a tick, slow ground less.
   a.move = Math.min(3, (a.move || 0) + speed * terrainSpeed(a.y * n + a.x));
   if (a.move < 1) return a.x === tx && a.y === ty;
   speed = Math.floor(a.move); a.move -= speed;
+  const goal = ty * n + tx;
+  // Longer trips are planned: the plan is kept until the goal changes or the way is blocked.
+  if (Math.max(Math.abs(tx - a.x), Math.abs(ty - a.y)) > 4) {
+    // A goal that has only shifted a cell or two (a herd, a fugitive) keeps the old plan; the last stretch is felt out.
+    const near = a.pathTo >= 0 && Math.max(Math.abs(a.pathTo % n - tx), Math.abs(Math.floor(a.pathTo / n) - ty)) <= 2;
+    if (!near || a.pathTo !== goal && !a.path) { if (a.pathTo !== goal) { a.path = walkPath(a.x, a.y, tx, ty, allowBurning); a.pathTo = goal; a.pathAt = 0; } }
+  } else { a.path = null; }
   for (let s = 0; s < speed; s++) {
-    if (a.x === tx && a.y === ty) { a.stall = 0; return true; }
+    if (a.x === tx && a.y === ty) { a.stall = 0; a.path = null; return true; }
+    if (a.path) {
+      // Resync if the walker is not where the plan expects (pushed, respawned), else take the next planned cell.
+      let k = a.pathAt;
+      if (k < a.path.length) {
+        const j = a.path[k];
+        const jx = j % n, jy = (j - jx) / n;
+        if (Math.max(Math.abs(jx - a.x), Math.abs(jy - a.y)) <= 1 && passable(type[j]) && (allowBurning || world.burnLeft[j] <= 0)) {
+          if (jx !== a.x) a.face = Math.sign(jx - a.x);
+          a.lastCell = a.y * n + a.x; a.x = jx; a.y = jy; a.pathAt = k + 1; a.stall = 0; a.wasBack = false;
+          continue;
+        }
+      }
+      a.path = null; // off the plan or blocked: fall back to feeling the way
+    }
     const before = Math.max(Math.abs(tx - a.x), Math.abs(ty - a.y));
     const dx = Math.sign(tx - a.x), dy = Math.sign(ty - a.y);
     const cands = Math.abs(tx - a.x) >= Math.abs(ty - a.y)
