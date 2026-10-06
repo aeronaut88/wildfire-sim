@@ -89,6 +89,7 @@ function step() {
       const j = ny * n + nx;
       const tj = type[j];
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
+      if (offs[d][0] !== 0 && offs[d][1] !== 0 && type[y * n + nx] === T.WALL && type[ny * n + x] === T.WALL) continue; // wall corners touch: flame does not squeeze through the diagonal
       let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat * BIOME_FIRE[biome[j]];
       if (wet[j] > 0) p *= crown ? 0.3 : 0.1;
       if (snow[j] > 10) p *= crown ? 0.2 : 0.06; // fuel under snow barely takes

@@ -146,7 +146,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   |---|---|---|---|
   | Bows | 0 | | |
   | Steel | 300 | 10 iron | a barracks, a forge, a stronger militia |
-  | Siege engines | 900 | | engines lob fire over the wall, stone walls, a second barracks |
+  | Siege engines | 900 | | engines lob fire over the wall, stone walls (fire cannot slip through a wall's diagonal joints, though embers still fly over), a second barracks |
   | Gunpowder | 2000 | 8 coal | guns in the ranks, raids torch more |
   | Rifles | 4000 | 15 iron, and a powered factory | can bring a dragon down, a factory, uranium mines; nobody good goes further |
   | Artillery | 7000 | 20 iron | shells an enemy from home, tanks on the march, an air base with bombers |
