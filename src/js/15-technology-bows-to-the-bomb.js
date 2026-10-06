@@ -16,18 +16,39 @@ function militarism(t) {
 function milCap(t) { return t.align.moral > 0 ? 4 : (t.align.moral === 0 ? 5 : 6); } // good towns never build the bomb
 
 // Called from growTown (about every 16 ticks per town).
+// A track is "banked" when the points for its next step are in hand: either the resource gate is
+// holding it, or the track is topped out. Effort spent there would be wasted, so it goes to the other.
+function milBanked(t) { return t.mil >= milCap(t) || (t.milPts || 0) >= MIL_COST[t.mil + 1]; }
+function civBanked(t) { return t.civ >= 5 || (t.civPts || 0) >= CIV_COST[t.civ + 1]; }
+// What a town is short of for a step it already has the points for. These count as shortages the
+// town acts on: it digs for the ore, sends more people to the quarry, and buys it first at market.
+function techWants(t) {
+  const out = new Set();
+  if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1]) { const k = lacking(t, MIL_NEED[t.mil + 1]); if (k) out.add(k); }
+  if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1]) { const k = lacking(t, CIV_NEED[t.civ + 1]); if (k) out.add(k); }
+  return out;
+}
+// What the town is saving for: the resource needs of every step it has the points for.
+function techReserve(t) {
+  let out = null;
+  if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1] && MIL_NEED[t.mil + 1]) out = Object.assign({}, MIL_NEED[t.mil + 1]);
+  if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1] && CIV_NEED[t.civ + 1]) { out = out || {}; for (const k in CIV_NEED[t.civ + 1]) out[k] = (out[k] || 0) + CIV_NEED[t.civ + 1][k]; }
+  return out;
+}
 function updateTech(t) {
   if (!isAlive(t)) return;
-  let pts = 16 * (t.popLeft / 1000) * (t.align.order > 0 ? 1.25 : t.align.order < 0 ? (Math.random() < 0.3 ? 2.5 : 0.6) : 1);
+  // Even a hamlet has a tinkerer or two: research never trickles slower than a town of forty would manage.
+  let pts = 16 * (Math.max(t.popLeft, 40) / 1000) * (t.align.order > 0 ? 1.25 : t.align.order < 0 ? (Math.random() < 0.3 ? 2.5 : 0.6) : 1);
   pts *= 1 + 0.5 * countType(t, T.UNIVERSITY) + 0.3 * countType(t, T.FORGE) + 0.4 * countType(t, T.FACTORY);
-  const m = militarism(t);
-  t.research += pts;
-  // Split research between tracks by temperament.
-  const milShare = m, civShare = 1 - m;
-  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
   if (t.powerNeed > 0) pts *= 0.5 + 0.5 * (t.powerRatio === undefined ? 1 : t.powerRatio); // brownouts slow the labs
   if (t.power > t.powerNeed) pts *= 1.3; // lamps in the workshops: a powered town learns faster
   if (has(t, 'scholar')) pts *= 1.4; else if (has(t, 'prophet')) pts *= 0.6; else if (has(t, 'madman')) pts *= 0.8;
+  const m = militarism(t);
+  t.research += pts;
+  // Split research between tracks by temperament, unless one track is banked and waiting: then all of it goes where it can still be spent.
+  const mb = milBanked(t), cb = civBanked(t);
+  const milShare = mb && !cb ? 0 : cb && !mb ? 1 : Math.min(0.85, m), civShare = 1 - milShare; // even a warlord's town keeps a few scholars
+  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
   if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {
     const next = t.mil + 1, need = MIL_NEED[next];
     const why = lacking(t, need) || (next === 5 && !(hasType(t, T.FACTORY) && t.powerRatio >= 0.5) ? 'a powered factory' : next === 6 && !hasType(t, T.UNIVERSITY) ? 'a university' : null);

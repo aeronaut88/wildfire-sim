@@ -29,7 +29,15 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-function canAfford(t, cost) { if (!cost || !t.res) return true; for (const k in cost) if ((t.res[k] || 0) < cost[k]) return false; return true; }
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge]));
+// Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
+// the way a player saves for an upgrade, except for the works that bring resources in.
+function canAfford(t, cost) {
+  if (!cost || !t.res) return true;
+  const held = NEVER_RESERVED.has(cost) ? null : techReserve(t);
+  for (const k in cost) if ((t.res[k] || 0) - (held && held[k] || 0) < cost[k]) return false;
+  return true;
+}
 function lacking(t, cost) { if (!cost) return null; for (const k in cost) if ((t.res[k] || 0) < cost[k]) return k; return null; }
 function pay(t, cost) { if (!cost || !t.res) return; for (const k in cost) t.res[k] = Math.max(0, (t.res[k] || 0) - cost[k]); }
 function addRes(t, kind, amount) {
@@ -92,18 +100,18 @@ function updatePower(t) {
 function placeSite(town, type, maxD, okNeighbor) {
   const n = world.n, wt = world.type;
   let best = -1, bestScore = Infinity;
-  const step = maxD > 40 ? 2 : 1; // a coarser scan when the reach is long
-  for (let dy = -maxD; dy <= maxD; dy += step) for (let dx = -maxD; dx <= maxD; dx += step) {
+  // Every cell in reach is looked at: a coarser scan used to miss most of the sites next to a small seam.
+  for (let dy = -maxD; dy <= maxD; dy++) for (let dx = -maxD; dx <= maxD; dx++) {
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
-    const d = Math.hypot(dx, dy); if (d > maxD) continue;
     const i = y * n + x, t = wt[i];
     if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD || t === T.STUMP || t === T.SAND || (t === T.DIRT && !world.road[i]))) continue;
+    let ok = false; for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (okNeighbor(wt[j], j)) { ok = true; break; } }
+    if (!ok) continue;
+    const d = Math.hypot(dx, dy); if (d > maxD || d >= bestScore) continue;
     if (world.burnLeft[i] > 0 || poisoned(i)) continue;
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
     if (foreign) continue;
-    let ok = false; for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (okNeighbor(wt[j], j)) { ok = true; break; } }
-    if (!ok) continue;
     const score = d + Math.random() * 3;
     if (score < bestScore) { bestScore = score; best = i; }
   }
@@ -177,7 +185,7 @@ function updateLivestock(town) {
   // Breeding, if there is room on the pasture.
   if (pastureRoom(town) > 0) for (const k of LIVESTOCK) if (ls[k] >= 2 && Math.random() < (k === 'chickens' ? 0.14 : 0.06) * (has(town, 'beastlord') ? 1.6 : 1)) { ls[k]++; stat('ev', 'animalsBorn'); }
   // Fences before beasts: a town with animals, or one big enough to want some, lays out a pasture.
-  const pastures = countType(town, T.PASTURE);
+  const pastures = countPlanned(town, T.PASTURE);
   if ((total > 0 && pastureRoom(town) < 2 && pastures < 1 + Math.floor(total / 8)) || (!pastures && town.popLeft >= 30 && Math.random() < 0.2)) {
     if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) log(`${town.name} fences a pasture`, 'build'); }
   }
@@ -186,52 +194,55 @@ function updateLivestock(town) {
 function siteReach(town) { return Math.max(town.R + 18, Math.round(world.n * 0.24)); }
 function buildSites(town) {
   if (Math.random() > 0.3) return;
-  if (town.civ >= 4 && hasType(town, T.FACTORY)) {
+  if (town.civ >= 4 && hasPlanned(town, T.FACTORY)) {
     const n = world.n, R = town.R + 20;
     for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
       const x = town.cx + dx, y = town.cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
       const i = y * n + x;
       if (!world.surveyed[i] || !world.deep[i] || !world.deepAmt[i] || isBuilding(world.type[i])) continue;
       const kind = world.deep[i], type = kind === 5 ? T.DERRICK : T.SHAFT;
-      if (countType(town, type) >= 2 || !canAfford(town, COST[type])) continue;
+      if (countPlanned(town, type) >= 2 || !canAfford(town, COST[type])) continue;
       if (buildOn(town, i, type)) { pay(town, COST[type]); town.deepSite[i] = kind; log(kind === 5 ? `${town.name} raises an oil derrick` : `${town.name} sinks a shaft to the deep ${ORE_NAMES[kind]}`, 'build'); if (Math.hypot(x - town.cx, y - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
-  if (town.popLeft >= 25 && !hasType(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
+  if (town.popLeft >= 25 && !hasPlanned(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
     if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
   }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
-    for (const kind of [6, 1, 2, 3, 4]) { // gold first: everyone knows what that is
-      if (kind === 2 && town.popLeft < 60) continue;
+    const wants = techWants(town), order = [6, 1, 2, 3, 4]; // gold first: everyone knows what that is
+    for (const k of [4, 3, 2, 1]) if (wants.has(ORE_NAMES[k])) { order.splice(order.indexOf(k), 1); order.unshift(k); } // unless a tech is waiting on an ore
+    for (const kind of order) {
+      const wanted = wants.has(ORE_NAMES[kind]);
+      if (kind === 2 && town.popLeft < 60 && !wanted) continue;
       if (kind === 4 && town.mil < 4 && town.civ < 3) continue; // nobody digs for uranium until they know what it is
-      if (countType(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80)) break;
+      if (countPlanned(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80) + (wanted ? 1 : 0)) { if (wanted) continue; break; }
       const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
       if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
-  const wells = countType(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
+  const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
   if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && canAfford(town, COST[T.WELL])) {
     const i = placeCivic(town, T.WELL, true);
     if (i >= 0) { pay(town, COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well` : `${town.name} digs a well`, 'build'); return; }
   }
-  if (town.civ >= 1 && !hasType(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
+  if (town.civ >= 1 && !hasPlanned(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
     const i = placeSite(town, T.WHEEL, town.R + 6, t => t === T.WATER);
     if (i >= 0) { pay(town, COST[T.WHEEL]); log(`${town.name} builds a water wheel on the river`, 'build'); return; }
   }
-  if ((town.civ >= 1 || town.mil >= 2) && !hasType(town, T.PLANT) && town.popLeft >= 50 && (town.res.coal >= 8 || town.res.wood >= 30) && canAfford(town, COST[T.PLANT])) {
+  if ((town.civ >= 1 || town.mil >= 2) && !hasPlanned(town, T.PLANT) && town.popLeft >= 50 && (town.res.coal >= 8 || town.res.wood >= 30) && canAfford(town, COST[T.PLANT])) {
     const i = placeCivic(town, T.PLANT, false);
     if (i >= 0) { pay(town, COST[T.PLANT]); log(`${town.name} ${town.res.coal >= 8 ? 'fires up a coal plant' : 'builds a wood-fired boiler and lights the first lamps'}`, 'build'); return; }
   }
-  if (town.civ >= 3 && town.popLeft >= 80 && !hasType(town, T.HYDRO) && canAfford(town, COST[T.HYDRO])) {
+  if (town.civ >= 3 && town.popLeft >= 80 && !hasPlanned(town, T.HYDRO) && canAfford(town, COST[T.HYDRO])) {
     const i = placeSite(town, T.HYDRO, town.R + 8, (t, j) => t === T.WATER && world.flow[j] >= 0);
     if (i >= 0) { pay(town, COST[T.HYDRO]); log(`${town.name} dams the river for hydroelectric power`, 'build'); return; }
   }
-  if ((town.civ >= 4 || town.mil >= 6) && hasType(town, T.UNIVERSITY) && !hasType(town, T.NUCLEAR) && town.res.uranium >= COST[T.NUCLEAR].uranium && canAfford(town, COST[T.NUCLEAR])) {
+  if ((town.civ >= 4 || town.mil >= 6) && hasPlanned(town, T.UNIVERSITY) && !hasPlanned(town, T.NUCLEAR) && town.res.uranium >= COST[T.NUCLEAR].uranium && canAfford(town, COST[T.NUCLEAR])) {
     const i = placeCivic(town, T.NUCLEAR, false);
     if (i >= 0) { pay(town, COST[T.NUCLEAR]); log(`${town.name} brings a reactor online. ${town.align.moral < 0 ? 'Nobody asked whether it was safe.' : 'The engineers swear it is safe.'}`, 'build'); return; }
   }
-  if (town.civ >= 4 && countType(town, T.SOLAR) < 2 && canAfford(town, COST[T.SOLAR])) {
+  if (town.civ >= 4 && countPlanned(town, T.SOLAR) < 2 && canAfford(town, COST[T.SOLAR])) {
     const i = placeCivic(town, T.SOLAR, false);
     if (i >= 0) { pay(town, COST[T.SOLAR]); log(`${town.name} raises a solar array`, 'build'); }
   }
@@ -396,7 +407,7 @@ function spawnGatherers(town) {
   }
   for (const m of town.buildings.filter(i => type[i] === T.MINE && !town.spent[i] && !blocked(i))) {
     const kind = ORE_NAMES[town.mineKind[m] || 0];
-    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < 2 && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
+    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < (short.has(kind) ? 3 : 2) && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
   }
 }
 // Who wants what somebody else has: a seam of a metal you cannot reach yourself.

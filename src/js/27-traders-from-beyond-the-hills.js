@@ -71,7 +71,8 @@ function holdMarket(tr, town) {
   // Then what it is short of, cheapest first, as long as the coin holds out.
   if (!Number.isFinite(town.res.coin)) town.res.coin = 0;
   const thrifty = has(town, 'miser') || has(town, 'hoarder');
-  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (town.res[k] || 0) < resCap(town, k) * (thrifty ? 0.15 : 0.4)).sort((a, b) => PRICE[a] - PRICE[b]);
+  const tw = techWants(town);
+  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (tw.has(k) || (town.res[k] || 0) < resCap(town, k) * (thrifty ? 0.15 : 0.4))).sort((a, b) => (tw.has(b) - tw.has(a)) || PRICE[a] - PRICE[b]);
   for (const k of wants) {
     const amt = Math.min(tr.stock[k], Math.floor(town.res.coin / PRICE[k]), resCap(town, k) - town.res[k]);
     if (amt <= 0) continue;

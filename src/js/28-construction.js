@@ -97,6 +97,7 @@ function shortages(town) {
   if (town.res.stone < resCap(town, 'stone') * 0.2 && (town.wishLogged || town.popLeft >= 60)) out.add('stone');
   if (!town.fed || (town.res.grain + town.res.fish + town.res.game) < Math.ceil(town.popLeft / 30) * 4) out.add('food');
   if (town.res.water < resCap(town, 'water') * 0.3) out.add('water');
+  for (const k of techWants(town)) out.add(k);
   return out;
 }
 

@@ -132,13 +132,39 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   town declares war. Rise high enough and the towns are allies.
 - **Raids and war.** Warbands march along real paths. Winners torch homes and carry people
   off; losers die at the wall. Wars end in truce when both sides are spent.
-- **Technology, bows to the bomb.** Research trickles in with population, split between a
-  military track (Bows, Steel, Siege engines, Gunpowder, Rifles, Artillery, The Bomb) and a
-  civil one (Buckets, Fire brigade, Waterworks, Lookout tower, Aviation) according to
-  temperament. Good towns stop at Rifles and never build the bomb. Artillery lets a town
-  shell an enemy from home. The bomb flattens a town, leaves fallout that kills slowly,
-  blocks regrowth and building, drifts downwind, and turns the sky to ashfall. The town
-  that drops it has no idea. Reaching the top takes a very long time.
+- **Technology, bows to the bomb.** Research trickles in with population (never slower than
+  a town of forty would manage, so a hamlet still learns), faster with a forge, a factory,
+  a university, spare electricity or a scholar in charge, and slower in a brownout. It is
+  split between two tracks by temperament, but never less than 15% to learning, and a track
+  that has its points and is waiting on a resource gets nothing more: the effort goes where
+  it can still be spent. Each step needs a cumulative total and then a one-off payment.
+  A town that has the points but not the goods treats that as a shortage, like a player
+  would: it digs for the ore first, sends more people to the quarry, buys it first at
+  market, and holds back what it needs from ordinary building.
+
+  | Arms | points | pays | gives |
+  |---|---|---|---|
+  | Bows | 0 | | |
+  | Steel | 300 | 10 iron | a barracks, a forge, a stronger militia |
+  | Siege engines | 900 | | engines lob fire over the wall, stone walls, a second barracks |
+  | Gunpowder | 2000 | 8 coal | guns in the ranks, raids torch more |
+  | Rifles | 4000 | 15 iron, and a powered factory | can bring a dragon down, a factory, uranium mines; nobody good goes further |
+  | Artillery | 7000 | 20 iron | shells an enemy from home; tanks on the march |
+  | The Bomb | 11000 | 20 uranium, and a university | a silo, a reactor, and a bomb for 40 uranium |
+
+  | Learning | points | pays | gives |
+  |---|---|---|---|
+  | Buckets | 0 | | |
+  | Fire brigade | 250 | 10 wood | crews cut line faster, a water wheel, a boiler, tenements, a forge |
+  | Waterworks | 700 | 8 copper, 10 stone | fireboats, bigger fire trucks, a cistern, a university |
+  | Lookout tower | 1500 | 6 stone | a watchtower that spots fire further, a dam, a factory, uranium mines |
+  | Geology | 3000 | 12 iron, 8 copper | surveys for deep ore and oil, shafts and derricks, solar, a reactor, motor pumps |
+  | Aviation | 5000 | 10 oil, 20 iron, 10 copper | an airfield with more planes and sorties |
+
+  Good towns stop at Rifles and never build the bomb. Artillery lets a town shell an enemy
+  from home. The bomb flattens a town, leaves fallout that kills slowly, blocks regrowth and
+  building, drifts downwind, and turns the sky to ashfall. The town that drops it has no
+  idea. The town card shows each track's progress and what the next step is waiting on.
 - **Dragon defense.** A big militia can drive a dragon off. With rifles or better it may
   bring one down, and the hoard draws newcomers and a burst of research.
 - **Refugees.** Survivors of a destroyed town take to the road for the friendliest living

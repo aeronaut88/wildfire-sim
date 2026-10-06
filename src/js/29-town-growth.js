@@ -189,6 +189,9 @@ function countType(town, type) {
 }
 function forgetCounts(town) { countCache.delete(town); }
 function hasType(town, type) { return countType(town, type) > 0; }
+// Built or under construction: what a town counts when deciding whether to build another.
+function countPlanned(town, type) { let c = countType(town, type); const s = town.sites; if (s) for (const k in s) if (world.type[+k] === T.SITE && s[k].type === type) c++; return c; }
+function hasPlanned(town, type) { return countPlanned(town, type) > 0; }
 
 // Upgrade a house near the centre into a tenement.
 function buildTenement(town) {
@@ -234,17 +237,17 @@ function placeCivic(town, type, nearCentre) {
 function buildCivic(town) {
   if (Math.random() > 0.25) return;
   const want = [];
-  if (town.popLeft >= 100 && !hasType(town, T.TOWNHALL)) want.push([T.TOWNHALL, true, 'raises a town hall']);
-  if (town.mil >= 1 && !hasType(town, T.BARRACKS) && town.popLeft >= 40) want.push([T.BARRACKS, false, 'builds a barracks']);
-  if (town.mil >= 2 && countType(town, T.BARRACKS) < 2 && town.popLeft >= 200) want.push([T.BARRACKS, false, 'builds a second barracks']);
-  if ((town.mil >= 2 || town.civ >= 1) && !hasType(town, T.FORGE) && town.popLeft >= 50) want.push([T.FORGE, false, 'lights a forge']);
-  if (town.civ >= 2 && !hasType(town, T.UNIVERSITY) && town.popLeft >= 90) want.push([T.UNIVERSITY, true, 'founds a university']);
-  if (town.civ >= 3 && !hasType(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
-  if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countType(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
-  if (town.mil >= 6 && !hasType(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
-  if (town.popLeft >= 20 && !hasType(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
+  if (town.popLeft >= 100 && !hasPlanned(town, T.TOWNHALL)) want.push([T.TOWNHALL, true, 'raises a town hall']);
+  if (town.mil >= 1 && !hasPlanned(town, T.BARRACKS) && town.popLeft >= 40) want.push([T.BARRACKS, false, 'builds a barracks']);
+  if (town.mil >= 2 && countPlanned(town, T.BARRACKS) < 2 && town.popLeft >= 200) want.push([T.BARRACKS, false, 'builds a second barracks']);
+  if ((town.mil >= 2 || town.civ >= 1) && !hasPlanned(town, T.FORGE) && town.popLeft >= 50) want.push([T.FORGE, false, 'lights a forge']);
+  if (town.civ >= 2 && !hasPlanned(town, T.UNIVERSITY) && town.popLeft >= 90) want.push([T.UNIVERSITY, true, 'founds a university']);
+  if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
+  if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
+  if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
 
-  if (town.popLeft >= 160 && countType(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);
+  if (town.popLeft >= 160 && countPlanned(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);
   if (!want.length) return;
   const [type, nearCentre, verb] = want[Math.floor(Math.random() * want.length)];
   const cost = COST[type];

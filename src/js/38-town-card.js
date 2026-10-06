@@ -4,6 +4,14 @@ const cardEl = $('card');
 let cardTown = -1, cardAt = 0;
 function cardHtml(t) {
   const row = (k, v, cls) => `<div class="row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`;
+  // "Buckets · 62% to fire brigade", or what the finished plans are waiting on.
+  const techNext = (t, track) => {
+    const mil = track === 'mil', lv = mil ? t.mil : t.civ, names = mil ? MIL_TECH : CIV_TECH, costs = mil ? MIL_COST : CIV_COST, needs = mil ? MIL_NEED : CIV_NEED;
+    if (mil ? lv >= milCap(t) : lv >= 5) return ' <span class="dim">· the limit</span>';
+    const pts = (mil ? t.milPts : t.civPts) || 0, next = names[lv + 1].toLowerCase();
+    if (pts < costs[lv + 1]) return ` <span class="dim">· ${Math.floor(100 * pts / costs[lv + 1])}% to ${next}</span>`;
+    const k = lacking(t, needs[lv + 1]); return ` <span class="dim">· ${next} needs ${k ? k : 'building'}</span>`;
+  };
   const l = leader(t), st = world.stats || newStats();
   const dead = t.housesLeft === 0 || t.popLeft <= 0;
   const alive = world.towns.filter(isAlive);
@@ -21,7 +29,7 @@ function cardHtml(t) {
     `<h4>food and water</h4><div class="grid">` + row('fed', t.famine ? 'famine' : t.fed === false ? 'hungry' : 'yes', t.fed === false ? 'd' : 'g') + row('eats per 16 ticks', Math.ceil(t.popLeft / 30)) + row('fields', `${countType(t, T.FARM)} <span class="dim">(${t.buildings.filter(i => world.type[i] === T.FARM && world.crop[i] >= 100).length} ripe)</span>`) + row('granaries', countType(t, T.GRANARY)) +
     row('water', `${t.res.water} / ${resCap(t, 'water')}`, t.water === false ? 'd' : '') + row('wells', `${countType(t, T.WELL)} <span class="dim">(${Object.values(t.wells || {}).filter(v => v <= 0).length} dry)</span>`) + (ls ? row('livestock', ls) : '') + `</div>` +
     `<h4>stores</h4><div class="grid">` + resLine + `</div>` + row('coin', t.res.coin) +
-    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + row('arms', MIL_TECH[t.mil]) + row('learning', CIV_TECH[t.civ]) + `</div>` +
+    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + `</div>` +
     `<h4>neighbours</h4>` + (wars.length ? `<div class="d">at war with ${wars.join(', ')}</div>` : '') + (allies.length ? `<div class="g">allies: ${allies.join(', ')}</div>` : '') + (foes.length ? `<div>feuding with ${foes.join(', ')}</div>` : '') + (!wars.length && !allies.length && !foes.length ? '<div class="dim">keeps to itself</div>' : '') + (t.master >= 0 && world.towns[t.master] ? `<div class="d">pays tribute to ${world.towns[t.master].name}</div>` : '') + (t.covets && world.towns[t.covets.town] ? `<div>covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</div>` : '') +
     `<h4>folk</h4><div class="folk">${folk || '<div class="dim">nobody of note</div>'}</div>` +
     `<h4>lately</h4><div class="chron">${chron || '<div class="dim">nothing yet</div>'}</div>` +

@@ -2846,18 +2846,39 @@ function militarism(t) {
 function milCap(t) { return t.align.moral > 0 ? 4 : (t.align.moral === 0 ? 5 : 6); } // good towns never build the bomb
 
 // Called from growTown (about every 16 ticks per town).
+// A track is "banked" when the points for its next step are in hand: either the resource gate is
+// holding it, or the track is topped out. Effort spent there would be wasted, so it goes to the other.
+function milBanked(t) { return t.mil >= milCap(t) || (t.milPts || 0) >= MIL_COST[t.mil + 1]; }
+function civBanked(t) { return t.civ >= 5 || (t.civPts || 0) >= CIV_COST[t.civ + 1]; }
+// What a town is short of for a step it already has the points for. These count as shortages the
+// town acts on: it digs for the ore, sends more people to the quarry, and buys it first at market.
+function techWants(t) {
+  const out = new Set();
+  if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1]) { const k = lacking(t, MIL_NEED[t.mil + 1]); if (k) out.add(k); }
+  if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1]) { const k = lacking(t, CIV_NEED[t.civ + 1]); if (k) out.add(k); }
+  return out;
+}
+// What the town is saving for: the resource needs of every step it has the points for.
+function techReserve(t) {
+  let out = null;
+  if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1] && MIL_NEED[t.mil + 1]) out = Object.assign({}, MIL_NEED[t.mil + 1]);
+  if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1] && CIV_NEED[t.civ + 1]) { out = out || {}; for (const k in CIV_NEED[t.civ + 1]) out[k] = (out[k] || 0) + CIV_NEED[t.civ + 1][k]; }
+  return out;
+}
 function updateTech(t) {
   if (!isAlive(t)) return;
-  let pts = 16 * (t.popLeft / 1000) * (t.align.order > 0 ? 1.25 : t.align.order < 0 ? (Math.random() < 0.3 ? 2.5 : 0.6) : 1);
+  // Even a hamlet has a tinkerer or two: research never trickles slower than a town of forty would manage.
+  let pts = 16 * (Math.max(t.popLeft, 40) / 1000) * (t.align.order > 0 ? 1.25 : t.align.order < 0 ? (Math.random() < 0.3 ? 2.5 : 0.6) : 1);
   pts *= 1 + 0.5 * countType(t, T.UNIVERSITY) + 0.3 * countType(t, T.FORGE) + 0.4 * countType(t, T.FACTORY);
-  const m = militarism(t);
-  t.research += pts;
-  // Split research between tracks by temperament.
-  const milShare = m, civShare = 1 - m;
-  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
   if (t.powerNeed > 0) pts *= 0.5 + 0.5 * (t.powerRatio === undefined ? 1 : t.powerRatio); // brownouts slow the labs
   if (t.power > t.powerNeed) pts *= 1.3; // lamps in the workshops: a powered town learns faster
   if (has(t, 'scholar')) pts *= 1.4; else if (has(t, 'prophet')) pts *= 0.6; else if (has(t, 'madman')) pts *= 0.8;
+  const m = militarism(t);
+  t.research += pts;
+  // Split research between tracks by temperament, unless one track is banked and waiting: then all of it goes where it can still be spent.
+  const mb = milBanked(t), cb = civBanked(t);
+  const milShare = mb && !cb ? 0 : cb && !mb ? 1 : Math.min(0.85, m), civShare = 1 - milShare; // even a warlord's town keeps a few scholars
+  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
   if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {
     const next = t.mil + 1, need = MIL_NEED[next];
     const why = lacking(t, need) || (next === 5 && !(hasType(t, T.FACTORY) && t.powerRatio >= 0.5) ? 'a powered factory' : next === 6 && !hasType(t, T.UNIVERSITY) ? 'a university' : null);
@@ -4186,7 +4207,15 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-function canAfford(t, cost) { if (!cost || !t.res) return true; for (const k in cost) if ((t.res[k] || 0) < cost[k]) return false; return true; }
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT].map(k => COST[k]).concat([COST.road, COST.bridge]));
+// Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
+// the way a player saves for an upgrade, except for the works that bring resources in.
+function canAfford(t, cost) {
+  if (!cost || !t.res) return true;
+  const held = NEVER_RESERVED.has(cost) ? null : techReserve(t);
+  for (const k in cost) if ((t.res[k] || 0) - (held && held[k] || 0) < cost[k]) return false;
+  return true;
+}
 function lacking(t, cost) { if (!cost) return null; for (const k in cost) if ((t.res[k] || 0) < cost[k]) return k; return null; }
 function pay(t, cost) { if (!cost || !t.res) return; for (const k in cost) t.res[k] = Math.max(0, (t.res[k] || 0) - cost[k]); }
 function addRes(t, kind, amount) {
@@ -4249,18 +4278,18 @@ function updatePower(t) {
 function placeSite(town, type, maxD, okNeighbor) {
   const n = world.n, wt = world.type;
   let best = -1, bestScore = Infinity;
-  const step = maxD > 40 ? 2 : 1; // a coarser scan when the reach is long
-  for (let dy = -maxD; dy <= maxD; dy += step) for (let dx = -maxD; dx <= maxD; dx += step) {
+  // Every cell in reach is looked at: a coarser scan used to miss most of the sites next to a small seam.
+  for (let dy = -maxD; dy <= maxD; dy++) for (let dx = -maxD; dx <= maxD; dx++) {
     const x = town.cx + dx, y = town.cy + dy;
     if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue;
-    const d = Math.hypot(dx, dy); if (d > maxD) continue;
     const i = y * n + x, t = wt[i];
     if (!(t === T.GRASS || t === T.SCRUB || t === T.ASH || t === T.MUD || t === T.STUMP || t === T.SAND || (t === T.DIRT && !world.road[i]))) continue;
+    let ok = false; for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (okNeighbor(wt[j], j)) { ok = true; break; } }
+    if (!ok) continue;
+    const d = Math.hypot(dx, dy); if (d > maxD || d >= bestScore) continue;
     if (world.burnLeft[i] > 0 || poisoned(i)) continue;
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
     if (foreign) continue;
-    let ok = false; for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (okNeighbor(wt[j], j)) { ok = true; break; } }
-    if (!ok) continue;
     const score = d + Math.random() * 3;
     if (score < bestScore) { bestScore = score; best = i; }
   }
@@ -4334,7 +4363,7 @@ function updateLivestock(town) {
   // Breeding, if there is room on the pasture.
   if (pastureRoom(town) > 0) for (const k of LIVESTOCK) if (ls[k] >= 2 && Math.random() < (k === 'chickens' ? 0.14 : 0.06) * (has(town, 'beastlord') ? 1.6 : 1)) { ls[k]++; stat('ev', 'animalsBorn'); }
   // Fences before beasts: a town with animals, or one big enough to want some, lays out a pasture.
-  const pastures = countType(town, T.PASTURE);
+  const pastures = countPlanned(town, T.PASTURE);
   if ((total > 0 && pastureRoom(town) < 2 && pastures < 1 + Math.floor(total / 8)) || (!pastures && town.popLeft >= 30 && Math.random() < 0.2)) {
     if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) log(`${town.name} fences a pasture`, 'build'); }
   }
@@ -4343,52 +4372,55 @@ function updateLivestock(town) {
 function siteReach(town) { return Math.max(town.R + 18, Math.round(world.n * 0.24)); }
 function buildSites(town) {
   if (Math.random() > 0.3) return;
-  if (town.civ >= 4 && hasType(town, T.FACTORY)) {
+  if (town.civ >= 4 && hasPlanned(town, T.FACTORY)) {
     const n = world.n, R = town.R + 20;
     for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
       const x = town.cx + dx, y = town.cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
       const i = y * n + x;
       if (!world.surveyed[i] || !world.deep[i] || !world.deepAmt[i] || isBuilding(world.type[i])) continue;
       const kind = world.deep[i], type = kind === 5 ? T.DERRICK : T.SHAFT;
-      if (countType(town, type) >= 2 || !canAfford(town, COST[type])) continue;
+      if (countPlanned(town, type) >= 2 || !canAfford(town, COST[type])) continue;
       if (buildOn(town, i, type)) { pay(town, COST[type]); town.deepSite[i] = kind; log(kind === 5 ? `${town.name} raises an oil derrick` : `${town.name} sinks a shaft to the deep ${ORE_NAMES[kind]}`, 'build'); if (Math.hypot(x - town.cx, y - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
-  if (town.popLeft >= 25 && !hasType(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
+  if (town.popLeft >= 25 && !hasPlanned(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
     if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
   }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
-    for (const kind of [6, 1, 2, 3, 4]) { // gold first: everyone knows what that is
-      if (kind === 2 && town.popLeft < 60) continue;
+    const wants = techWants(town), order = [6, 1, 2, 3, 4]; // gold first: everyone knows what that is
+    for (const k of [4, 3, 2, 1]) if (wants.has(ORE_NAMES[k])) { order.splice(order.indexOf(k), 1); order.unshift(k); } // unless a tech is waiting on an ore
+    for (const kind of order) {
+      const wanted = wants.has(ORE_NAMES[kind]);
+      if (kind === 2 && town.popLeft < 60 && !wanted) continue;
       if (kind === 4 && town.mil < 4 && town.civ < 3) continue; // nobody digs for uranium until they know what it is
-      if (countType(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80)) break;
+      if (countPlanned(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80) + (wanted ? 1 : 0)) { if (wanted) continue; break; }
       const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
       if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
-  const wells = countType(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
+  const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
   if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && canAfford(town, COST[T.WELL])) {
     const i = placeCivic(town, T.WELL, true);
     if (i >= 0) { pay(town, COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well` : `${town.name} digs a well`, 'build'); return; }
   }
-  if (town.civ >= 1 && !hasType(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
+  if (town.civ >= 1 && !hasPlanned(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
     const i = placeSite(town, T.WHEEL, town.R + 6, t => t === T.WATER);
     if (i >= 0) { pay(town, COST[T.WHEEL]); log(`${town.name} builds a water wheel on the river`, 'build'); return; }
   }
-  if ((town.civ >= 1 || town.mil >= 2) && !hasType(town, T.PLANT) && town.popLeft >= 50 && (town.res.coal >= 8 || town.res.wood >= 30) && canAfford(town, COST[T.PLANT])) {
+  if ((town.civ >= 1 || town.mil >= 2) && !hasPlanned(town, T.PLANT) && town.popLeft >= 50 && (town.res.coal >= 8 || town.res.wood >= 30) && canAfford(town, COST[T.PLANT])) {
     const i = placeCivic(town, T.PLANT, false);
     if (i >= 0) { pay(town, COST[T.PLANT]); log(`${town.name} ${town.res.coal >= 8 ? 'fires up a coal plant' : 'builds a wood-fired boiler and lights the first lamps'}`, 'build'); return; }
   }
-  if (town.civ >= 3 && town.popLeft >= 80 && !hasType(town, T.HYDRO) && canAfford(town, COST[T.HYDRO])) {
+  if (town.civ >= 3 && town.popLeft >= 80 && !hasPlanned(town, T.HYDRO) && canAfford(town, COST[T.HYDRO])) {
     const i = placeSite(town, T.HYDRO, town.R + 8, (t, j) => t === T.WATER && world.flow[j] >= 0);
     if (i >= 0) { pay(town, COST[T.HYDRO]); log(`${town.name} dams the river for hydroelectric power`, 'build'); return; }
   }
-  if ((town.civ >= 4 || town.mil >= 6) && hasType(town, T.UNIVERSITY) && !hasType(town, T.NUCLEAR) && town.res.uranium >= COST[T.NUCLEAR].uranium && canAfford(town, COST[T.NUCLEAR])) {
+  if ((town.civ >= 4 || town.mil >= 6) && hasPlanned(town, T.UNIVERSITY) && !hasPlanned(town, T.NUCLEAR) && town.res.uranium >= COST[T.NUCLEAR].uranium && canAfford(town, COST[T.NUCLEAR])) {
     const i = placeCivic(town, T.NUCLEAR, false);
     if (i >= 0) { pay(town, COST[T.NUCLEAR]); log(`${town.name} brings a reactor online. ${town.align.moral < 0 ? 'Nobody asked whether it was safe.' : 'The engineers swear it is safe.'}`, 'build'); return; }
   }
-  if (town.civ >= 4 && countType(town, T.SOLAR) < 2 && canAfford(town, COST[T.SOLAR])) {
+  if (town.civ >= 4 && countPlanned(town, T.SOLAR) < 2 && canAfford(town, COST[T.SOLAR])) {
     const i = placeCivic(town, T.SOLAR, false);
     if (i >= 0) { pay(town, COST[T.SOLAR]); log(`${town.name} raises a solar array`, 'build'); }
   }
@@ -4553,7 +4585,7 @@ function spawnGatherers(town) {
   }
   for (const m of town.buildings.filter(i => type[i] === T.MINE && !town.spent[i] && !blocked(i))) {
     const kind = ORE_NAMES[town.mineKind[m] || 0];
-    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < 2 && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
+    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < (short.has(kind) ? 3 : 2) && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
   }
 }
 // Who wants what somebody else has: a seam of a metal you cannot reach yourself.
@@ -4644,7 +4676,8 @@ function holdMarket(tr, town) {
   // Then what it is short of, cheapest first, as long as the coin holds out.
   if (!Number.isFinite(town.res.coin)) town.res.coin = 0;
   const thrifty = has(town, 'miser') || has(town, 'hoarder');
-  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (town.res[k] || 0) < resCap(town, k) * (thrifty ? 0.15 : 0.4)).sort((a, b) => PRICE[a] - PRICE[b]);
+  const tw = techWants(town);
+  const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (tw.has(k) || (town.res[k] || 0) < resCap(town, k) * (thrifty ? 0.15 : 0.4))).sort((a, b) => (tw.has(b) - tw.has(a)) || PRICE[a] - PRICE[b]);
   for (const k of wants) {
     const amt = Math.min(tr.stock[k], Math.floor(town.res.coin / PRICE[k]), resCap(town, k) - town.res[k]);
     if (amt <= 0) continue;
@@ -4765,6 +4798,7 @@ function shortages(town) {
   if (town.res.stone < resCap(town, 'stone') * 0.2 && (town.wishLogged || town.popLeft >= 60)) out.add('stone');
   if (!town.fed || (town.res.grain + town.res.fish + town.res.game) < Math.ceil(town.popLeft / 30) * 4) out.add('food');
   if (town.res.water < resCap(town, 'water') * 0.3) out.add('water');
+  for (const k of techWants(town)) out.add(k);
   return out;
 }
 
@@ -4959,6 +4993,9 @@ function countType(town, type) {
 }
 function forgetCounts(town) { countCache.delete(town); }
 function hasType(town, type) { return countType(town, type) > 0; }
+// Built or under construction: what a town counts when deciding whether to build another.
+function countPlanned(town, type) { let c = countType(town, type); const s = town.sites; if (s) for (const k in s) if (world.type[+k] === T.SITE && s[k].type === type) c++; return c; }
+function hasPlanned(town, type) { return countPlanned(town, type) > 0; }
 
 // Upgrade a house near the centre into a tenement.
 function buildTenement(town) {
@@ -5004,17 +5041,17 @@ function placeCivic(town, type, nearCentre) {
 function buildCivic(town) {
   if (Math.random() > 0.25) return;
   const want = [];
-  if (town.popLeft >= 100 && !hasType(town, T.TOWNHALL)) want.push([T.TOWNHALL, true, 'raises a town hall']);
-  if (town.mil >= 1 && !hasType(town, T.BARRACKS) && town.popLeft >= 40) want.push([T.BARRACKS, false, 'builds a barracks']);
-  if (town.mil >= 2 && countType(town, T.BARRACKS) < 2 && town.popLeft >= 200) want.push([T.BARRACKS, false, 'builds a second barracks']);
-  if ((town.mil >= 2 || town.civ >= 1) && !hasType(town, T.FORGE) && town.popLeft >= 50) want.push([T.FORGE, false, 'lights a forge']);
-  if (town.civ >= 2 && !hasType(town, T.UNIVERSITY) && town.popLeft >= 90) want.push([T.UNIVERSITY, true, 'founds a university']);
-  if (town.civ >= 3 && !hasType(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
-  if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countType(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
-  if (town.mil >= 6 && !hasType(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
-  if (town.popLeft >= 20 && !hasType(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
+  if (town.popLeft >= 100 && !hasPlanned(town, T.TOWNHALL)) want.push([T.TOWNHALL, true, 'raises a town hall']);
+  if (town.mil >= 1 && !hasPlanned(town, T.BARRACKS) && town.popLeft >= 40) want.push([T.BARRACKS, false, 'builds a barracks']);
+  if (town.mil >= 2 && countPlanned(town, T.BARRACKS) < 2 && town.popLeft >= 200) want.push([T.BARRACKS, false, 'builds a second barracks']);
+  if ((town.mil >= 2 || town.civ >= 1) && !hasPlanned(town, T.FORGE) && town.popLeft >= 50) want.push([T.FORGE, false, 'lights a forge']);
+  if (town.civ >= 2 && !hasPlanned(town, T.UNIVERSITY) && town.popLeft >= 90) want.push([T.UNIVERSITY, true, 'founds a university']);
+  if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
+  if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
+  if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
 
-  if (town.popLeft >= 160 && countType(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);
+  if (town.popLeft >= 160 && countPlanned(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);
   if (!want.length) return;
   const [type, nearCentre, verb] = want[Math.floor(Math.random() * want.length)];
   const cost = COST[type];
@@ -6826,6 +6863,14 @@ const cardEl = $('card');
 let cardTown = -1, cardAt = 0;
 function cardHtml(t) {
   const row = (k, v, cls) => `<div class="row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`;
+  // "Buckets · 62% to fire brigade", or what the finished plans are waiting on.
+  const techNext = (t, track) => {
+    const mil = track === 'mil', lv = mil ? t.mil : t.civ, names = mil ? MIL_TECH : CIV_TECH, costs = mil ? MIL_COST : CIV_COST, needs = mil ? MIL_NEED : CIV_NEED;
+    if (mil ? lv >= milCap(t) : lv >= 5) return ' <span class="dim">· the limit</span>';
+    const pts = (mil ? t.milPts : t.civPts) || 0, next = names[lv + 1].toLowerCase();
+    if (pts < costs[lv + 1]) return ` <span class="dim">· ${Math.floor(100 * pts / costs[lv + 1])}% to ${next}</span>`;
+    const k = lacking(t, needs[lv + 1]); return ` <span class="dim">· ${next} needs ${k ? k : 'building'}</span>`;
+  };
   const l = leader(t), st = world.stats || newStats();
   const dead = t.housesLeft === 0 || t.popLeft <= 0;
   const alive = world.towns.filter(isAlive);
@@ -6843,7 +6888,7 @@ function cardHtml(t) {
     `<h4>food and water</h4><div class="grid">` + row('fed', t.famine ? 'famine' : t.fed === false ? 'hungry' : 'yes', t.fed === false ? 'd' : 'g') + row('eats per 16 ticks', Math.ceil(t.popLeft / 30)) + row('fields', `${countType(t, T.FARM)} <span class="dim">(${t.buildings.filter(i => world.type[i] === T.FARM && world.crop[i] >= 100).length} ripe)</span>`) + row('granaries', countType(t, T.GRANARY)) +
     row('water', `${t.res.water} / ${resCap(t, 'water')}`, t.water === false ? 'd' : '') + row('wells', `${countType(t, T.WELL)} <span class="dim">(${Object.values(t.wells || {}).filter(v => v <= 0).length} dry)</span>`) + (ls ? row('livestock', ls) : '') + `</div>` +
     `<h4>stores</h4><div class="grid">` + resLine + `</div>` + row('coin', t.res.coin) +
-    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + row('arms', MIL_TECH[t.mil]) + row('learning', CIV_TECH[t.civ]) + `</div>` +
+    `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + `</div>` +
     `<h4>neighbours</h4>` + (wars.length ? `<div class="d">at war with ${wars.join(', ')}</div>` : '') + (allies.length ? `<div class="g">allies: ${allies.join(', ')}</div>` : '') + (foes.length ? `<div>feuding with ${foes.join(', ')}</div>` : '') + (!wars.length && !allies.length && !foes.length ? '<div class="dim">keeps to itself</div>' : '') + (t.master >= 0 && world.towns[t.master] ? `<div class="d">pays tribute to ${world.towns[t.master].name}</div>` : '') + (t.covets && world.towns[t.covets.town] ? `<div>covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</div>` : '') +
     `<h4>folk</h4><div class="folk">${folk || '<div class="dim">nobody of note</div>'}</div>` +
     `<h4>lately</h4><div class="chron">${chron || '<div class="dim">nothing yet</div>'}</div>` +
