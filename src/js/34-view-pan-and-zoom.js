@@ -224,6 +224,13 @@ function render(now, tickFrac) {
     else ctx.drawImage(SPR16.trader, x, y - (sz - cellPx), sz, sz);
   }
 
+  for (const p of world.packs || []) {
+    const u = Math.min(1, (world.tick - (p.t0 || world.tick) + tickFrac) / 3);
+    const x = (p.px + (p.x - p.px) * u) * cellPx, y = (p.py + (p.y - p.py) * u) * cellPx;
+    if (!vis(x, y)) continue;
+    const spr = p.kind === 'bear' ? SPR.bear : SPR.wolf, s = p.kind === 'bear' ? cellPx * 1.5 : cellPx;
+    for (let k = 0; k < Math.min(p.size, 4); k++) { const ox = (k % 2) * cellPx * 0.7, oy = Math.floor(k / 2) * cellPx * 0.6; if (p.face < 0) { ctx.save(); ctx.translate(x + ox + s, y + oy); ctx.scale(-1, 1); ctx.drawImage(spr, 0, 0, s, s); ctx.restore(); } else ctx.drawImage(spr, x + ox, y + oy, s, s); }
+  }
   for (const v of world.travellers || []) {
     const x = (v.px + (v.x - v.px) * tickFrac) * cellPx, y = (v.py + (v.y - v.py) * tickFrac) * cellPx;
     if (!vis(x, y)) continue;

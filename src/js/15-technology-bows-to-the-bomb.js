@@ -86,7 +86,7 @@ function updateTech(t) {
 }
 
 // Detection radius bonus from a lookout tower.
-function detectBonus(t) { return (hasType(t, T.TOWER) ? 10 : 0) + (has(t, 'firewatch') ? 5 : 0); }
+function detectBonus(t) { return (hasType(t, T.TOWER) ? 10 : 0) + (has(t, 'firewatch') ? 5 : 0) + ((world.councilWatch || 0) > world.tick ? 4 : 0); }
 
 // Artillery: towns with tech 5 at war shell the enemy from home. Nukes: tech 6, war, and either desperation or plain evil.
 function maybeBombard(t) {

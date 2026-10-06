@@ -17,6 +17,8 @@ function whereOf(text, at) {
   else if (/settlers|refugees/.test(text) && world.settlers) f('settlers', 0);
   else if (/envoy sets out|wedding party sets out/.test(text) && (world.travellers || []).length) f('traveller', world.travellers[world.travellers.length - 1].id);
   else if (/cast out of|takes to the woods|'s gang/.test(text) && (world.firebugs || []).length) { const g = /'s gang/.test(text) ? (world.firebugs || []).find(q => q.kind === 'gang' && text.startsWith(q.name)) : null; f('firebug', g ? g.name : world.firebugs[world.firebugs.length - 1].name); }
+  else if (/^Wolves come down|The bear|bear in the deep/.test(text) && (world.packs || []).length) f('pack', world.packs[world.packs.length - 1].t0);
+  else if (/calls a council/.test(text) && (world.travellers || []).length) f('traveller', world.travellers[world.travellers.length - 1].id);
   else if (/posse/.test(text) && world.warbands.some(b => b.posse)) { const b = world.warbands.filter(q => q.posse).slice(-1)[0]; f('warband', b.from + ':' + b.to); }
   else if (/^Constable|slips out of|walks out of|goes looking for|starts asking/.test(text) && town) f('law', town.id);
   else if (/fireboat|fishing boat/.test(text) && world.boats.length) f('boat', world.boats[world.boats.length - 1].town);
@@ -45,6 +47,7 @@ function followPos(f) {
     case 'firebug': { const b = (w.firebugs || []).find(q => q.name === f.id); return b ? [b.x, b.y] : null; }
     case 'settlers': return w.settlers ? [w.settlers.x, w.settlers.y] : null;
     case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? [v.x, v.y] : null; }
+    case 'pack': { const p = (w.packs || []).find(q => q.t0 === f.id) || (w.packs || [])[0]; return p ? [p.x, p.y] : null; }
     case 'law': { const t = w.towns[f.id]; if (!t) return null; const x = t.workers.find(q => q.job === 'fugitive') || t.workers.find(q => q.job === 'constable'); return x ? [x.x, x.y] : null; }
     case 'boat': { const b = w.boats.find(q => q.town === f.id); return b ? [b.x, b.y] : null; }
     case 'wagon': { const g = (w.wagons || [])[0]; return g ? [g.x, g.y] : null; }
@@ -62,7 +65,8 @@ function followName(f) {
     case 'fighter': return `${w.towns[f.id] ? w.towns[f.id].name + "'s" : 'a'} jet`;
     case 'firebug': return f.id;
     case 'settlers': return 'the settlers';
-    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? (v.kind === 'wedding' ? 'the wedding party' : 'the envoy') : 'the envoy'; }
+    case 'traveller': { const v = (w.travellers || []).find(q => q.id === f.id); return v ? (v.kind === 'wedding' ? 'the wedding party' : v.kind === 'council' ? 'the envoys' : 'the envoy') : 'the envoy'; }
+    case 'pack': { const p = (w.packs || []).find(q => q.t0 === f.id); return p && p.kind === 'bear' ? 'the bear' : 'the wolves'; }
     case 'law': { const t = w.towns[f.id]; return t && t.case ? t.case.who : 'the fugitive'; }
     case 'boat': return 'the boat';
     case 'wagon': return 'the wagons';
@@ -134,6 +138,12 @@ const ACHIEVEMENTS = [
   ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
   ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|hanged on the gallows|drags .* to the old oak/],
   ['wrong', '😶', 'Miscarriage', 'A town punishes the wrong person', /the wrong person/],
+  ['quake', '🌋', 'Fault Line', 'An earthquake changes the land', /THE GROUND SHAKES/],
+  ['comet', '☄️', 'Second Sun', 'A comet falls', /A SECOND SUN/],
+  ['wolves', '🐺', 'Hard Winter', 'Wolves come down', /^Wolves come down/],
+  ['council', '🏛️', 'The Council', 'The towns hold a council', /calls a council/],
+  ['dynasty', '👑', 'Blood Will Tell', 'An elder\'s kin takes the chair', /takes the chair at/],
+  ['civilwar', '🔥', 'House Divided', 'A town fights itself', /^CIVIL WAR/],
   ['posse', '🐎', 'Posse', 'A posse rides out after a gang', /^A posse of/],
   ['healer', '🌿', 'Physician', 'A healer hangs out a sign', /hangs out a healer's sign/],
   ['hospital', '🏥', 'Ward', 'A town opens a hospital', /opens a hospital/],

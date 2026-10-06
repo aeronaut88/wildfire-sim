@@ -124,7 +124,7 @@ const world = {
   buildingsTotal: 0, buildingsLeft: 0, popTotal: 0, popLeft: 0,
   buildingsLost: 0, deaths: 0,
   weather: { kind: 'clear', left: 150 },
-  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], fighters: [], firebugs: [], travellers: [], boats: [], diploTimer: 60,
+  sweepPos: 0, settlers: null, names: [], dragon: null, dragonfire: false, raidfire: false, warbands: [], battles: [], bombers: [], fighters: [], firebugs: [], travellers: [], packs: [], boats: [], diploTimer: 60,
   wind: { angle: 0, strength: 0.3, targetAngle: 0, targetStrength: 0.3, retarget: 0 },
 };
 

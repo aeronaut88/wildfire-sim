@@ -15,6 +15,8 @@ function growTown(town) {
   leaderActs(town);
   updateLaw(town);
   updateHealer(town);
+  updateFamilies(town);
+  comeOfAge(town);
   updateFestival(town);
   updateGraves(town);
   updateRounds(town);
@@ -111,6 +113,28 @@ function growTown(town) {
 // The price of size: plague without waterworks, riots when crowded and chaotic, slums burn.
 function bigCityTroubles(town) {
   const over = town.R - Math.max(params.townCap, town.R0);
+  // Marsh fever in the wet country in summer; cholera from a cistern that has stood too low too long.
+  const cap = resCap(town, 'water');
+  town.dryTicks = town.res.water < cap * 0.2 ? (town.dryTicks || 0) + 16 : 0;
+  if (biomeAt(town.cx, town.cy) === 4 && season() === 1 && town.popLeft >= 40 && Math.random() < 0.002) {
+    let dead = Math.round(town.popLeft * (0.02 + Math.random() * 0.03)); const saved = heal(town, dead, 'fever'); dead -= saved;
+    applyLosses(town, dead, 'fever'); stat('ev', 'fevers'); town.plagueUntil = world.tick + 200;
+    log(`The marsh fever is in ${town.name} with the summer heat: ${dead} dead${saved ? `, ${saved} nursed through` : ''}. The gates are shut to the road.`, 'loss'); return;
+  }
+  if ((town.dryTicks || 0) > 300 && town.popLeft >= 60 && Math.random() < 0.004) {
+    let dead = Math.round(town.popLeft * (0.03 + Math.random() * 0.05)); const saved = heal(town, dead, 'cholera'); dead -= saved;
+    applyLosses(town, dead, 'cholera'); stat('ev', 'choleras'); town.plagueUntil = world.tick + 300; remember(town, 'plague');
+    log(`Cholera from the foul cistern at ${town.name}: ${dead} dead${saved ? `, ${saved} pulled through` : ''}. ${town.name} shuts its gates until it passes.`, 'loss'); return;
+  }
+  // A big, restless, lawless town tears itself in two.
+  if (town.popLeft >= 400 && (town.unrest || 0) >= 75 && town.align.order < 0 && !town.mobilized && Math.random() < 0.003) {
+    const dead = Math.round(town.militia * 0.3); applyLosses(town, dead, 'battle'); town.militia -= dead;
+    const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); for (let k = 0; k < 3 && homes.length; k++) ignite(homes.splice(Math.floor(Math.random() * homes.length), 1)[0]);
+    spawnCrowd(town, town.cy * world.n + town.cx, 60, 10); stat('ev', 'civilWars'); remember(town, 'revolt', { who: elderOf(town) });
+    log(`CIVIL WAR in the streets of ${town.name}: militia against militia, ${dead} dead, the slums alight. ${elderOf(town)} ${Math.random() < 0.3 ? 'is dragged from the hall' : 'barricades the hall'}.`, 'war');
+    town.unrest = 40; const l = leader(town); if (l && Math.random() < 0.3) overthrow(town, l);
+    return;
+  }
   if (town.popLeft >= (biomeAt(town.cx, town.cy) === 6 ? 180 : 350) && town.civ < 2 && Math.random() < 0.0025 * (1 + Math.max(0, over)) * (biomeAt(town.cx, town.cy) === 6 ? 1.6 : 1)) {
     let dead = Math.round(town.popLeft * (0.05 + Math.random() * 0.1));
     const saved = heal(town, dead, 'plague'); dead -= saved;

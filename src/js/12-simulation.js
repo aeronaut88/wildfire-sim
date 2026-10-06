@@ -130,6 +130,7 @@ function step() {
   updateLook();
   updateWind();
   maybeMeteor();
+  maybeActOfGod();
   updateHydrology();
   regrowSweep();
   updateTowns();
@@ -137,10 +138,12 @@ function step() {
   updateAir();
   checkAchievementStats();
   updateDiplomacy();
+  updateCouncil();
   updateWarbands();
   updateFallout();
   updateBoats();
   updateHerds();
+  updatePacks();
   maybeTradeRoad();
   if (world.tick % 50 === 0) sampleHistory();
   updateRoadProjects();

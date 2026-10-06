@@ -8,7 +8,7 @@ function updateTrader() {
     // Caravans follow the roads' seasons: thick in summer and autumn, thin in spring, almost none in the snow.
     const sea = season(), seasonMul = world.weather.kind === 'snow' ? 0 : sea === 1 ? 1.7 : sea === 2 ? 1.3 : sea === 0 ? 0.9 : 0.3;
     if (world.tick < 250 || world.tick < world.nextTrader || world.tick < world.traderWary || Math.random() > 0.004 * seasonMul) return;
-    const living = world.towns.filter(isAlive); if (!living.length) return;
+    const living = world.towns.filter(t => isAlive(t) && !((t.plagueUntil || 0) > world.tick)); if (!living.length) return;
     // Smaller towns get a little extra attention, so the valley is not just one superpower's market.
     const weights = living.map(t => (20 + t.popLeft * 0.5 + Math.max(0, 90 - t.popLeft)) * (has(t, 'merchant') ? 2.5 : has(t, 'hermit') ? 0.25 : 1)); let r = Math.random() * weights.reduce((a, b) => a + b, 0), town = living[0];
     for (let k = 0; k < living.length; k++) { r -= weights[k]; if (r <= 0) { town = living[k]; break; } }
@@ -49,6 +49,7 @@ function updateTrader() {
 }
 function holdMarket(tr, town) {
   if (!town || !isAlive(town)) return;
+  if ((town.plagueUntil || 0) > world.tick) { log(`The caravan finds the gates of ${town.name} shut against the sickness and turns around`, 'build'); return; }
   const [px, py] = cellCenter(town.cy * world.n + town.cx);
   if (town.align.moral < 0 && town.militia >= 10 && Math.random() < 0.35) {
     const took = []; for (const k in tr.stock) { if (LIVESTOCK.includes(k)) town.livestock[k] = (town.livestock[k] || 0) + tr.stock[k]; else addRes(town, k, tr.stock[k]); took.push(`${tr.stock[k]} ${k}`); }

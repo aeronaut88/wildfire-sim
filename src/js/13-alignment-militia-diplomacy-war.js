@@ -21,6 +21,39 @@ function declareWar(a, b, why) {
   const el = person(a, 'elder'); deed(el, `declared war on ${b.name}`);
   say(a, 'warDeclared', { other: b.name, why, elder: el ? el.name : null }, 'war'); remember(a, 'war', { who: b.name }); remember(b, 'war', { who: a.name });
   for (const t of [a, b]) { const [x, y] = cellCenter(t.cy * world.n + t.cx); popups.push({ x, y: y - t.R * cellPx - 14, text: 'WAR', color: '#ff4040', t0: performance.now(), dur: 2500 }); }
+  // Leagues: a friend of the one attacked may come in.
+  if (!why || !/for its ally/.test(why)) for (const o of world.towns) {
+    if (o === a || o === b || !isAlive(o) || atWar(o, a) || rel(o, b) < 60 || o.align.moral < 0 || has(o, 'peacemaker') || has(o, 'hermit') || o.militia < 6) continue;
+    if (Math.random() < 0.5) { log(`${o.name} will not see ${b.name} stand alone`, 'war'); declareWar(o, a, `for its ally ${b.name}`); }
+  }
+}
+// Every few years the towns send envoys to a council at the biggest town. Something comes of it, or nothing does.
+function updateCouncil() {
+  const c = world.council;
+  if (!c) {
+    if (world.tick % (YEAR * 3) !== YEAR) return;
+    const towns = world.towns.filter(t => isAlive(t) && t.popLeft >= 20 && !has(t, 'hermit'));
+    if (towns.length < 3) return;
+    const host = towns.slice().sort((p, q) => q.popLeft - p.popLeft)[0];
+    const members = towns.filter(t => t !== host && !atWar(t, host) && sendTraveller(t, host, 'council', {}));
+    if (members.length < 2) return;
+    world.council = { host: host.id, at: world.tick, members: members.map(t => t.id), arrived: 0 };
+    stat('ev', 'councils');
+    log(`${host.name} calls a council of the valley. Envoys set out from ${members.map(t => t.name).join(', ')}.`, 'diplo');
+    return;
+  }
+  if (c.arrived < c.members.length && world.tick - c.at < 500) return;
+  world.council = null;
+  const host = world.towns[c.host]; if (!host || !isAlive(host)) return;
+  const members = [host].concat(c.members.map(id => world.towns[id]).filter(t => t && isAlive(t)));
+  const wars = []; for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) if (atWar(members[i], members[j])) wars.push([members[i], members[j]]);
+  const r = Math.random();
+  spawnCrowd(host, host.cy * world.n + host.cx, 40, 8);
+  if (wars.length && r < 0.5) { for (const [a, b] of wars) makePeace(a, b, 'at the council'); log(`The council at ${host.name} ends ${wars.length === 1 ? 'the war' : 'the wars'} between ${wars.map(([a, b]) => a.name + ' and ' + b.name).join(', ')}. Not everyone goes home happy.`, 'diplo'); }
+  else if (r < 0.35) { const pairs = []; for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) { const a = members[i], b = members[j], key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; if (!(world.tradeRoads || {})[key] && Math.hypot(a.cx - b.cx, a.cy - b.cy) <= 60) pairs.push([a, b]); } const p = pairs[Math.floor(Math.random() * pairs.length)]; if (p) { const [a, b] = p; const path = roadPath(a.cy * world.n + a.cx, b.cy * world.n + b.cx); if (path && path.filter(q => world.type[q] === T.WATER).length <= 6) { const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; world.tradeRoads = world.tradeRoads || {}; world.tradeRoads[key] = { a: a.id, b: b.id, path, wagonT: 0, building: true }; world.roadProjects = world.roadProjects || []; world.roadProjects.push({ key, a: a.id, b: b.id, path, k: 0, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, wait: 0, water: 0, halted: false }); setRel(a, b, rel(a, b) + 10); log(`The council at ${host.name} agrees a road between ${a.name} and ${b.name}, and the stone for it`, 'diplo'); return; } } log(`The council at ${host.name} talks of roads and agrees nothing`, 'diplo'); }
+  else if (r < 0.6) { world.councilWatch = world.tick + YEAR * 2; for (const t of members) setRel(host, t, rel(host, t) + 5); log(`The council at ${host.name} agrees a shared fire watch: every town will ride to a neighbour's smoke for two years`, 'diplo'); }
+  else if (r < 0.8) { const a = members[Math.floor(Math.random() * members.length)]; let b = members[Math.floor(Math.random() * members.length)]; if (b === a) b = members[(members.indexOf(a) + 1) % members.length]; setRel(a, b, rel(a, b) - 12); log(`The council at ${host.name} collapses in insults between ${a.name} and ${b.name}. The envoys go home early.`, 'diplo'); }
+  else { for (const t of members) t.unrest = Math.max(0, (t.unrest || 0) - 2); log(`The council at ${host.name} agrees nothing but a feast, and that goes well`, 'diplo'); }
 }
 function makePeace(a, b, why) {
   if (!atWar(a, b)) return;

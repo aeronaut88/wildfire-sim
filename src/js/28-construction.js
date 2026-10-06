@@ -80,7 +80,7 @@ function updateHarvester(town, w) {
 // Crops grow with the season and the weather; a field is ripe at 100.
 function growCrops(town) {
   const sea = season(), wk = world.weather.kind;
-  const rate = 16 * 0.5 * (sea === 0 ? 0.9 : sea === 1 ? 1 : sea === 2 ? 1.1 : 0) * (wk === 'rain' || wk === 'storm' ? 1.3 : wk === 'drought' || wk === 'drystorm' ? 0.3 : wk === 'snow' || wk === 'ashfall' ? 0 : 1) * (has(town, 'greenthumb') ? 1.5 : 1);
+  const rate = (world.cometWinter ? 0.25 : 1) * 16 * 0.5 * (sea === 0 ? 0.9 : sea === 1 ? 1 : sea === 2 ? 1.1 : 0) * (wk === 'rain' || wk === 'storm' ? 1.3 : wk === 'drought' || wk === 'drystorm' ? 0.3 : wk === 'snow' || wk === 'ashfall' ? 0 : 1) * (has(town, 'greenthumb') ? 1.5 : 1);
   if (rate <= 0) return;
   const stage = c => c < 35 ? 0 : c < 75 ? 1 : c < 100 ? 2 : 3;
   for (const i of town.buildings) {

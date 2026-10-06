@@ -495,6 +495,8 @@ SPRITES.chicken = [
 SPRITES.fowl = SPRITES.chicken.map(r => r.replace(/H/g, 'B'));
 SPRITES.aurochs = SPRITES.cow.map(r => r.replace(/H/g, 'B'));
 SPRITES.hunter = SPRITES.worker.map(r => r.replace(/u/g, 'h'));
+SPRITES.wolf = SPRITES.deer.map(r => r.replace(/T/g, 'l').replace(/J/g, 'L').replace(/t/g, 'K')); // grey, lean
+SPRITES.bear = SPRITES.boar.map(r => r.replace(/B/g, 'b').replace(/k/g, 'E')); // dark and big
 SPRITES.forager = SPRITES.worker.map(r => r.replace(/u/g, 'O').replace(/m/g, 'c')); // green smock, a basket
 SPRITES.healer = SPRITES.worker.map(r => r.replace(/u/g, 'S').replace(/m/g, 'x')); // white coat
 SPRITES.constable = SPRITES.soldier.map(r => r.replace(/d/g, '0').replace(/l/g, '7')); // blue coat, dark helmet
@@ -612,4 +614,4 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument']) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear']) SPR16[k] = buildSprite16(SPRITES[k]);

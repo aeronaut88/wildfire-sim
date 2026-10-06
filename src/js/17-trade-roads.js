@@ -115,7 +115,7 @@ function updateWagons() {
     const r = roads[key];
     const a = world.towns[r.a], b = world.towns[r.b];
     if (!isAlive(a) || !isAlive(b)) continue;
-    if (atWar(a, b)) continue;
+    if (atWar(a, b) || (a.plagueUntil || 0) > world.tick || (b.plagueUntil || 0) > world.tick) continue; // no wagons through a shut gate
     if (++r.wagonT >= 160 && !world.wagons.some(w => w.key === key)) {
       r.wagonT = 0;
       const fwd = Math.random() < 0.5;

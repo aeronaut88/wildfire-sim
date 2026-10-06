@@ -143,7 +143,7 @@ function updateTowns() {
 // Survivors of a destroyed town take to the road for the friendliest living town.
 function sendRefugees(town) {
   if (town.popLeft < 6 || world.settlers) return;
-  const hosts = world.towns.filter(o => o !== town && isAlive(o) && rel(town, o) > -20 && o.align.moral >= 0).sort((a, b) => rel(town, b) - rel(town, a));
+  const hosts = world.towns.filter(o => o !== town && isAlive(o) && rel(town, o) > -20 && o.align.moral >= 0 && !((o.plagueUntil || 0) > world.tick)).sort((a, b) => rel(town, b) - rel(town, a));
   if (!hosts.length) return;
   const host = hosts[0];
   const path = findPath(town.cx, town.cy, host.cx, host.cy);

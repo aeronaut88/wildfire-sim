@@ -358,6 +358,7 @@ function updateTravellers() {
     // Arrived.
     const p = v.payload || {};
     if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
+    else if (v.kind === 'council') { if (world.council && world.council.host === v.to) world.council.arrived++; }
     else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
   }
   world.travellers = keep;

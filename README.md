@@ -486,6 +486,26 @@ its capacity, coin, its workshops, power, arms and learning, who it is at war or
 every named resident with a bio and last deed, and its latest chronicle. Buttons fire a
 missile or a lightning strike at it, or jump to its line in the history. Escape closes it.
 
+## Generations, beasts, sickness, politics, and the hand of god
+
+Children are born to the notable families, grow up in a parent's shadow, come of age at
+sixteen, and sometimes carry a parent's trait on. In a lawful town the elder's chair often
+passes to kin, and when two claimants want it and the town is restless there is a crisis, a
+grudge, and sometimes a house alight. Wolves come down in hard winters: packs take sheep from
+the pastures and the odd forager from the woods until the hunters and militia go out after
+them; a bear lives in the deep timber and the hunters bring it down for a month of meat. Marsh
+towns get the fever in summer, a cistern left too low breeds cholera, and a sick town shuts its
+gates: no caravans, no wagons, no refugees until it passes. Friends come into a war on their
+ally's side. Every few years the biggest town calls a council and envoys walk in from the rest;
+it ends a war, agrees a road, sets a shared fire watch, collapses in insults, or just feasts.
+A big, restless, lawless town can tear itself in two in the streets.
+
+Acts of god are truly rare and change the map. An earthquake cracks walls, brings houses down,
+breaks dams into floods, and throws up a ridge of bare rock or opens a rift that fills with
+water across the land, so the old paths no longer go through. A comet falls as a second sun and
+leaves a crater lake in a ring of rock, burns everything for a long way round, and brings a year
+of ash in which the crops barely grow.
+
 ## The log does not repeat itself
 
 The common events (alarms, stand-downs, famine, plague, growth, markets, caravans, arson, wars,
