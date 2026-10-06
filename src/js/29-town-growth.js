@@ -55,9 +55,9 @@ function growTown(town) {
   town.fed = got >= eat * 0.7;
   town.hunger = town.fed ? 0 : (town.hunger || 0) + 1;
   if (town.hunger >= 3) {
-    if (!town.famine) { town.famine = world.tick; stat('ev', 'famines'); log(`Famine in ${town.name}: the granary is empty and ${town.popLeft} mouths to feed`, 'loss'); }
+    if (!town.famine) { town.famine = world.tick; stat('ev', 'famines'); say(town, 'famine', { pop: town.popLeft }, 'loss'); remember(town, 'famine'); }
     if (Math.random() < 0.4) applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.006)), 'famine');
-  } else if (town.famine && town.hunger === 0) { town.famine = 0; log(`The famine in ${town.name} ends`, 'good'); }
+  } else if (town.famine && town.hunger === 0) { town.famine = 0; say(town, 'famineEnds', {}, 'good'); }
   // Fields: enough for the mouths, more when the stores are thin, fewer in bad country. Each ripe field gives about six grain.
   const farmsNow = countType(town, T.FARM) + Object.values(town.sites || {}).filter(st => st.type === T.FARM).length;
   const wantFarms = Math.ceil(town.popLeft / (9 * BIOME_YIELD[biomeAt(town.cx, town.cy)]) * (town.temper ? town.temper.food : 1)) + (town.fed ? 0 : 3);
@@ -116,7 +116,7 @@ function bigCityTroubles(town) {
     const saved = heal(town, dead, 'plague'); dead -= saved;
     applyLosses(town, dead, 'plague');
     town.plagues = (town.plagues || 0) + 1; stat('ev', 'plagues'); town.plagueUntil = world.tick + 300;
-    log(`Plague in the crowded streets of ${town.name}: ${dead} dead${saved ? `, ${saved} pulled through under the healer's roof` : ''}. A waterworks would help.`, 'loss');
+    say(town, 'plague', { dead, saved }, 'loss'); remember(town, 'plague');
     const [x, y] = cellCenter(town.cy * world.n + town.cx); popups.push({ x, y: y - town.R * cellPx - 14, text: 'PLAGUE', color: '#9fe8d8', t0: performance.now(), dur: 2500 });
     return;
   }
@@ -320,9 +320,9 @@ function buildHouse(town, quiet) {
     town.R = Math.ceil(d);
     layRoads(town, true);
     recomputeRing(town);
-    if (!quiet) log(`${town.name} grows: new road, ${town.housesLeft} homes`, 'build');
-  } else if (!quiet && rebuilt && Math.random() < 0.12) log(`${town.name} is rebuilding (${town.housesLeft} homes)`, 'build');
-  else if (!quiet && !rebuilt && town.built % 12 === 0) log(`${town.name} adds homes (${town.housesLeft})`, 'build');
+    if (!quiet) say(town, 'grows', { homes: town.housesLeft }, 'build');
+  } else if (!quiet && rebuilt && Math.random() < 0.12) say(town, 'rebuilding', { homes: town.housesLeft }, 'build');
+  else if (!quiet && !rebuilt && town.built % 12 === 0) say(town, 'addsHomes', { homes: town.housesLeft }, 'build');
   dirty.add(best);
   return true;
 }

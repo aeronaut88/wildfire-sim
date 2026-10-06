@@ -77,7 +77,7 @@ function updateSettlers(force) {
       town.popLeft += delta; town.popTotal += delta; world.popLeft += delta; world.popTotal += delta;
       town.res.wood = 10 + Math.min(20, s.size); town.res.grain = Math.min(40, 6 + Math.min(12, Math.floor(s.size / 2))); // what the wagon carried
       const el = person(town, 'elder'); if (el) { el.story = 'led the wagons that founded the town'; deed(el, `founded ${town.name}`); }
-      log(`${s.size} settlers found ${town.name}, ${town.housesLeft} homes raised${el ? `. ${el.name} led them` : ''}`, 'build');
+      say(town, 'settlersFound', { n: s.size, homes: town.housesLeft, leader: el ? el.name : null }, 'build');
       const [px, py] = cellCenter(s.ty * n + s.tx);
       popups.push({ x: px, y: py - town.R * cellPx, text: town.name.toUpperCase(), color: '#d9c48a', t0: performance.now(), dur: 2500 });
     } else log('The settlers found no good ground and moved on', 'weather');

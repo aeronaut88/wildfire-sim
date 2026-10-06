@@ -24,7 +24,7 @@ function updateTrader() {
     if (Math.random() < 0.04) stock.uranium = 1 + Math.floor(Math.random() * 3);
     world.trader = { x: ex, y: ey, px: ex, py: ey, face: 1, path, pi: 0, town: town.id, stock, coin: 50 + Math.floor(Math.random() * 60), phase: 'in', linger: 0, wait: 0 };
     stat('ev', 'caravans');
-    log(`A trader's caravan appears on the ${ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east'} edge, bound for ${town.name}`, 'build');
+    say(town, 'caravan', { edge: ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east' }, 'build', ey * n + ex);
     return;
   }
   tr.px = tr.x; tr.py = tr.y;
@@ -92,7 +92,7 @@ function holdMarket(tr, town) {
   spawnCrowd(town, town.cy * world.n + town.cx, 25, 4 + Math.floor(Math.random() * 4));
   maybeSmuggle(tr, town);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'MARKET', color: '#f5a623', t0: performance.now(), dur: 2000 });
-  if (!bought.length && !sold.length) log(`Market day at ${town.name}, but nobody has anything the other wants`, 'build');
-  else log(`Market day at ${town.name}: ${bought.length ? 'buys ' + bought.join(', ') : ''}${bought.length && sold.length ? '; ' : ''}${sold.length ? 'sells ' + sold.join(', ') : ''}. ${town.res.coin} coin in the chest.`, 'build');
+  if (!bought.length && !sold.length) say(town, 'marketNothing', {}, 'build');
+  else say(town, 'market', { deal: `${bought.length ? 'buys ' + bought.join(', ') : ''}${bought.length && sold.length ? '; ' : ''}${sold.length ? 'sells ' + sold.join(', ') : ''}`, coin: town.res.coin }, 'build');
 }
 

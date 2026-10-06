@@ -79,7 +79,8 @@ function maybeDragon(force) {
   for (const t of targets) t.dragons = (t.dragons || 0) + 1;
   stat('ev', 'dragons'); stat('dragons', name);
   if (grudge) { log(`${name}, the ${kind.name} dragon, returns for ${town.name}`, 'dragon'); world.dragonGrudge = null; }
-  else log(`${name.toUpperCase()}, a ${kind.name} dragon, has been sighted making for ${town.name}${targets.length > 1 ? ' and then ' + targets.slice(1).map(t => t.name).join(' and ') : ''}`, 'dragon');
+  else say(town, 'dragonSeen', { who: name, kind: kind.name, then: targets.length > 1 ? targets.slice(1).map(t => t.name).join(' and ') : null }, 'dragon');
+  for (const t of targets) remember(t, 'dragon', { who: name });
   const [px, py] = cellCenter(town.cy * n + town.cx);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'DRAGON', color: '#ff4040', t0: performance.now(), dur: 3000 });
 }
@@ -109,7 +110,7 @@ function flyDragon(dtSec) {
   if (d.leg >= d.legs.length - 1) {
     if (d.slain) { /* already announced */ }
     else if (d.driven) log(`${d.name || 'The dragon'} limps away from ${d.town.name}. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze before the archers found their range${d.stole ? `, ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} gone with it` : ''}.`, 'dragon');
-    else log(`${d.name || 'The dragon'} leaves ${d.town.name} burning. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze${d.stole || d.stoleGold ? `, and it flies off with ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} for its hoard` : ''}.`, 'dragon');
+    else say(d.town, 'dragonLeaves', { who: d.name || 'The dragon', lit: d.lit, loot: d.stole || d.stoleGold ? `${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''}` : null }, 'dragon');
     world.dragon = null;
   }
 }
@@ -120,7 +121,7 @@ function slayDragon(d, town, byJet) {
   const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
   town.popLeft += boom; town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; town.research += 2000; town.civPts = (town.civPts || 0) + 1000; town.milPts = (town.milPts || 0) + 1000;
   town.res.coin += hoard; town.res.gold = Math.min(resCap(town, 'gold'), (town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
-  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet');
+  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet'); remember(town, 'slain', { who: d.name || 'the dragon' });
   const hero = elect(town, 'slayer', true); deed(hero, `${byJet ? 'shot down' : 'slew'} ${d.name || 'the dragon'}`);
   hero.story = byJet ? `flew the jet that brought down ${d.name || 'a dragon'} and still buys the first round` : `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
   log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
@@ -229,7 +230,7 @@ function breathe(d) {
     const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost, 'dragon'); d.town.militia -= lost;
     if (d.town.mil >= 4 && Math.random() < 0.35) slayDragon(d, d.town, false); // rifles and up can bring it down
     else {
-      stat('ev', 'dragonsDriven'); log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
+      stat('ev', 'dragonsDriven'); say(d.town, 'dragonDriven', { who: d.name || 'the dragon', lost }, 'win');
       world.dragonGrudge = { town: d.town.id, tick: world.tick, kind: d.kind, name: d.name };
     }
   }

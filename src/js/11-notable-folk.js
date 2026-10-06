@@ -52,7 +52,9 @@ function personAge(p) { return Math.max(0, Math.floor((world.tick - p.born) / YE
 function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief' || p.role === 'spy') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : p.role === 'spy' ? 'spy' : ROLE_LABEL[p.role] || p.role; }
 function deed(p, text) { if (!p) return; p.deeds.push({ tick: world.tick, text }); if (p.deeds.length > 6) p.deeds.shift(); }
 function elect(town, role, quiet, avoidTrait) {
-  const p = makePerson(Math.random, role, 20 + Math.random() * 35);
+  if (role === 'firebug') { const g = grudgeHolders(town).find(q => q.role === 'townsfolk' || q.role === 'thief'); if (g && Math.random() < 0.6) { g.role = 'firebug'; g.revealed = false; g.arsons = 0; g.story = `never forgave ${g.grudge.why}`; return g; } }
+  const prev = (town.people || []).filter(q => q.role === role).slice(-1)[0];
+  const p = makePersonIn(town, role, 20 + Math.random() * 35, prev && role !== 'firebug' && Math.random() < 0.35 ? prev : null);
   if (role === 'elder') p.trait = rollTrait(town, avoidTrait);
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   if (!quiet) log(role === 'elder' ? `${town.name} chooses ${p.name} as elder, ${/^[aeiou]/.test(TRAITS[p.trait].label) ? 'an' : 'a'} ${TRAITS[p.trait].label} who ${TRAITS[p.trait].blurb}` : role === 'chief' ? `${p.name} takes over as ${town.name}'s fire chief` : `${p.name} becomes ${town.name}'s ${ROLE_LABEL[role]}`, 'build');
@@ -68,6 +70,7 @@ function updateUnrest(town) {
   const deaths = town.deaths - (town.lastDeathsSeen || 0); town.lastDeathsSeen = town.deaths; d += Math.min(2, deaths / 10);
   const tr = l.trait;
   if (tr === 'tyrant') d += 0.7; if (tr === 'madman') d += 0.5; if (tr === 'miser' && town.res.coin > 150 && !town.fed) d += 0.6;
+  d += Math.min(1.2, 0.4 * grudgeHolders(town).length); // families that remember a wrong
   if (tr === 'peacemaker' || tr === 'prophet' || tr === 'drunkard') d -= 0.5; if (tr === 'builder' || tr === 'greenthumb') d -= 0.3;
   if (town.align.order > 0) d -= 0.3;
   town.unrest = Math.max(0, Math.min(100, (town.unrest || 10) + d));
@@ -78,7 +81,8 @@ function overthrow(town, l) {
   const hanged = (l.trait === 'tyrant' || l.trait === 'warmonger') && Math.random() < 0.5;
   l.alive = false; l.died = world.tick; l.cause = hanged ? 'hanged by the mob' : 'thrown out by the mob';
   stat('ev', 'overthrows'); town.overthrows = (town.overthrows || 0) + 1;
-  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and ${hanged ? 'hang them from the hall' : 'run them out of town'}`, 'war');
+  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and ${hanged ? 'hang them from the hall' : 'run them out of town'}`, 'war'); remember(town, 'revolt', { who: l.name });
+  for (const q of town.people) if (q.alive && q.grudge && q.grudge.against === 'the law') { q.grudge = null; deed(q, 'was in the crowd at the hall the day the elder fell, and called it settled'); }
   const [px, py] = cellCenter(town.cy * world.n + town.cx); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'REVOLT', color: '#ff6ad5', t0: performance.now(), dur: 2600 });
   town.militia = Math.floor(town.militia * 0.75); town.unrest = 30;
   if (Math.random() < 0.35) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`Riots in ${town.name}; a house burns`, 'arson'); } }

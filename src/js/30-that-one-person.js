@@ -16,7 +16,7 @@ function maybeArson(town) {
   const factories = countType(town, T.FACTORY) + countType(town, T.FORGE) * 0.5;
   if (factories && Math.random() < 0.00006 * factories * (world.weather.kind === 'drought' ? 3 : 1)) {
     const f = town.buildings.find(i => world.type[i] === T.FACTORY || world.type[i] === T.FORGE);
-    if (f !== undefined && world.burnLeft[f] <= 0) { ignite(f); log(`Fire breaks out at the ${world.type[f] === T.FACTORY ? 'factory' : 'forge'} in ${town.name}`, 'alarm'); return; }
+    if (f !== undefined && world.burnLeft[f] <= 0) { ignite(f); say(town, 'industryFire', { what: world.type[f] === T.FACTORY ? 'factory' : 'forge' }, 'alarm', f); return; }
   }
   const wk = world.weather.kind;
   const weatherMul = wk === 'drought' ? 2.5 : (wk === 'clear' ? 1 : 0.15);
@@ -38,9 +38,9 @@ function maybeArson(town) {
       popups.push({ x: px, y: py, text: 'ARSON', color: '#ff6ad5', t0: performance.now(), dur: 2200 });
       const bug = person(town, 'firebug') || elect(town, 'firebug', true);
       bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
-      if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
-      else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
-      else log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson');
+      if (bug.arsons === 1) say(town, 'arson1', {}, 'arson', i);
+      else if (bug.arsons === 2) say(town, 'arson2', { who: bug.name }, 'arson', i);
+      else say(town, 'arson3', { who: bug.name }, 'arson', i);
       if (!town.case) openCase(town, 'arson', bug, i);
     } else {
       popups.push({ x: px, y: py, text: 'OOPS', color: '#ffb627', t0: performance.now(), dur: 1800 });

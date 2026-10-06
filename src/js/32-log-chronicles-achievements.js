@@ -106,13 +106,13 @@ logEl.addEventListener('click', ev => {
 
 // Achievements live in this browser's local storage, across valleys.
 const ACHIEVEMENTS = [
-  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning strike/],
+  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rally|is burning|turn out/],
   ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast|Fire reaches/],
-  ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /dragon, has been sighted|dragon, returns/],
+  ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /has been sighted|is in the valley|shape in the sky|dragon, returns/],
   ['dragon-slain', '⚔️', 'Dragonslayer', 'A town slays a dragon', /SLAYS/],
-  ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /drives the dragon off/],
+  ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /It will remember/],
   ['town-lost', '💀', 'Ashes', 'Watch a town die', /is gone$|is razed|is empty\. The land is poisoned/],
-  ['war', '🛡️', 'To Arms', 'A war is declared', /declares war/],
+  ['war', '🛡️', 'To Arms', 'A war is declared', /declares war|marches on|^War\. |declaration of war/],
   ['sacked', '🏚️', 'Sacked', 'A town is sacked', /sacks/],
   ['annex', '👑', 'Conquest', 'A town annexes another', /annexes/],
   ['walls', '🧱', 'Stonework', 'A town raises a wall', /raises a stone wall/],
@@ -121,15 +121,15 @@ const ACHIEVEMENTS = [
   ['meteor', '☄️', 'Sky Fall', 'A meteor strikes', /METEOR STRIKE/],
   ['beaver', '🦫', 'Busy Beavers', 'Beavers finish a dam', /finish their dam/],
   ['flood', '🌊', 'High Water', 'The river bursts its banks', /bursts its banks/],
-  ['famine', '🌾', 'Lean Years', 'A town goes hungry', /^Famine in/],
+  ['famine', '🌾', 'Lean Years', 'A town goes hungry', /^Famine|scraped bare|goes hungry|No bread in/],
   ['bridge', '🌉', 'Span', 'A bridge is built', /throws a bridge|bridging the river/],
   ['trade', '🛒', 'Open Road', 'Two towns build a trade road', /build a road between them/],
   ['airstrip', '✈️', 'Air Attack', 'A town opens an airstrip', /opens an airstrip/],
   ['tanker', '💧', 'Retardant', 'The tanker makes a drop', /Tanker drops retardant/],
-  ['settlers', '🛖', 'New Ground', 'Settlers found a town', /settlers found/],
+  ['settlers', '🛖', 'New Ground', 'Settlers found a town', /settlers found|is founded by|^A new town:/],
   ['university', '🎓', 'Enlightenment', 'A university is founded', /founds a university/],
   ['factory', '🏭', 'Industry', 'A factory opens', /opens a factory/],
-  ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague/],
+  ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague|Sickness runs|of plague/],
   ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
   ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
   ['healer', '🌿', 'Physician', 'A healer hangs out a sign', /hangs out a healer's sign/],
@@ -140,7 +140,7 @@ const ACHIEVEMENTS = [
   ['crown', '🌲', 'Crown Fire', 'Fire crowns in the timber', /crowning in the timber/],
   ['snow', '❄️', 'First Snow', 'Winter comes', /Snow falls on the valley/],
   ['fireboat', '🚤', 'Harbourmaster', 'A town launches a fireboat', /launches a fireboat/],
-  ['refugees', '🧳', 'Exodus', 'Refugees take to the road', /refugees leave the ruins/],
+  ['refugees', '🧳', 'Exodus', 'Refugees take to the road', /refugees|walk out of what is left/],
 ];
 let achDone = {};
 try { achDone = JSON.parse(localStorage.getItem('wildfire.achievements') || '{}'); } catch (e) { achDone = {}; }
@@ -208,7 +208,7 @@ ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', 
   ['workedout', '🕳️', 'Worked Out', 'A seam is dug to nothing', /is worked out/],
   ['hydro', '💧', 'White Coal', 'A town dams the river for power', /hydroelectric/], ['reactor', '☢️', 'Atoms for Peace', 'A reactor comes online', /brings a reactor online/],
   ['meltdown', '💀', 'Meltdown', 'A reactor burns open', /MELTDOWN/], ['revolt', '✊', 'Revolution', 'The people throw out their elder', /REVOLT in/],
-  ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan appears/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
+  ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan|traders, heading/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
   ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['gold', '💰', 'Gold Rush', 'A town digs a gold mine', /digs a gold mine/], ['mint', '🪙', 'The Mint', 'A town mints its own coin', /mints its first coin/], ['tamed', '🐖', 'Husbandry', 'Hunters bring a wild animal home alive', /home alive, to raise/], ['pasture', '🐄', 'Rancher', 'A town fences a pasture', /fences a pasture/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
 renderAchievements();
 function renderLog() {

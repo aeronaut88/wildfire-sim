@@ -2170,7 +2170,9 @@ function personAge(p) { return Math.max(0, Math.floor((world.tick - p.born) / YE
 function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief' || p.role === 'spy') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : p.role === 'spy' ? 'spy' : ROLE_LABEL[p.role] || p.role; }
 function deed(p, text) { if (!p) return; p.deeds.push({ tick: world.tick, text }); if (p.deeds.length > 6) p.deeds.shift(); }
 function elect(town, role, quiet, avoidTrait) {
-  const p = makePerson(Math.random, role, 20 + Math.random() * 35);
+  if (role === 'firebug') { const g = grudgeHolders(town).find(q => q.role === 'townsfolk' || q.role === 'thief'); if (g && Math.random() < 0.6) { g.role = 'firebug'; g.revealed = false; g.arsons = 0; g.story = `never forgave ${g.grudge.why}`; return g; } }
+  const prev = (town.people || []).filter(q => q.role === role).slice(-1)[0];
+  const p = makePersonIn(town, role, 20 + Math.random() * 35, prev && role !== 'firebug' && Math.random() < 0.35 ? prev : null);
   if (role === 'elder') p.trait = rollTrait(town, avoidTrait);
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   if (!quiet) log(role === 'elder' ? `${town.name} chooses ${p.name} as elder, ${/^[aeiou]/.test(TRAITS[p.trait].label) ? 'an' : 'a'} ${TRAITS[p.trait].label} who ${TRAITS[p.trait].blurb}` : role === 'chief' ? `${p.name} takes over as ${town.name}'s fire chief` : `${p.name} becomes ${town.name}'s ${ROLE_LABEL[role]}`, 'build');
@@ -2186,6 +2188,7 @@ function updateUnrest(town) {
   const deaths = town.deaths - (town.lastDeathsSeen || 0); town.lastDeathsSeen = town.deaths; d += Math.min(2, deaths / 10);
   const tr = l.trait;
   if (tr === 'tyrant') d += 0.7; if (tr === 'madman') d += 0.5; if (tr === 'miser' && town.res.coin > 150 && !town.fed) d += 0.6;
+  d += Math.min(1.2, 0.4 * grudgeHolders(town).length); // families that remember a wrong
   if (tr === 'peacemaker' || tr === 'prophet' || tr === 'drunkard') d -= 0.5; if (tr === 'builder' || tr === 'greenthumb') d -= 0.3;
   if (town.align.order > 0) d -= 0.3;
   town.unrest = Math.max(0, Math.min(100, (town.unrest || 10) + d));
@@ -2196,7 +2199,8 @@ function overthrow(town, l) {
   const hanged = (l.trait === 'tyrant' || l.trait === 'warmonger') && Math.random() < 0.5;
   l.alive = false; l.died = world.tick; l.cause = hanged ? 'hanged by the mob' : 'thrown out by the mob';
   stat('ev', 'overthrows'); town.overthrows = (town.overthrows || 0) + 1;
-  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and ${hanged ? 'hang them from the hall' : 'run them out of town'}`, 'war');
+  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and ${hanged ? 'hang them from the hall' : 'run them out of town'}`, 'war'); remember(town, 'revolt', { who: l.name });
+  for (const q of town.people) if (q.alive && q.grudge && q.grudge.against === 'the law') { q.grudge = null; deed(q, 'was in the crowd at the hall the day the elder fell, and called it settled'); }
   const [px, py] = cellCenter(town.cy * world.n + town.cx); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'REVOLT', color: '#ff6ad5', t0: performance.now(), dur: 2600 });
   town.militia = Math.floor(town.militia * 0.75); town.unrest = 30;
   if (Math.random() < 0.35) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`Riots in ${town.name}; a house burns`, 'arson'); } }
@@ -2408,6 +2412,257 @@ function buildAirbase(town) {
   return false;
 }
 
+/* ───────────────────────── Phrases, memory and kin ─────────────────────────
+   The log is the game. Every common event has a bag of ways to be said, coloured by the weather,
+   the hour, the season, the elder in charge and the town's mood, and never said the same way twice
+   running. Towns remember what happened to them and the engine calls back to it. People come in
+   families, and a family remembers too. */
+
+const DAYPARTS = ['before dawn', 'at first light', 'in the morning', 'at midday', 'in the afternoon', 'toward evening', 'at dusk', 'in the night'];
+function daypart() { return DAYPARTS[Math.floor((world.tick % 16) / 2)]; }
+function weatherWord() {
+  const k = world.weather.kind;
+  if (k === 'rain') return 'in the rain'; if (k === 'storm') return 'in the storm'; if (k === 'drought') return 'in the dust of the drought';
+  if (k === 'snow') return 'with snow coming down';
+  if (params.windStrength > 0.7) return 'with the wind up';
+  return season() === 1 ? 'under a hot sky' : season() === 3 ? 'in the cold' : 'under a clear sky';
+}
+function seasonWord() { return ['spring', 'summer', 'autumn', 'winter'][season()]; }
+function elderOf(town) { const l = leader(town); return l ? l.name : 'the elder'; }
+function moodWord(town) { const u = town.unrest || 0; return u >= 70 ? 'the town is at the end of its patience' : u >= 45 ? 'tempers are short' : u <= 15 ? 'the town is in good heart' : 'people take it in their stride'; }
+function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+// Say an event one of several ways, never repeating the last two phrasings for that key.
+const phraseUsed = {};
+function say(town, key, c, kind, at) {
+  const bag = PHRASES[key]; if (!bag) return;
+  const used = phraseUsed[key] || (phraseUsed[key] = []);
+  let idx = Math.floor(Math.random() * bag.length), tries = 0;
+  while (used.includes(idx) && tries++ < 6) idx = Math.floor(Math.random() * bag.length);
+  used.push(idx); if (used.length > Math.min(2, bag.length - 1)) used.shift();
+  c = c || {}; c.town = town; c.name = town ? town.name : '';
+  let text = bag[idx](c);
+  if (town && Math.random() < 0.12) { const back = recall(town, key); if (back) text += (/[.!?]$/.test(text) ? ' ' : '. ') + back; }
+  log(text, kind, at);
+  return text;
+}
+// A town's memory: the handful of things that defined it lately, for the log to call back to.
+const MEMORY_SHORT = { hanging: c => `the hanging of ${c.who}`, famine: () => 'the famine', dragon: c => `${c.who}'s visit`, bigfire: () => 'the great fire', flood: () => 'the flood', war: c => `the war with ${c.who}`, plague: () => 'the plague', festival: () => 'the festival', wedding: c => `${c.who}'s wedding`, sack: c => `the sack by ${c.who}`, revolt: c => `the revolt against ${c.who}`, slain: c => `the killing of ${c.who}`, meteor: () => 'the night the sky fell', exile: c => `the casting out of ${c.who}` };
+function remember(town, kind, c) {
+  if (!town) return;
+  const m = town.memory || (town.memory = []);
+  m.unshift({ tick: world.tick, kind, short: (MEMORY_SHORT[kind] || (() => kind))(c || {}) });
+  if (m.length > 10) m.length = 10;
+}
+function agoWord(ticks) {
+  const seasons = Math.round(ticks / (YEAR / 4));
+  if (seasons <= 0) return 'only days'; if (seasons === 1) return 'a season'; if (seasons < 4) return `${['', '', 'two', 'three'][seasons]} seasons`;
+  const y = Math.round(ticks / YEAR); return y <= 1 ? 'a year' : y === 2 ? 'two years' : y === 3 ? 'three years' : `${y} years`;
+}
+function recall(town, aboutKey) {
+  const m = (town.memory || []).find(e => world.tick - e.tick < YEAR * 3 && world.tick - e.tick > YEAR / 4 && !(aboutKey || '').startsWith(e.kind));
+  if (!m) return null;
+  const S = m.short[0].toUpperCase() + m.short.slice(1);
+  return pick([`It is ${agoWord(world.tick - m.tick)} since ${m.short}.`, `${S} is still talked about.`, `Nobody has forgotten ${m.short}.`, `The old people say it was like this before ${m.short}.`, `${S} was ${agoWord(world.tick - m.tick)} ago, and it feels like yesterday.`]);
+}
+
+// ── People come in families ──
+function surnameOf(name) { return name.split(' ').slice(1).join(' '); }
+function kinOf(town, p) { const s = surnameOf(p.name); return (town.people || []).filter(q => q !== p && surnameOf(q.name) === s); }
+// A new person in a town: often a member of a family already there, sometimes kin of a named person.
+function makePersonIn(town, role, ageYears, kin) {
+  const p = makePerson(Math.random, role, ageYears);
+  const living = (town.people || []).filter(q => q.alive);
+  if (kin) { p.name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)] + ' ' + surnameOf(kin.name); p.kin = kin.name; }
+  else if (living.length && Math.random() < 0.45) { const rel = pick(living); p.name = FIRST_NAMES[Math.floor(Math.random() * FIRST_NAMES.length)] + ' ' + surnameOf(rel.name); p.kin = rel.name; }
+  return p;
+}
+function kinLabel(town, p) {
+  if (!p.kin) return '';
+  const k = (town.people || []).find(q => q.name === p.kin);
+  if (!k) return '';
+  return `${k.alive ? 'kin' : 'kin'} of ${k.name}${k.role === 'elder' ? ' the elder' : k.cause === 'hanged' ? ', who was hanged' : k.cause === 'banished' ? ', who was cast out' : ''}`;
+}
+// A wrong done to one of the family is remembered by the rest.
+function grudgeKin(town, p, against, why) {
+  for (const q of kinOf(town, p)) if (q.alive && !q.grudge) { q.grudge = { against, why, since: world.tick, over: p.name }; deed(q, `swore to remember ${why}`); }
+}
+function grudgeHolders(town) { return (town.people || []).filter(q => q.alive && q.grudge && world.tick - q.grudge.since < YEAR * 6); }
+
+// ── The phrases ──
+const PHRASES = {
+  alarm: [
+    c => `${c.name} sounds the alarm ${daypart()}, ${c.crews} rally${c.chief ? `, Chief ${c.chief} at their head` : ''}`,
+    c => `Smoke over ${c.name} ${weatherWord()}. ${c.crews} rally${c.chief ? ` behind Chief ${c.chief}` : ''}`,
+    c => `The bell rings in ${c.name} and ${c.crews} turn out${c.chief ? `; Chief ${c.chief} is already at the edge of town` : ''}`,
+    c => `Fire ${weatherWord()} and ${c.name} rallies: ${c.crews}${c.chief ? `, ${c.chief} shouting the orders` : ''}`,
+    c => `${c.name} sees the glow ${daypart()} and ${c.crews} go out to meet it`,
+    c => `Every able body in ${c.name} is on the line: ${c.crews}${c.chief ? ` under Chief ${c.chief}` : ''}, ${moodWord(c.town)}`,
+  ],
+  saved: [
+    c => `${c.name} stands down, all ${c.homes} homes saved`,
+    c => `The line holds at ${c.name}. ${c.homes} homes, not one lost`,
+    c => `${c.name} beats the fire back ${daypart()} and keeps every one of its ${c.homes} homes`,
+    c => `Quiet again in ${c.name}. Nothing lost, and the crews come home black to the elbows`,
+    c => `${c.name} stands down with the ${c.homes} homes it started with. ${moodWord(c.town)[0].toUpperCase() + moodWord(c.town).slice(1)}`,
+  ],
+  lost: [
+    c => `${c.name} stands down, lost ${c.lost} of ${c.had} homes`,
+    c => `The fire is out at ${c.name}; ${c.lost} of ${c.had} homes are ash`,
+    c => `${c.name} counts the cost ${daypart()}: ${c.lost} homes gone of ${c.had}`,
+    c => `${c.name} stands down. ${c.lost} families are sleeping in the hall tonight`,
+    c => `Smoke clears over ${c.name}: ${c.lost} homes lost, ${c.had - c.lost} standing`,
+  ],
+  reaches: [
+    c => `Fire reaches ${c.name}`,
+    c => `The fire is in ${c.name}'s streets ${weatherWord()}`,
+    c => `Flames at the first houses of ${c.name}`,
+    c => `${c.name} is burning`,
+  ],
+  buildingLost: [
+    c => `${c.name} loses its ${c.what}`,
+    c => `The ${c.what} at ${c.name} burns`,
+    c => `${c.name}'s ${c.what} goes up ${weatherWord()}`,
+    c => `Nothing left of the ${c.what} in ${c.name}`,
+  ],
+  famine: [
+    c => `Famine in ${c.name}: the granary is empty and ${c.pop} mouths to feed`,
+    c => `The granary at ${c.name} is scraped bare. ${c.pop} people and nothing to put on the table`,
+    c => `${c.name} goes hungry ${weatherWord()}. ${elderOf(c.town)} orders the last of the stores shared out`,
+    c => `No bread in ${c.name}. The children are quiet, which is the worst of it`,
+    c => `Famine at ${c.name}, ${c.pop} mouths and an empty granary. ${moodWord(c.town)[0].toUpperCase() + moodWord(c.town).slice(1)}`,
+  ],
+  famineEnds: [
+    c => `The famine in ${c.name} ends`,
+    c => `There is bread again in ${c.name}`,
+    c => `The granary at ${c.name} has something in it. The hunger lifts`,
+    c => `${c.name} eats a full meal for the first time in weeks`,
+  ],
+  grows: [
+    c => `${c.name} grows: new road, ${c.homes} homes`,
+    c => `${c.name} pushes out a new street, ${c.homes} homes now`,
+    c => `A new road out of ${c.name}; the town is ${c.homes} homes`,
+    c => `${c.name} spreads a little further ${seasonWord() === 'winter' ? 'even in the snow' : 'this ' + seasonWord()}: ${c.homes} homes`,
+  ],
+  addsHomes: [
+    c => `${c.name} adds homes (${c.homes})`,
+    c => `New roofs in ${c.name}: ${c.homes} homes`,
+    c => `${c.name} is ${c.homes} homes now`,
+    c => `Hammers in ${c.name} ${daypart()}. ${c.homes} homes`,
+  ],
+  rebuilding: [
+    c => `${c.name} is rebuilding (${c.homes} homes)`,
+    c => `${c.name} clears the ash and builds again, ${c.homes} homes standing`,
+    c => `New timber over old foundations at ${c.name}: ${c.homes} homes`,
+  ],
+  market: [
+    c => `Market day at ${c.name}: ${c.deal}. ${c.coin} coin in the chest.`,
+    c => `The caravan opens its wagons at ${c.name} ${daypart()}: ${c.deal}. ${c.coin} coin left in the chest`,
+    c => `Haggling in the square at ${c.name}: ${c.deal}. The chest holds ${c.coin}`,
+    c => `${c.name} trades ${weatherWord()}: ${c.deal}. ${c.coin} coin in the chest`,
+  ],
+  marketNothing: [
+    c => `Market day at ${c.name}, but nobody has anything the other wants`,
+    c => `The caravan opens its wagons at ${c.name} and closes them again. No trade`,
+    c => `A thin market at ${c.name}: the trader shrugs and moves on`,
+  ],
+  caravan: [
+    c => `A trader's caravan appears on the ${c.edge} edge, bound for ${c.name}`,
+    c => `Wagons on the ${c.edge} road ${daypart()}: a caravan for ${c.name}`,
+    c => `A caravan comes over the ${c.edge}ern hills making for ${c.name}`,
+    c => `Dust on the ${c.edge} edge: traders, heading to ${c.name}`,
+  ],
+  industryFire: [
+    c => `Fire breaks out at the ${c.what} in ${c.name}`,
+    c => `Sparks from the ${c.what} at ${c.name} catch ${daypart()}`,
+    c => `The ${c.what} in ${c.name} is alight; somebody left the furnace open`,
+  ],
+  arson1: [
+    c => `Someone from ${c.name} set a fire on the edge of town. Nobody saw who.`,
+    c => `A fire on the edge of ${c.name} ${daypart()} that nobody can explain`,
+    c => `Flames in the scrub outside ${c.name}. It did not start itself.`,
+  ],
+  arson2: [
+    c => `Another fire set on the edge of ${c.name}. People are starting to talk about ${c.who}.`,
+    c => `A second fire outside ${c.name}. ${c.who}'s name comes up at the well`,
+    c => `${c.name} burns again at the edge. Somebody saw ${c.who} out late`,
+  ],
+  arson3: [
+    c => `${c.who} set a fire on the edge of ${c.name} again. This time they were seen.`,
+    c => `${c.who} was seen with a torch outside ${c.name}. Nobody is surprised.`,
+    c => `Once more a fire outside ${c.name}, and this time ${c.who} did not get away clean`,
+  ],
+  warDeclared: [
+    c => `${c.name} declares war on ${c.other}${c.why ? ' ' + c.why : ''}${c.elder ? `. Elder ${c.elder} signed the order` : ''}`,
+    c => `${c.name} marches on ${c.other}${c.why ? ' ' + c.why : ''}. ${c.elder ? `${c.elder} says it had to be done` : 'Nobody is sure who decided'}`,
+    c => `War. ${c.name} against ${c.other}${c.why ? ', ' + c.why : ''}${c.elder ? `, by ${c.elder}'s hand` : ''}`,
+    c => `${c.name} sends ${c.other} a declaration of war ${daypart()}${c.why ? ' ' + c.why : ''}`,
+  ],
+  truce: [
+    c => `${c.name} and ${c.other} agree a truce${c.why ? ' ' + c.why : ''}${c.hands ? `, ${c.hands} shaking on it` : ''}`,
+    c => `The war between ${c.name} and ${c.other} ends${c.why ? ' ' + c.why : ''}. ${c.hands ? `${c.hands} meet on the road and shake` : 'Both sides go home'}`,
+    c => `Peace between ${c.name} and ${c.other}${c.why ? ' ' + c.why : ''}. The widows do not celebrate`,
+  ],
+  meet: [
+    c => `${c.name}'s ${c.att} meet ${c.other}'s ${c.def} ${c.wall ? 'at the wall' : 'outside the town'}`,
+    c => `${c.att} from ${c.name} come up against ${c.def} of ${c.other} ${c.wall ? 'under the wall' : 'in the fields'} ${weatherWord()}`,
+    c => `Battle at ${c.other}: ${c.name}'s ${c.att} against ${c.def} defenders${c.wall ? ' on the wall' : ''}`,
+  ],
+  holds: [
+    c => `${c.other} holds. ${c.name} lost all ${c.att0}${c.wall ? ' at the wall' : ''}, ${c.defLost} defenders fell`,
+    c => `${c.other} throws ${c.name} back${c.wall ? ' from the wall' : ''}. ${c.att0} attackers dead, ${c.defLost} of the town's own`,
+    c => `The attack on ${c.other} breaks ${daypart()}. ${c.name}'s ${c.att0} are all dead; ${c.other} buries ${c.defLost}`,
+  ],
+  withdraws: [
+    c => `${c.name} withdraws from ${c.other} after a bloody day: ${c.attLost} attackers and ${c.defLost} defenders dead`,
+    c => `${c.name} pulls back from ${c.other} ${daypart()}, leaving ${c.attLost} dead against ${c.defLost}`,
+    c => `Neither side wins at ${c.other}. ${c.name} goes home ${c.attLost} fewer; ${c.other} is ${c.defLost} fewer`,
+  ],
+  dragonSeen: [
+    c => `${c.who.toUpperCase()}, a ${c.kind} dragon, has been sighted making for ${c.name}${c.then ? ' and then ' + c.then : ''}`,
+    c => `A ${c.kind} shape in the sky ${daypart()}: ${c.who.toUpperCase()}, and it is coming for ${c.name}${c.then ? ', then ' + c.then : ''}`,
+    c => `${c.who.toUpperCase()} is in the valley. The ${c.kind} dragon turns toward ${c.name}${c.then ? ' and after that ' + c.then : ''}`,
+  ],
+  dragonLeaves: [
+    c => `${c.who} leaves ${c.name} burning. ${c.lit} building${c.lit === 1 ? '' : 's'} set ablaze${c.loot ? `, and it flies off with ${c.loot} for its hoard` : ''}.`,
+    c => `${c.who} is done with ${c.name}: ${c.lit} building${c.lit === 1 ? '' : 's'} alight${c.loot ? ` and ${c.loot} gone with it` : ''}. The sky is empty again.`,
+    c => `${c.who} climbs away from ${c.name} ${weatherWord()}, ${c.lit} fires behind it${c.loot ? ` and ${c.loot} in its claws` : ''}.`,
+  ],
+  dragonDriven: [
+    c => `${c.name}'s militia drives the dragon off! ${c.lost} archers lost. It will remember.`,
+    c => `Arrows from ${c.name}'s wall find ${c.who}, and it turns away. ${c.lost} archers paid for it. It will remember.`,
+    c => `${c.who} breaks off from ${c.name} with ${c.name}'s arrows in its hide. ${c.lost} dead on the wall. It will remember.`,
+  ],
+  plague: [
+    c => `Plague in the crowded streets of ${c.name}: ${c.dead} dead${c.saved ? `, ${c.saved} pulled through under the healer's roof` : ''}. A waterworks would help.`,
+    c => `Sickness runs through ${c.name}'s tenements ${weatherWord()}: ${c.dead} dead${c.saved ? `, ${c.saved} saved by the healer` : ''}. Clean water would stop it.`,
+    c => `${c.name} buries ${c.dead} of plague${c.saved ? `; ${c.saved} more would have gone without the healer` : ''}. The streets are too crowded and the water too foul.`,
+  ],
+  crewLost: [
+    c => `${c.name}: crew of ${c.n} ${c.why}`,
+    c => `${c.name} loses a crew of ${c.n}, ${c.why}`,
+    c => `${c.n} of ${c.name}'s firefighters ${c.why}`,
+  ],
+  settlersFound: [
+    c => `${c.n} settlers found ${c.name}, ${c.homes} homes raised${c.leader ? `. ${c.leader} led them` : ''}`,
+    c => `${c.name} is founded by ${c.n} settlers ${weatherWord()}${c.leader ? `, ${c.leader} driving the first stake` : ''}. ${c.homes} homes`,
+    c => `A new town: ${c.name}, ${c.n} people and ${c.homes} roofs${c.leader ? `, named by ${c.leader}` : ''}`,
+  ],
+  refugees: [
+    c => `${c.n} refugees leave the ruins of ${c.name} for ${c.host}`,
+    c => `${c.n} people walk out of what is left of ${c.name}, bound for ${c.host}`,
+    c => `${c.name} empties: ${c.n} refugees on the road to ${c.host} ${weatherWord()}`,
+  ],
+  lightning: [
+    c => `Lightning strikes just outside ${c.name}`,
+    c => `A bolt comes down ${daypart()} within sight of ${c.name}`,
+    c => `Thunder over ${c.name}, and a strike in the timber close by`,
+  ],
+  lightningWild: [
+    () => 'Lightning strike in the forest',
+    () => `Lightning in the far timber ${daypart()}`,
+    () => 'A strike somewhere in the wilds; smoke follows',
+  ],
+};
 /* ───────────────────────── Simulation ───────────────────────── */
 
 const OFFS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -2582,7 +2837,7 @@ function declareWar(a, b, why) {
   a.wars[b.id] = world.tick; b.wars[a.id] = world.tick;
   setRel(a, b, Math.min(rel(a, b), -70));
   const el = person(a, 'elder'); deed(el, `declared war on ${b.name}`);
-  log(`${a.name} declares war on ${b.name}${why ? ' ' + why : ''}${el ? `. Elder ${el.name} signed the order` : ''}`, 'war');
+  say(a, 'warDeclared', { other: b.name, why, elder: el ? el.name : null }, 'war'); remember(a, 'war', { who: b.name }); remember(b, 'war', { who: a.name });
   for (const t of [a, b]) { const [x, y] = cellCenter(t.cy * world.n + t.cx); popups.push({ x, y: y - t.R * cellPx - 14, text: 'WAR', color: '#ff4040', t0: performance.now(), dur: 2500 }); }
 }
 function makePeace(a, b, why) {
@@ -2590,7 +2845,7 @@ function makePeace(a, b, why) {
   delete a.wars[b.id]; delete b.wars[a.id];
   setRel(a, b, Math.max(rel(a, b), -25));
   const ea = person(a, 'elder'), eb = person(b, 'elder'); deed(ea, `made peace with ${b.name}`); deed(eb, `made peace with ${a.name}`);
-  log(`${a.name} and ${b.name} agree a truce${why ? ' ' + why : ''}${ea && eb ? `, ${ea.name} and ${eb.name} shaking on it` : ''}`, 'diplo');
+  say(a, 'truce', { other: b.name, why, hands: ea && eb ? `${ea.name} and ${eb.name}` : null }, 'diplo');
 }
 
 function militiaRate(t) {
@@ -2767,7 +3022,7 @@ function startBattle(b, from, to) {
   if (!to.mobilized && to.housesLeft > 0) { to.lastThreat = world.tick; }
   const [px, py] = cellCenter(to.cy * n + to.cx);
   popups.push({ x: px, y: py - to.R * cellPx - 14, text: 'BATTLE', color: '#ffb08a', t0: performance.now(), dur: 2000 });
-  log(`${from.name}'s ${b.size} meet ${to.name}'s ${defenders} ${to.wallR ? 'at the wall' : 'outside the town'}`, 'war');
+  say(from, 'meet', { other: to.name, att: b.size, def: defenders, wall: !!to.wallR }, 'war', to.cy * world.n + to.cx);
 }
 
 const WEAPON = ['arrows', 'arrows', 'bolts', 'muskets', 'rifles', 'guns', 'guns'];
@@ -2863,7 +3118,7 @@ function finishBattle(bt, from, to) {
     from.militia += bt.att;
     stat('ev', 'sacks');
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'SACKED', color: '#ff4040', t0: performance.now(), dur: 2500 });
-    log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
+    remember(to, 'sack', { who: from.name }); log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
     if (to.popLeft < 10 || to.housesLeft - torch < 2) { // razed
       for (const i of to.buildings) if (isBuilding(world.type[i])) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); }
       to.housesLeft = 0;
@@ -2875,12 +3130,12 @@ function finishBattle(bt, from, to) {
     if (atWar(from, to) && from.align.moral < 0 && from.align.order > 0 && to.popLeft < from.popLeft * 0.25 && Math.random() < 0.5) annex(from, to);
   } else if (bt.att <= 0) {
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'REPELLED', color: '#a7e36f', t0: performance.now(), dur: 2000 });
-    log(`${to.name} holds. ${from.name} lost all ${bt.att0}${to.wallR ? ' at the wall' : ''}, ${bt.def0 - bt.def} defenders fell`, 'war');
+    say(from, 'holds', { other: to.name, att0: bt.att0, wall: !!to.wallR, defLost: bt.def0 - bt.def }, 'war', to.cy * world.n + to.cx);
     setRel(from, to, rel(from, to) - 15);
   } else {
     from.militia += bt.att;
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'WITHDRAWN', color: '#ffb08a', t0: performance.now(), dur: 2000 });
-    log(`${from.name} withdraws from ${to.name} after a bloody day: ${bt.att0 - bt.att} attackers and ${bt.def0 - bt.def} defenders dead`, 'war');
+    say(from, 'withdraws', { other: to.name, attLost: bt.att0 - bt.att, defLost: bt.def0 - bt.def }, 'war', to.cy * world.n + to.cx);
     setRel(from, to, rel(from, to) - 10);
   }
 }
@@ -3519,7 +3774,8 @@ function maybeDragon(force) {
   for (const t of targets) t.dragons = (t.dragons || 0) + 1;
   stat('ev', 'dragons'); stat('dragons', name);
   if (grudge) { log(`${name}, the ${kind.name} dragon, returns for ${town.name}`, 'dragon'); world.dragonGrudge = null; }
-  else log(`${name.toUpperCase()}, a ${kind.name} dragon, has been sighted making for ${town.name}${targets.length > 1 ? ' and then ' + targets.slice(1).map(t => t.name).join(' and ') : ''}`, 'dragon');
+  else say(town, 'dragonSeen', { who: name, kind: kind.name, then: targets.length > 1 ? targets.slice(1).map(t => t.name).join(' and ') : null }, 'dragon');
+  for (const t of targets) remember(t, 'dragon', { who: name });
   const [px, py] = cellCenter(town.cy * n + town.cx);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'DRAGON', color: '#ff4040', t0: performance.now(), dur: 3000 });
 }
@@ -3549,7 +3805,7 @@ function flyDragon(dtSec) {
   if (d.leg >= d.legs.length - 1) {
     if (d.slain) { /* already announced */ }
     else if (d.driven) log(`${d.name || 'The dragon'} limps away from ${d.town.name}. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze before the archers found their range${d.stole ? `, ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} gone with it` : ''}.`, 'dragon');
-    else log(`${d.name || 'The dragon'} leaves ${d.town.name} burning. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze${d.stole || d.stoleGold ? `, and it flies off with ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} for its hoard` : ''}.`, 'dragon');
+    else say(d.town, 'dragonLeaves', { who: d.name || 'The dragon', lit: d.lit, loot: d.stole || d.stoleGold ? `${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''}` : null }, 'dragon');
     world.dragon = null;
   }
 }
@@ -3560,7 +3816,7 @@ function slayDragon(d, town, byJet) {
   const boom = 20 + Math.floor(Math.random() * 30), hoard = 80 + Math.floor(Math.random() * 200) + (d.hoard || 0);
   town.popLeft += boom; town.popTotal += boom; world.popLeft += boom; world.popTotal += boom; town.research += 2000; town.civPts = (town.civPts || 0) + 1000; town.milPts = (town.milPts || 0) + 1000;
   town.res.coin += hoard; town.res.gold = Math.min(resCap(town, 'gold'), (town.res.gold || 0) + 6); stat('ev', 'dragonHoards', hoard);
-  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet');
+  stat('ev', 'dragonsSlain'); if (byJet) stat('ev', 'dragonsJet'); remember(town, 'slain', { who: d.name || 'the dragon' });
   const hero = elect(town, 'slayer', true); deed(hero, `${byJet ? 'shot down' : 'slew'} ${d.name || 'the dragon'}`);
   hero.story = byJet ? `flew the jet that brought down ${d.name || 'a dragon'} and still buys the first round` : `put the killing shot into ${d.name || 'a dragon'} and has not paid for a drink since`;
   log(byJet ? `${town.name}'s jet brings down ${(d.name || 'THE DRAGON').toUpperCase()} over the fields. ${hero.name} was flying. The hoard, ${hoard} coin and a sack of gold, is picked from the wreck and draws ${boom} newcomers.` : `${town.name} SLAYS ${(d.name || 'THE DRAGON').toUpperCase()}. ${hero.name} struck the last blow. Its hoard, ${hoard} coin and a sack of gold, draws ${boom} newcomers.`, 'win');
@@ -3669,7 +3925,7 @@ function breathe(d) {
     const lost = Math.min(d.town.militia, 2 + Math.floor(Math.random() * 4)); applyLosses(d.town, lost, 'dragon'); d.town.militia -= lost;
     if (d.town.mil >= 4 && Math.random() < 0.35) slayDragon(d, d.town, false); // rifles and up can bring it down
     else {
-      stat('ev', 'dragonsDriven'); log(`${d.town.name}'s militia drives the dragon off! ${lost} archers lost. It will remember.`, 'win');
+      stat('ev', 'dragonsDriven'); say(d.town, 'dragonDriven', { who: d.name || 'the dragon', lost }, 'win');
       world.dragonGrudge = { town: d.town.id, tick: world.tick, kind: d.kind, name: d.name };
     }
   }
@@ -3813,8 +4069,8 @@ function naturalLightning() {
   let near = null, nd = Infinity;
   for (const t of world.towns) { const d = Math.hypot(t.cx - x, t.cy - y); if (d < nd) { nd = d; near = t; } }
   lightning(i);
-  if (near && nd < near.R + 12) log(`Lightning strikes just outside ${near.name}`, 'alarm');
-  else if (Math.random() < 0.5) log('Lightning strike in the forest', 'weather');
+  if (near && nd < near.R + 12) say(near, 'lightning', {}, 'alarm');
+  else if (Math.random() < 0.5) say(null, 'lightningWild', {}, 'weather');
 }
 
 /* ───────────────────────── Wind ───────────────────────── */
@@ -3990,7 +4246,7 @@ function updateSettlers(force) {
       town.popLeft += delta; town.popTotal += delta; world.popLeft += delta; world.popTotal += delta;
       town.res.wood = 10 + Math.min(20, s.size); town.res.grain = Math.min(40, 6 + Math.min(12, Math.floor(s.size / 2))); // what the wagon carried
       const el = person(town, 'elder'); if (el) { el.story = 'led the wagons that founded the town'; deed(el, `founded ${town.name}`); }
-      log(`${s.size} settlers found ${town.name}, ${town.housesLeft} homes raised${el ? `. ${el.name} led them` : ''}`, 'build');
+      say(town, 'settlersFound', { n: s.size, homes: town.housesLeft, leader: el ? el.name : null }, 'build');
       const [px, py] = cellCenter(s.ty * n + s.tx);
       popups.push({ x: px, y: py - town.R * cellPx, text: town.name.toUpperCase(), color: '#d9c48a', t0: performance.now(), dur: 2500 });
     } else log('The settlers found no good ground and moved on', 'weather');
@@ -4124,7 +4380,7 @@ function strikeCell(cx, cy, radius) {
 function onBuildingIgnite(i) {
   const town = world.towns[world.townOf[i]];
   if (!town) return;
-  if (!town.firstHit) { town.firstHit = true; log(`Fire reaches ${town.name}`, 'loss'); }
+  if (!town.firstHit) { town.firstHit = true; say(town, 'reaches', {}, 'loss'); }
   const res = occupants(town);
   if (res > 0 && isHome(world.type[i])) {
     const survive = (world.dragonfire ? 0.5 : world.raidfire ? 0.7 : (town.mobilized ? 0.92 : 0.6)) + (town.align.moral > 0 ? 0.04 : 0);
@@ -4161,7 +4417,7 @@ function onBuildingDestroyed(i, cause) {
   if (t === T.AIRBASE && town.bombers) { log(`${town.bombers} bomber${town.bombers > 1 ? 's' : ''} burn in the hangars at ${town.name}`, 'loss'); stat('ev', 'bombersLost', town.bombers); town.bombers = 0; }
   if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
-  else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');
+  else if (t !== T.STATION && BUILDING_NAMES[t]) say(town, 'buildingLost', { what: BUILDING_NAMES[t].toLowerCase() }, 'loss');
   if (t === T.STATION) {
     town.hasStation = false;
     for (const tr of town.trucks) if (tr.alive && (tr.state === 'idle' || tr.state === 'refill')) loseTruck(town, tr, 'lost with the station');
@@ -4183,7 +4439,7 @@ function loseCrew(town, crew, why) {
   town.popLeft -= people; world.popLeft -= people; world.deaths += people; town.deaths += people;
   stat('deaths', 'fire crews lost', people); stat('deathsTown', town.name, people);
   town.claimed.delete(crew.target);
-  log(`${town.name}: crew of ${people} ${why}`, 'loss');
+  say(town, 'crewLost', { n: people, why }, 'loss');
   const [x, y] = cellCenter(crew.y * world.n + crew.x);
   popups.push({ x, y, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
 }
@@ -4224,7 +4480,7 @@ function updateTowns() {
         town.housesAtAlarm = town.housesLeft;
         const c = town.crewsToSpawn;
         const chief = person(town, 'chief'); if (chief) { chief.fires++; if (chief.fires === 1 || chief.fires % 5 === 0) deed(chief, `led the town against its ${chief.fires === 1 ? 'first' : chief.fires + 'th'} fire`); }
-        log(`${town.name} sounds the alarm, ${c === 1 ? 'a single crew' : c + ' crews'} rally${chief && Math.random() < 0.5 ? `, Chief ${chief.name} at their head` : ''}`, 'alarm');
+        say(town, 'alarm', { crews: c === 1 ? 'a single crew' : c + ' crews', chief: chief && Math.random() < 0.5 ? chief.name : null }, 'alarm');
         const [x, y] = cellCenter(town.cy * n + town.cx);
         popups.push({ x, y: y - town.R * cellPx, text: 'RALLY!', color: '#ffb627', t0: performance.now(), dur: 1800 });
         const live = town.trucks.filter(tr => tr.alive);
@@ -4237,7 +4493,7 @@ function updateTowns() {
       town.crewsToSpawn = 0;
       town.fireDist = Infinity; town.nearestFire = -1;
       const lostNow = Math.max(0, (town.housesAtAlarm || town.housesLeft) - town.housesLeft);
-      if (town.housesLeft > 0) log(lostNow === 0 ? `${town.name} stands down, all ${town.housesLeft} homes saved` : `${town.name} stands down, lost ${lostNow} of ${town.housesAtAlarm} homes`, lostNow === 0 ? 'win' : 'good');
+      if (town.housesLeft > 0) { if (lostNow === 0) say(town, 'saved', { homes: town.housesLeft }, 'win'); else { say(town, 'lost', { lost: lostNow, had: town.housesAtAlarm }, 'good'); if (lostNow >= 10) remember(town, 'bigfire'); } }
       else log(`${town.name} survivors stand down`, 'loss');
       for (const tr of town.trucks) if (tr.alive) tr.state = 'return';
     }
@@ -4272,7 +4528,7 @@ function sendRefugees(town) {
   const size = Math.max(1, Math.round(town.popLeft * 0.7));
   town.popLeft -= size; town.popTotal -= size; world.popLeft -= size; world.popTotal -= size;
   world.settlers = { mode: 'join', town: host, tx: host.cx, ty: host.cy, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, wait: 0, path, pi: 0, size, refugees: town.name };
-  log(`${size} refugees leave the ruins of ${town.name} for ${host.name}`, 'build');
+  say(town, 'refugees', { n: size, host: host.name }, 'build');
 }
 
 /* ───────────────────────── Townspeople ───────────────────────── */
@@ -4851,7 +5107,7 @@ function updateTrader() {
     if (Math.random() < 0.04) stock.uranium = 1 + Math.floor(Math.random() * 3);
     world.trader = { x: ex, y: ey, px: ex, py: ey, face: 1, path, pi: 0, town: town.id, stock, coin: 50 + Math.floor(Math.random() * 60), phase: 'in', linger: 0, wait: 0 };
     stat('ev', 'caravans');
-    log(`A trader's caravan appears on the ${ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east'} edge, bound for ${town.name}`, 'build');
+    say(town, 'caravan', { edge: ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east' }, 'build', ey * n + ex);
     return;
   }
   tr.px = tr.x; tr.py = tr.y;
@@ -4919,8 +5175,8 @@ function holdMarket(tr, town) {
   spawnCrowd(town, town.cy * world.n + town.cx, 25, 4 + Math.floor(Math.random() * 4));
   maybeSmuggle(tr, town);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'MARKET', color: '#f5a623', t0: performance.now(), dur: 2000 });
-  if (!bought.length && !sold.length) log(`Market day at ${town.name}, but nobody has anything the other wants`, 'build');
-  else log(`Market day at ${town.name}: ${bought.length ? 'buys ' + bought.join(', ') : ''}${bought.length && sold.length ? '; ' : ''}${sold.length ? 'sells ' + sold.join(', ') : ''}. ${town.res.coin} coin in the chest.`, 'build');
+  if (!bought.length && !sold.length) say(town, 'marketNothing', {}, 'build');
+  else say(town, 'market', { deal: `${bought.length ? 'buys ' + bought.join(', ') : ''}${bought.length && sold.length ? '; ' : ''}${sold.length ? 'sells ' + sold.join(', ') : ''}`, coin: town.res.coin }, 'build');
 }
 
 /* ───────────────────────── Construction ─────────────────────────
@@ -5083,9 +5339,9 @@ function growTown(town) {
   town.fed = got >= eat * 0.7;
   town.hunger = town.fed ? 0 : (town.hunger || 0) + 1;
   if (town.hunger >= 3) {
-    if (!town.famine) { town.famine = world.tick; stat('ev', 'famines'); log(`Famine in ${town.name}: the granary is empty and ${town.popLeft} mouths to feed`, 'loss'); }
+    if (!town.famine) { town.famine = world.tick; stat('ev', 'famines'); say(town, 'famine', { pop: town.popLeft }, 'loss'); remember(town, 'famine'); }
     if (Math.random() < 0.4) applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.006)), 'famine');
-  } else if (town.famine && town.hunger === 0) { town.famine = 0; log(`The famine in ${town.name} ends`, 'good'); }
+  } else if (town.famine && town.hunger === 0) { town.famine = 0; say(town, 'famineEnds', {}, 'good'); }
   // Fields: enough for the mouths, more when the stores are thin, fewer in bad country. Each ripe field gives about six grain.
   const farmsNow = countType(town, T.FARM) + Object.values(town.sites || {}).filter(st => st.type === T.FARM).length;
   const wantFarms = Math.ceil(town.popLeft / (9 * BIOME_YIELD[biomeAt(town.cx, town.cy)]) * (town.temper ? town.temper.food : 1)) + (town.fed ? 0 : 3);
@@ -5144,7 +5400,7 @@ function bigCityTroubles(town) {
     const saved = heal(town, dead, 'plague'); dead -= saved;
     applyLosses(town, dead, 'plague');
     town.plagues = (town.plagues || 0) + 1; stat('ev', 'plagues'); town.plagueUntil = world.tick + 300;
-    log(`Plague in the crowded streets of ${town.name}: ${dead} dead${saved ? `, ${saved} pulled through under the healer's roof` : ''}. A waterworks would help.`, 'loss');
+    say(town, 'plague', { dead, saved }, 'loss'); remember(town, 'plague');
     const [x, y] = cellCenter(town.cy * world.n + town.cx); popups.push({ x, y: y - town.R * cellPx - 14, text: 'PLAGUE', color: '#9fe8d8', t0: performance.now(), dur: 2500 });
     return;
   }
@@ -5348,9 +5604,9 @@ function buildHouse(town, quiet) {
     town.R = Math.ceil(d);
     layRoads(town, true);
     recomputeRing(town);
-    if (!quiet) log(`${town.name} grows: new road, ${town.housesLeft} homes`, 'build');
-  } else if (!quiet && rebuilt && Math.random() < 0.12) log(`${town.name} is rebuilding (${town.housesLeft} homes)`, 'build');
-  else if (!quiet && !rebuilt && town.built % 12 === 0) log(`${town.name} adds homes (${town.housesLeft})`, 'build');
+    if (!quiet) say(town, 'grows', { homes: town.housesLeft }, 'build');
+  } else if (!quiet && rebuilt && Math.random() < 0.12) say(town, 'rebuilding', { homes: town.housesLeft }, 'build');
+  else if (!quiet && !rebuilt && town.built % 12 === 0) say(town, 'addsHomes', { homes: town.housesLeft }, 'build');
   dirty.add(best);
   return true;
 }
@@ -5506,7 +5762,7 @@ function maybeArson(town) {
   const factories = countType(town, T.FACTORY) + countType(town, T.FORGE) * 0.5;
   if (factories && Math.random() < 0.00006 * factories * (world.weather.kind === 'drought' ? 3 : 1)) {
     const f = town.buildings.find(i => world.type[i] === T.FACTORY || world.type[i] === T.FORGE);
-    if (f !== undefined && world.burnLeft[f] <= 0) { ignite(f); log(`Fire breaks out at the ${world.type[f] === T.FACTORY ? 'factory' : 'forge'} in ${town.name}`, 'alarm'); return; }
+    if (f !== undefined && world.burnLeft[f] <= 0) { ignite(f); say(town, 'industryFire', { what: world.type[f] === T.FACTORY ? 'factory' : 'forge' }, 'alarm', f); return; }
   }
   const wk = world.weather.kind;
   const weatherMul = wk === 'drought' ? 2.5 : (wk === 'clear' ? 1 : 0.15);
@@ -5528,9 +5784,9 @@ function maybeArson(town) {
       popups.push({ x: px, y: py, text: 'ARSON', color: '#ff6ad5', t0: performance.now(), dur: 2200 });
       const bug = person(town, 'firebug') || elect(town, 'firebug', true);
       bug.arsons = (bug.arsons || 0) + 1; deed(bug, 'set a fire on the edge of town');
-      if (bug.arsons === 1) log(`Someone from ${town.name} set a fire on the edge of town. Nobody saw who.`, 'arson');
-      else if (bug.arsons === 2) log(`Another fire set on the edge of ${town.name}. People are starting to talk about ${bug.name}.`, 'arson');
-      else log(`${bug.name} set a fire on the edge of ${town.name} again. This time they were seen.`, 'arson');
+      if (bug.arsons === 1) say(town, 'arson1', {}, 'arson', i);
+      else if (bug.arsons === 2) say(town, 'arson2', { who: bug.name }, 'arson', i);
+      else say(town, 'arson3', { who: bug.name }, 'arson', i);
       if (!town.case) openCase(town, 'arson', bug, i);
     } else {
       popups.push({ x: px, y: py, text: 'OOPS', color: '#ffb627', t0: performance.now(), dur: 1800 });
@@ -5968,14 +6224,14 @@ function updateLaw(town) {
       const n = Math.min(Math.floor(town.militia / 2), 2 + Math.floor(Math.random() * 4));
       const path = findPath(town.cx, town.cy, o.cx, o.cy); if (!path) return;
       town.militia -= n; stat('ev', 'desertions');
-      const who = makePerson(Math.random, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
+      const who = makePersonIn(town, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
       world.warbands.push({ from: town.id, to: o.id, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, path, pi: 0, size: n, wait: 0, armour: 0, guns: 0, defect: true, captain: who.name });
       log(`${who.name} walks out of ${town.name} in the night with ${n} soldiers, bound for ${o.name}'s lines`, 'war');
       openCase(town, 'treason', who, hideout(town), { witnessed: true, loot: n, flee: o.id, band: true });
       return;
     }
     if (!town.spy && !(o.spyPlanted && world.tick - o.spyPlanted < 3000) && o.militia >= 4 && Math.random() < 0.004) {
-      const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
+      const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); // a stranger: no family here sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
       town.people.push(sp); town.spy = { from: o.id, who: sp.name, since: world.tick }; o.spyPlanted = world.tick; stat('ev', 'spies');
       { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: sp.name, runAt: world.tick + 200 + Math.floor(Math.random() * 300) }); }
       log(`${o.name} sends someone to live quietly in ${town.name}`, 'war'); // the player sees this; the town does not
@@ -6003,7 +6259,8 @@ function updateLaw(town) {
 function thiefOf(town, story) {
   const known = (town.people || []).find(p => p.alive && p.role === 'thief');
   if (known && Math.random() < 0.6) return known;
-  const p = makePerson(Math.random, 'thief', 16 + Math.random() * 40); p.story = story; p.revealed = false;
+  const g = grudgeHolders(town).find(q => q.role === 'townsfolk'); if (g && Math.random() < 0.5) { g.role = 'thief'; g.revealed = false; g.story = `never forgave ${g.grudge.why}, and takes what the town owes`; return g; }
+  const p = makePersonIn(town, 'thief', 16 + Math.random() * 40); p.story = story; p.revealed = false;
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   return p;
 }
@@ -6119,7 +6376,7 @@ function updateFestival(town) {
   town.festivalYear = year;
   const centre = town.cy * world.n + town.cx;
   spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40));
-  town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals');
+  town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals'); remember(town, 'festival');
   const [px, py] = cellCenter(centre); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'FESTIVAL', color: '#ffd166', t0: performance.now(), dur: 3000 });
   for (let k = 0; k < 10; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 40, life: 0, max: 600, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.3), grav: -10 });
   log(`${town.name} brings in the harvest and lights a bonfire in the square. ${['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.'][Math.floor(Math.random() * 5)]}`, 'good');
@@ -6156,7 +6413,7 @@ function updateTravellers() {
     // Arrived.
     const p = v.payload || {};
     if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
-    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePerson(Math.random, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
+    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
   }
   world.travellers = keep;
 }
@@ -6393,11 +6650,12 @@ function applySentence(town, c, who, s) {
       who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged');
       town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + (feared ? -4 : 6))); town.fear = world.tick + 2000;
       log(`${ln} of ${town.name} has ${who.name} hanged ${hasType(town, T.GALLOWS) ? 'on the gallows' : 'in the square'} for ${kind}${town.workers.filter(w => w.crowd).length >= 4 ? ' with the whole town watching' : ''}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      remember(town, 'hanging', { who: who.name }); if (!feared) grudgeKin(town, who, 'the law', `the hanging of ${who.name}`);
       if (hasType(town, T.GRAVE)) funeral(town, who, true);
       break;
     }
     case 'banish':
-      stat('ev', 'banished');
+      stat('ev', 'banished'); remember(town, 'exile', { who: who.name }); grudgeKin(town, who, 'the law', `the casting out of ${who.name}`);
       town.people = town.people.filter(p => p !== who);
       if (c.kind === 'arson' && Math.random() < 0.6) roam(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
       else exile(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
@@ -6408,7 +6666,7 @@ function applySentence(town, c, who, s) {
       break;
     }
     case 'mob':
-      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); }
+      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); remember(town, 'hanging', { who: who.name }); grudgeKin(town, who, 'the mob', `the night the mob took ${who.name}`); }
       else { who.role = 'townsfolk'; log(`A mob in ${town.name} beats ${who.name} for ${kind} and lets them go, and some of them are laughing`, 'arson'); }
       break;
     case 'pressed': {
@@ -6658,13 +6916,13 @@ logEl.addEventListener('click', ev => {
 
 // Achievements live in this browser's local storage, across valleys.
 const ACHIEVEMENTS = [
-  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning strike/],
+  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rally|is burning|turn out/],
   ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast|Fire reaches/],
-  ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /dragon, has been sighted|dragon, returns/],
+  ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /has been sighted|is in the valley|shape in the sky|dragon, returns/],
   ['dragon-slain', '⚔️', 'Dragonslayer', 'A town slays a dragon', /SLAYS/],
-  ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /drives the dragon off/],
+  ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /It will remember/],
   ['town-lost', '💀', 'Ashes', 'Watch a town die', /is gone$|is razed|is empty\. The land is poisoned/],
-  ['war', '🛡️', 'To Arms', 'A war is declared', /declares war/],
+  ['war', '🛡️', 'To Arms', 'A war is declared', /declares war|marches on|^War\. |declaration of war/],
   ['sacked', '🏚️', 'Sacked', 'A town is sacked', /sacks/],
   ['annex', '👑', 'Conquest', 'A town annexes another', /annexes/],
   ['walls', '🧱', 'Stonework', 'A town raises a wall', /raises a stone wall/],
@@ -6673,15 +6931,15 @@ const ACHIEVEMENTS = [
   ['meteor', '☄️', 'Sky Fall', 'A meteor strikes', /METEOR STRIKE/],
   ['beaver', '🦫', 'Busy Beavers', 'Beavers finish a dam', /finish their dam/],
   ['flood', '🌊', 'High Water', 'The river bursts its banks', /bursts its banks/],
-  ['famine', '🌾', 'Lean Years', 'A town goes hungry', /^Famine in/],
+  ['famine', '🌾', 'Lean Years', 'A town goes hungry', /^Famine|scraped bare|goes hungry|No bread in/],
   ['bridge', '🌉', 'Span', 'A bridge is built', /throws a bridge|bridging the river/],
   ['trade', '🛒', 'Open Road', 'Two towns build a trade road', /build a road between them/],
   ['airstrip', '✈️', 'Air Attack', 'A town opens an airstrip', /opens an airstrip/],
   ['tanker', '💧', 'Retardant', 'The tanker makes a drop', /Tanker drops retardant/],
-  ['settlers', '🛖', 'New Ground', 'Settlers found a town', /settlers found/],
+  ['settlers', '🛖', 'New Ground', 'Settlers found a town', /settlers found|is founded by|^A new town:/],
   ['university', '🎓', 'Enlightenment', 'A university is founded', /founds a university/],
   ['factory', '🏭', 'Industry', 'A factory opens', /opens a factory/],
-  ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague/],
+  ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague|Sickness runs|of plague/],
   ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
   ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
   ['healer', '🌿', 'Physician', 'A healer hangs out a sign', /hangs out a healer's sign/],
@@ -6692,7 +6950,7 @@ const ACHIEVEMENTS = [
   ['crown', '🌲', 'Crown Fire', 'Fire crowns in the timber', /crowning in the timber/],
   ['snow', '❄️', 'First Snow', 'Winter comes', /Snow falls on the valley/],
   ['fireboat', '🚤', 'Harbourmaster', 'A town launches a fireboat', /launches a fireboat/],
-  ['refugees', '🧳', 'Exodus', 'Refugees take to the road', /refugees leave the ruins/],
+  ['refugees', '🧳', 'Exodus', 'Refugees take to the road', /refugees|walk out of what is left/],
 ];
 let achDone = {};
 try { achDone = JSON.parse(localStorage.getItem('wildfire.achievements') || '{}'); } catch (e) { achDone = {}; }
@@ -6760,7 +7018,7 @@ ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', 
   ['workedout', '🕳️', 'Worked Out', 'A seam is dug to nothing', /is worked out/],
   ['hydro', '💧', 'White Coal', 'A town dams the river for power', /hydroelectric/], ['reactor', '☢️', 'Atoms for Peace', 'A reactor comes online', /brings a reactor online/],
   ['meltdown', '💀', 'Meltdown', 'A reactor burns open', /MELTDOWN/], ['revolt', '✊', 'Revolution', 'The people throw out their elder', /REVOLT in/],
-  ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan appears/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
+  ['caravan', '🐪', 'Open for Business', 'A trader comes in from beyond the hills', /caravan|traders, heading/], ['robbed', '🗡️', 'Highwaymen', 'A town seizes a caravan', /seizes the caravan/],
   ['oil', '🛢️', 'Black Gold', 'Geologists find oil', /find oil/], ['gold', '💰', 'Gold Rush', 'A town digs a gold mine', /digs a gold mine/], ['mint', '🪙', 'The Mint', 'A town mints its own coin', /mints its first coin/], ['tamed', '🐖', 'Husbandry', 'Hunters bring a wild animal home alive', /home alive, to raise/], ['pasture', '🐄', 'Rancher', 'A town fences a pasture', /fences a pasture/], ['grounded', '🛩️', 'Dry Tanks', 'The tanker is grounded for want of fuel', /Tanker grounded/]);
 renderAchievements();
 function renderLog() {
@@ -7926,7 +8184,7 @@ function cardHtml(t) {
   const bld = {}; for (const i of t.buildings) { const ty = world.type[i]; if (ty === T.HOUSE || ty === T.FARM) continue; const nm = BUILDING_NAMES[ty] || (ty === T.STATION ? 'Fire station' : ty === T.SITE ? 'Under construction' : null); if (nm) bld[nm] = (bld[nm] || 0) + 1; }
   const resLine = RES_KINDS.filter(k => k !== 'coin' && t.res[k] > 0).map(k => row(k, `${t.res[k]} <span class="dim">/ ${resCap(t, k) >= 1e8 ? '' : resCap(t, k)}</span>`)).join('') || '<div class="dim">nothing in store</div>';
   const ls = t.livestock ? LIVESTOCK.filter(k => t.livestock[k]).map(k => `${t.livestock[k]} ${k}`).join(', ') : '';
-  const folk = (t.people || []).slice().sort((a, b) => (b.alive - a.alive) || (a.role === 'elder' ? -1 : b.role === 'elder' ? 1 : a.born - b.born)).map(p => `<div class="${p.alive ? '' : 'dead'}"><b>${p.name}</b>, ${roleLabel(p)}${p.trait ? ' (' + TRAITS[p.trait].label + ')' : ''}${p.alive ? `, ${personAge(p)}` : ` † ${p.cause || ''}`}. ${p.story[0].toUpperCase() + p.story.slice(1)}.${p.deeds.length ? ` <span class="deed">Last: ${p.deeds[p.deeds.length - 1].text}.</span>` : ''}</div>`).join('');
+  const folk = (t.people || []).slice().sort((a, b) => (b.alive - a.alive) || (a.role === 'elder' ? -1 : b.role === 'elder' ? 1 : a.born - b.born)).map(p => `<div class="${p.alive ? '' : 'dead'}"><b>${p.name}</b>, ${roleLabel(p)}${p.trait ? ' (' + TRAITS[p.trait].label + ')' : ''}${kinLabel(t, p) ? ', ' + kinLabel(t, p) : ''}${p.alive ? `, ${personAge(p)}` : ` † ${p.cause || ''}`}.${p.alive && p.grudge ? ' <span class="d">Holds a grudge.</span>' : ''} ${p.story[0].toUpperCase() + p.story.slice(1)}.${p.deeds.length ? ` <span class="deed">Last: ${p.deeds[p.deeds.length - 1].text}.</span>` : ''}</div>`).join('');
   const chron = (t.chronicle || []).slice(0, 8).map(e => `<div class="${e.at >= 0 ? 'go' : ''}" data-at="${e.at >= 0 ? e.at : ''}"><span class="t">t${e.tick}</span><span>${e.text}</span></div>`).join('');
   return `<button class="x" data-act="close">close</button><h3>${t.name}</h3>` +
     `<div class="dim">${alignName(t.align)} · ${BIOME_NAMES[biomeAt(t.cx, t.cy)]} · founded Y${Math.floor(t.founded / YEAR) + 1} · ${dead ? '<span class="d">in ruins</span>' : t.mobilized ? '<span class="d">fighting a fire</span>' : t.famine ? '<span class="d">famine</span>' : 'calm'}</div>` +

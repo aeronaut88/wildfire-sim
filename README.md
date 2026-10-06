@@ -473,6 +473,18 @@ its capacity, coin, its workshops, power, arms and learning, who it is at war or
 every named resident with a bio and last deed, and its latest chronicle. Buttons fire a
 missile or a lightning strike at it, or jump to its line in the history. Escape closes it.
 
+## The log does not repeat itself
+
+The common events (alarms, stand-downs, famine, plague, growth, markets, caravans, arson, wars,
+battles, dragons, lightning, settlers) are said one of several ways, never the same way twice
+running, and coloured by the hour, the weather, the season, the elder in charge and the town's
+mood. Towns remember what defined them lately (a hanging, a famine, a dragon, a great fire, a
+war, a plague, a festival, a wedding, a sack, a revolt) and the log calls back to it: "It is two
+seasons since the hanging of Wren Fenwick." People come in families: a new notable is often kin
+of someone already in town, a constable's child tends to follow in the job, and a family
+remembers a hanging or a banishment. Kin who hold a grudge push unrest up, and the next thief or
+fire-setter is often one of them, until a revolt settles the score.
+
 ## Everything has a body
 
 No line without a figure on the map. A sentence is a walk: the constable brings the prisoner to

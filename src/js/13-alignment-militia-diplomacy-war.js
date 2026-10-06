@@ -19,7 +19,7 @@ function declareWar(a, b, why) {
   a.wars[b.id] = world.tick; b.wars[a.id] = world.tick;
   setRel(a, b, Math.min(rel(a, b), -70));
   const el = person(a, 'elder'); deed(el, `declared war on ${b.name}`);
-  log(`${a.name} declares war on ${b.name}${why ? ' ' + why : ''}${el ? `. Elder ${el.name} signed the order` : ''}`, 'war');
+  say(a, 'warDeclared', { other: b.name, why, elder: el ? el.name : null }, 'war'); remember(a, 'war', { who: b.name }); remember(b, 'war', { who: a.name });
   for (const t of [a, b]) { const [x, y] = cellCenter(t.cy * world.n + t.cx); popups.push({ x, y: y - t.R * cellPx - 14, text: 'WAR', color: '#ff4040', t0: performance.now(), dur: 2500 }); }
 }
 function makePeace(a, b, why) {
@@ -27,7 +27,7 @@ function makePeace(a, b, why) {
   delete a.wars[b.id]; delete b.wars[a.id];
   setRel(a, b, Math.max(rel(a, b), -25));
   const ea = person(a, 'elder'), eb = person(b, 'elder'); deed(ea, `made peace with ${b.name}`); deed(eb, `made peace with ${a.name}`);
-  log(`${a.name} and ${b.name} agree a truce${why ? ' ' + why : ''}${ea && eb ? `, ${ea.name} and ${eb.name} shaking on it` : ''}`, 'diplo');
+  say(a, 'truce', { other: b.name, why, hands: ea && eb ? `${ea.name} and ${eb.name}` : null }, 'diplo');
 }
 
 function militiaRate(t) {

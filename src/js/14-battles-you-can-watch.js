@@ -16,7 +16,7 @@ function startBattle(b, from, to) {
   if (!to.mobilized && to.housesLeft > 0) { to.lastThreat = world.tick; }
   const [px, py] = cellCenter(to.cy * n + to.cx);
   popups.push({ x: px, y: py - to.R * cellPx - 14, text: 'BATTLE', color: '#ffb08a', t0: performance.now(), dur: 2000 });
-  log(`${from.name}'s ${b.size} meet ${to.name}'s ${defenders} ${to.wallR ? 'at the wall' : 'outside the town'}`, 'war');
+  say(from, 'meet', { other: to.name, att: b.size, def: defenders, wall: !!to.wallR }, 'war', to.cy * world.n + to.cx);
 }
 
 const WEAPON = ['arrows', 'arrows', 'bolts', 'muskets', 'rifles', 'guns', 'guns'];
@@ -112,7 +112,7 @@ function finishBattle(bt, from, to) {
     from.militia += bt.att;
     stat('ev', 'sacks');
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'SACKED', color: '#ff4040', t0: performance.now(), dur: 2500 });
-    log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
+    remember(to, 'sack', { who: from.name }); log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
     if (to.popLeft < 10 || to.housesLeft - torch < 2) { // razed
       for (const i of to.buildings) if (isBuilding(world.type[i])) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); }
       to.housesLeft = 0;
@@ -124,12 +124,12 @@ function finishBattle(bt, from, to) {
     if (atWar(from, to) && from.align.moral < 0 && from.align.order > 0 && to.popLeft < from.popLeft * 0.25 && Math.random() < 0.5) annex(from, to);
   } else if (bt.att <= 0) {
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'REPELLED', color: '#a7e36f', t0: performance.now(), dur: 2000 });
-    log(`${to.name} holds. ${from.name} lost all ${bt.att0}${to.wallR ? ' at the wall' : ''}, ${bt.def0 - bt.def} defenders fell`, 'war');
+    say(from, 'holds', { other: to.name, att0: bt.att0, wall: !!to.wallR, defLost: bt.def0 - bt.def }, 'war', to.cy * world.n + to.cx);
     setRel(from, to, rel(from, to) - 15);
   } else {
     from.militia += bt.att;
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'WITHDRAWN', color: '#ffb08a', t0: performance.now(), dur: 2000 });
-    log(`${from.name} withdraws from ${to.name} after a bloody day: ${bt.att0 - bt.att} attackers and ${bt.def0 - bt.def} defenders dead`, 'war');
+    say(from, 'withdraws', { other: to.name, attLost: bt.att0 - bt.att, defLost: bt.def0 - bt.def }, 'war', to.cy * world.n + to.cx);
     setRel(from, to, rel(from, to) - 10);
   }
 }

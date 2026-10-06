@@ -3,7 +3,7 @@
 function onBuildingIgnite(i) {
   const town = world.towns[world.townOf[i]];
   if (!town) return;
-  if (!town.firstHit) { town.firstHit = true; log(`Fire reaches ${town.name}`, 'loss'); }
+  if (!town.firstHit) { town.firstHit = true; say(town, 'reaches', {}, 'loss'); }
   const res = occupants(town);
   if (res > 0 && isHome(world.type[i])) {
     const survive = (world.dragonfire ? 0.5 : world.raidfire ? 0.7 : (town.mobilized ? 0.92 : 0.6)) + (town.align.moral > 0 ? 0.04 : 0);
@@ -40,7 +40,7 @@ function onBuildingDestroyed(i, cause) {
   if (t === T.AIRBASE && town.bombers) { log(`${town.bombers} bomber${town.bombers > 1 ? 's' : ''} burn in the hangars at ${town.name}`, 'loss'); stat('ev', 'bombersLost', town.bombers); town.bombers = 0; }
   if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
   if (isHome(t)) { town.housesLeft--; town.homesLost++; }
-  else if (t !== T.STATION && BUILDING_NAMES[t]) log(`${town.name} loses its ${BUILDING_NAMES[t].toLowerCase()}`, 'loss');
+  else if (t !== T.STATION && BUILDING_NAMES[t]) say(town, 'buildingLost', { what: BUILDING_NAMES[t].toLowerCase() }, 'loss');
   if (t === T.STATION) {
     town.hasStation = false;
     for (const tr of town.trucks) if (tr.alive && (tr.state === 'idle' || tr.state === 'refill')) loseTruck(town, tr, 'lost with the station');
@@ -62,7 +62,7 @@ function loseCrew(town, crew, why) {
   town.popLeft -= people; world.popLeft -= people; world.deaths += people; town.deaths += people;
   stat('deaths', 'fire crews lost', people); stat('deathsTown', town.name, people);
   town.claimed.delete(crew.target);
-  log(`${town.name}: crew of ${people} ${why}`, 'loss');
+  say(town, 'crewLost', { n: people, why }, 'loss');
   const [x, y] = cellCenter(crew.y * world.n + crew.x);
   popups.push({ x, y, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
 }
@@ -103,7 +103,7 @@ function updateTowns() {
         town.housesAtAlarm = town.housesLeft;
         const c = town.crewsToSpawn;
         const chief = person(town, 'chief'); if (chief) { chief.fires++; if (chief.fires === 1 || chief.fires % 5 === 0) deed(chief, `led the town against its ${chief.fires === 1 ? 'first' : chief.fires + 'th'} fire`); }
-        log(`${town.name} sounds the alarm, ${c === 1 ? 'a single crew' : c + ' crews'} rally${chief && Math.random() < 0.5 ? `, Chief ${chief.name} at their head` : ''}`, 'alarm');
+        say(town, 'alarm', { crews: c === 1 ? 'a single crew' : c + ' crews', chief: chief && Math.random() < 0.5 ? chief.name : null }, 'alarm');
         const [x, y] = cellCenter(town.cy * n + town.cx);
         popups.push({ x, y: y - town.R * cellPx, text: 'RALLY!', color: '#ffb627', t0: performance.now(), dur: 1800 });
         const live = town.trucks.filter(tr => tr.alive);
@@ -116,7 +116,7 @@ function updateTowns() {
       town.crewsToSpawn = 0;
       town.fireDist = Infinity; town.nearestFire = -1;
       const lostNow = Math.max(0, (town.housesAtAlarm || town.housesLeft) - town.housesLeft);
-      if (town.housesLeft > 0) log(lostNow === 0 ? `${town.name} stands down, all ${town.housesLeft} homes saved` : `${town.name} stands down, lost ${lostNow} of ${town.housesAtAlarm} homes`, lostNow === 0 ? 'win' : 'good');
+      if (town.housesLeft > 0) { if (lostNow === 0) say(town, 'saved', { homes: town.housesLeft }, 'win'); else { say(town, 'lost', { lost: lostNow, had: town.housesAtAlarm }, 'good'); if (lostNow >= 10) remember(town, 'bigfire'); } }
       else log(`${town.name} survivors stand down`, 'loss');
       for (const tr of town.trucks) if (tr.alive) tr.state = 'return';
     }
@@ -151,6 +151,6 @@ function sendRefugees(town) {
   const size = Math.max(1, Math.round(town.popLeft * 0.7));
   town.popLeft -= size; town.popTotal -= size; world.popLeft -= size; world.popTotal -= size;
   world.settlers = { mode: 'join', town: host, tx: host.cx, ty: host.cy, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, wait: 0, path, pi: 0, size, refugees: town.name };
-  log(`${size} refugees leave the ruins of ${town.name} for ${host.name}`, 'build');
+  say(town, 'refugees', { n: size, host: host.name }, 'build');
 }
 

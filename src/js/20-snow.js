@@ -104,7 +104,7 @@ function naturalLightning() {
   let near = null, nd = Infinity;
   for (const t of world.towns) { const d = Math.hypot(t.cx - x, t.cy - y); if (d < nd) { nd = d; near = t; } }
   lightning(i);
-  if (near && nd < near.R + 12) log(`Lightning strikes just outside ${near.name}`, 'alarm');
-  else if (Math.random() < 0.5) log('Lightning strike in the forest', 'weather');
+  if (near && nd < near.R + 12) say(near, 'lightning', {}, 'alarm');
+  else if (Math.random() < 0.5) say(null, 'lightningWild', {}, 'weather');
 }
 

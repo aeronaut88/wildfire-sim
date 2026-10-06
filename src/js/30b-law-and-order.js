@@ -85,14 +85,14 @@ function updateLaw(town) {
       const n = Math.min(Math.floor(town.militia / 2), 2 + Math.floor(Math.random() * 4));
       const path = findPath(town.cx, town.cy, o.cx, o.cy); if (!path) return;
       town.militia -= n; stat('ev', 'desertions');
-      const who = makePerson(Math.random, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
+      const who = makePersonIn(town, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
       world.warbands.push({ from: town.id, to: o.id, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, path, pi: 0, size: n, wait: 0, armour: 0, guns: 0, defect: true, captain: who.name });
       log(`${who.name} walks out of ${town.name} in the night with ${n} soldiers, bound for ${o.name}'s lines`, 'war');
       openCase(town, 'treason', who, hideout(town), { witnessed: true, loot: n, flee: o.id, band: true });
       return;
     }
     if (!town.spy && !(o.spyPlanted && world.tick - o.spyPlanted < 3000) && o.militia >= 4 && Math.random() < 0.004) {
-      const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
+      const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); // a stranger: no family here sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
       town.people.push(sp); town.spy = { from: o.id, who: sp.name, since: world.tick }; o.spyPlanted = world.tick; stat('ev', 'spies');
       { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: sp.name, runAt: world.tick + 200 + Math.floor(Math.random() * 300) }); }
       log(`${o.name} sends someone to live quietly in ${town.name}`, 'war'); // the player sees this; the town does not
@@ -120,7 +120,8 @@ function updateLaw(town) {
 function thiefOf(town, story) {
   const known = (town.people || []).find(p => p.alive && p.role === 'thief');
   if (known && Math.random() < 0.6) return known;
-  const p = makePerson(Math.random, 'thief', 16 + Math.random() * 40); p.story = story; p.revealed = false;
+  const g = grudgeHolders(town).find(q => q.role === 'townsfolk'); if (g && Math.random() < 0.5) { g.role = 'thief'; g.revealed = false; g.story = `never forgave ${g.grudge.why}, and takes what the town owes`; return g; }
+  const p = makePersonIn(town, 'thief', 16 + Math.random() * 40); p.story = story; p.revealed = false;
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   return p;
 }
@@ -236,7 +237,7 @@ function updateFestival(town) {
   town.festivalYear = year;
   const centre = town.cy * world.n + town.cx;
   spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40));
-  town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals');
+  town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals'); remember(town, 'festival');
   const [px, py] = cellCenter(centre); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'FESTIVAL', color: '#ffd166', t0: performance.now(), dur: 3000 });
   for (let k = 0; k < 10; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 40, life: 0, max: 600, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.3), grav: -10 });
   log(`${town.name} brings in the harvest and lights a bonfire in the square. ${['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.'][Math.floor(Math.random() * 5)]}`, 'good');
@@ -273,7 +274,7 @@ function updateTravellers() {
     // Arrived.
     const p = v.payload || {};
     if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
-    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePerson(Math.random, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
+    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
   }
   world.travellers = keep;
 }
@@ -510,11 +511,12 @@ function applySentence(town, c, who, s) {
       who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged');
       town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + (feared ? -4 : 6))); town.fear = world.tick + 2000;
       log(`${ln} of ${town.name} has ${who.name} hanged ${hasType(town, T.GALLOWS) ? 'on the gallows' : 'in the square'} for ${kind}${town.workers.filter(w => w.crowd).length >= 4 ? ' with the whole town watching' : ''}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      remember(town, 'hanging', { who: who.name }); if (!feared) grudgeKin(town, who, 'the law', `the hanging of ${who.name}`);
       if (hasType(town, T.GRAVE)) funeral(town, who, true);
       break;
     }
     case 'banish':
-      stat('ev', 'banished');
+      stat('ev', 'banished'); remember(town, 'exile', { who: who.name }); grudgeKin(town, who, 'the law', `the casting out of ${who.name}`);
       town.people = town.people.filter(p => p !== who);
       if (c.kind === 'arson' && Math.random() < 0.6) roam(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
       else exile(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
@@ -525,7 +527,7 @@ function applySentence(town, c, who, s) {
       break;
     }
     case 'mob':
-      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); }
+      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); remember(town, 'hanging', { who: who.name }); grudgeKin(town, who, 'the mob', `the night the mob took ${who.name}`); }
       else { who.role = 'townsfolk'; log(`A mob in ${town.name} beats ${who.name} for ${kind} and lets them go, and some of them are laughing`, 'arson'); }
       break;
     case 'pressed': {
