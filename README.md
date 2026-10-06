@@ -222,8 +222,10 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   short, and wagons run it. Each delivery feeds both ends and shares a little learning.
   Plague rides the wagons too.
 - **Chronicles.** Click a town in the settlements panel for its own history.
-- **Achievements.** Twenty-eight badges, unlocked by things that happen in the valley,
-  stored in this browser's local storage across valleys.
+- **Achievements.** Dozens of badges, unlocked by things that happen in the valley, plus a
+  dozen tiered ones (trees burned, biggest town, years run, dragons slain, criminals caught,
+  caravans, trees felled, harvests, buildings raised, lightning strikes, uprisings, bombs
+  dropped) that show the highest tier reached and the next mark. Stored in this browser.
 - **Dragons have names** ("Solul the Twilight", "Kazgon Hoardlord"), are rarer, and a dragon
   driven off remembers the town that did it. **Sacks** now burn a third to two thirds of a
   town, wreck its workshops, carry people off, and an evil conqueror puts more to the
@@ -438,6 +440,29 @@ arsonists for a while and sours the mood unless the victim was feared; a gaol di
 for good. Convicts come out changed, or not. The card shows the law, the open case, who is
 serving time, and the town's record; the ledger counts crimes, captures, hangings and
 banishments.
+
+War brings its own crimes. A losing or restless militia loses a captain and a few soldiers who go
+over to the enemy in the night; caught before they are past the town's reach, it is treason, and
+only a peacemaker or a chaotic good town lets them live. An enemy at war sends a spy to live
+quietly in town: while unfound, the enemy raids more readily, torches more when it wins, and
+learns what the town learns; a lawful town with a constable and a tower finds them sooner. Under
+a grasping elder, or in wartime, goods leave the stores by the back road after market day, and
+sometimes something nobody paid for turns up instead; chaotic towns mostly look the other way.
+A fugitive with a long head start slips off to a neighbouring town, which sends them back in
+chains if it is lawful or friendly and otherwise keeps them, at a cost to relations. Arsonists who
+are banished, or whose trail goes cold, do not vanish: they wander the woods and years later set a
+fire on the edge of somebody's town.
+
+## Medicine
+
+A town that knows Fire brigade opens a healer's house (wood and stone), staffed by a named healer,
+and with Waterworks and a hundred and fifty people a hospital, which needs a little power. Foragers
+gather herbs from scrub, reeds and jungle in spring and summer, caravans carry them, and the
+healer's shelves hold only so much. Herbs are spent to save people: a healer pulls about a third
+of the dead through a plague, a battle or a dragon's visit, a hospital half, a physician in charge
+more, and only the hospital does much against the sickness that follows a bomb. One handful of
+herbs saves four; an empty shelf means the healer can only watch, and the log says so. Elders live
+longer with a healer in town. Plague carried along a trade road is milder where there is one.
 
 ## The town card
 

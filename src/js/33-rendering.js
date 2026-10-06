@@ -65,6 +65,8 @@ function spriteKey(i) {
     case T.GAOL: return 'gaol';
     case T.CISTERN: return 'cistern';
     case T.TOWER_W: return 'watertower';
+    case T.HEALER: return 'healer';
+    case T.HOSPITAL: return 'hospital';
   }
   return 'ash';
 }

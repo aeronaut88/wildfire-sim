@@ -123,6 +123,7 @@ function maybeRaid(t) {
     if (grudges.length) { target = grudges[Math.floor(Math.random() * grudges.length)]; p = (t.align.moral < 0 ? 0.0015 : 0.0008) * (has(t, 'warmonger') ? 2.5 : has(t, 'tyrant') ? 1.5 : 1); }
     else if (t.align.order < 0 && t.align.moral <= 0) { target = others[Math.floor(Math.random() * others.length)]; p = 0.0003; }
   }
+  if (target && target.spy && target.spy.from === t.id) p *= 1.5; // somebody inside is telling them when the walls are thin
   if (!target || Math.random() > p) return;
   // Scouts report the odds: nobody raids a garrison three times their strength unless there is a war on.
   if (!atWar(t, target) && target.militia > t.militia * 1.5) return;

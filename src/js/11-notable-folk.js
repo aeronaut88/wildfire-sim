@@ -5,7 +5,7 @@
 const FIRST_NAMES = ['Agnes', 'Mattias', 'Rook', 'Ida', 'Tobias', 'Wren', 'Hollis', 'Marta', 'Ezra', 'Pim', 'Sunniva', 'Cormac', 'Dagny', 'Lucan', 'Bea', 'Otto', 'Freya', 'Silas', 'Nell', 'Ansel', 'Greta', 'Jory', 'Thea', 'Ambrose', 'Petra', 'Roan', 'Elspeth', 'Hugo', 'Maren', 'Caspar', 'Liv', 'Barnaby', 'Signe', 'Teodor', 'Hazel', 'Emrys', 'Rosalind', 'Finn', 'Ingrid', 'Oskar', 'Winnie', 'Lorcan', 'Astrid', 'Benedikt', 'Tamsin', 'Soren', 'Clem', 'Juniper', 'Rufus', 'Odile'];
 const LAST_NAMES = ['Thorne', 'Ashby', 'Fairweather', 'Coalbrook', 'Hollins', 'Marsh', 'Quill', 'Stannard', 'Greaves', 'Pike', 'Wexley', 'Oakes', 'Brandt', 'Fenwick', 'Larkspur', 'Dunmore', 'Haskell', 'Birchwood', 'Kettle', 'Ravel', 'Tolliver', 'Moss', 'Sedge', 'Hartigan', 'Bramble', 'Underhill', 'Crane', 'Fallow', 'Wick', 'Northey', 'Tully', 'Varga', 'Ellery', 'Blackwood', 'Hale', 'Pennyworth', 'Rourke', 'Stirling', 'Ashgrove', 'Lindqvist'];
 const BACKSTORIES = ['came over the pass with the first wagons', 'was born in a hard winter and has never minded the cold', 'once walked to the far side of the valley and back in a day', 'keeps bees and talks to them', 'has never trusted the river', 'lost a childhood home to fire and still smells smoke in dreams', 'can name every tree within a mile', 'swears a dragon once looked them in the eye', 'won the pie contest nine years running', 'reads the weather in the way the pines move', 'was found as a baby on the north road', 'has buried two spouses and outlived them both cheerfully', 'carves animals out of birch and gives them away', 'taught half the town to swim', 'owes money in every town in the valley', 'claims to have seen the lights under the lake', 'fought in a war nobody else remembers', 'sings when the fire bell rings', 'has a scar from a boar and a story to match', 'planted the oak outside the hall', 'never sleeps on the night of the first snow', 'grew up in a wagon and still cannot sit still', 'keeps the only clock in town', 'has argued with the elder for thirty years', 'knows where the old mine shaft goes and will not say', 'brews something in the cellar that the chief pretends not to know about', 'walked away from a town that burned and never speaks its name', 'counts the geese every autumn and writes it down', 'was struck by lightning once and says it improved them', 'sleeps with a bucket of water by the bed'];
-const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk' };
+const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk', captain: 'militia captain', spy: 'townsfolk', healer: 'healer' };
 /* Leaders. Every elder has a trait, and the trait steers the town's choices, right or wrong:
    who it fights, what it builds, what it hoards, what draws the dragons. The people have a say
    too: famine, war, thirst and tyranny raise unrest, and an elder who lets it climb is thrown out. */
@@ -25,6 +25,7 @@ const TRAITS = {
   beastlord:  { label: 'beastmaster',    blurb: 'likes animals better than people', good: 1, evil: 1, chaos: 1.3 },
   prophet:    { label: 'prophet',        blurb: 'has seen the fire to come and builds towers against it', good: 1.3, evil: 0.8, chaos: 1.5 },
   drunkard:   { label: 'drunkard',       blurb: 'is beloved, unreliable and occasionally on fire', good: 1, evil: 0.8, chaos: 2 },
+  physician:  { label: 'physician',      blurb: 'has a cure for everything and a theory for the rest', good: 1.5, evil: 0.8, chaos: 1 },
 };
 function rollTrait(town, avoid) {
   const keys = Object.keys(TRAITS).filter(k => k !== avoid);
@@ -48,7 +49,7 @@ function seedPeople(town, rng) {
 }
 function person(town, role) { return town.people ? town.people.find(p => p.alive && p.role === role) : null; }
 function personAge(p) { return Math.max(0, Math.floor((world.tick - p.born) / YEAR)); }
-function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : ROLE_LABEL[p.role] || p.role; }
+function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief' || p.role === 'spy') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : p.role === 'spy' ? 'spy' : ROLE_LABEL[p.role] || p.role; }
 function deed(p, text) { if (!p) return; p.deeds.push({ tick: world.tick, text }); if (p.deeds.length > 6) p.deeds.shift(); }
 function elect(town, role, quiet, avoidTrait) {
   const p = makePerson(Math.random, role, 20 + Math.random() * 35);
@@ -111,7 +112,7 @@ function killNotable(town, cause) {
 }
 function agePeople(town) {
   if (world.tick % 600 !== 0 || !town.people) return;
-  for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < 0.08 + (personAge(p) - 72) * 0.02) {
+  for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < (0.08 + (personAge(p) - 72) * 0.02) * (hasType(town, T.HEALER) ? 0.6 : 1)) {
     p.alive = false; p.died = world.tick; p.cause = 'old age'; stat('ev', 'notableDeaths');
     log(`${p.name}, ${roleLabel(p)} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
     if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role); else if (p.role === 'firebug') elect(town, 'firebug', true);

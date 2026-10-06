@@ -39,6 +39,11 @@ const ACHIEVEMENTS = [
   ['plague', '🤒', 'Pestilence', 'Plague strikes a crowded city', /^Plague/],
   ['justice', '⚖️', 'Law and Order', 'A constable catches a criminal', /^Constable .* takes |militia takes .* for /],
   ['gallows', '🪢', 'Rough Justice', 'A town hangs someone', /hanged in the square|drags .* to the old oak/],
+  ['healer', '🌿', 'Physician', 'A healer hangs out a sign', /hangs out a healer's sign/],
+  ['hospital', '🏥', 'Ward', 'A town opens a hospital', /opens a hospital/],
+  ['spy', '🕵️', 'Counter-Intelligence', 'A spy is unmasked', /was unmasked|for spying for the enemy/],
+  ['deserter', '🏃', 'Over the Wall', 'Soldiers desert to the enemy', /goes over to/],
+  ['firebug', '🔥', 'The Torch Returns', 'A banished arsonist strikes again', /the firebug driven out of/],
   ['crown', '🌲', 'Crown Fire', 'Fire crowns in the timber', /crowning in the timber/],
   ['snow', '❄️', 'First Snow', 'Winter comes', /Snow falls on the valley/],
   ['fireboat', '🚤', 'Harbourmaster', 'A town launches a fireboat', /launches a fireboat/],
@@ -49,7 +54,16 @@ try { achDone = JSON.parse(localStorage.getItem('wildfire.achievements') || '{}'
 const achEl = document.getElementById('ach'), achCountEl = document.getElementById('achCount');
 const toastEl = document.createElement('div'); toastEl.className = 'toast'; document.body.appendChild(toastEl);
 function renderAchievements() {
-  achEl.innerHTML = ACHIEVEMENTS.map(([id, icon, name, desc]) => `<div class="badge ${achDone[id] ? 'on' : ''}" title="${name}: ${desc}${achDone[id] ? ' (unlocked ' + new Date(achDone[id]).toLocaleDateString() + ')' : ''}">${icon}</div>`).join('');
+  const shown = [];
+  for (const a of ACHIEVEMENTS) {
+    if (a[5]) { // tiered: one badge per family, showing the highest tier reached and the next mark
+      const fam = ACHIEVEMENTS.filter(b => b[5] === a[5]); if (fam[0] !== a) continue;
+      const got = fam.filter(b => achDone[b[0]]); const top = got[got.length - 1], next = fam[got.length];
+      const title = (top ? `${top[2]}: ${top[3]}` : `${a[2].replace(/ I$/, '')}: not yet`) + (next ? ` · next: ${next[3]}` : ' · the top') + (top ? ' (unlocked ' + new Date(achDone[top[0]]).toLocaleDateString() + ')' : '');
+      shown.push(`<div class="badge tier ${top ? 'on' : ''}" title="${title}">${a[1]}<small>${top ? ROMAN[top[6] - 1] : ''}</small></div>`);
+    } else shown.push(`<div class="badge ${achDone[a[0]] ? 'on' : ''}" title="${a[2]}: ${a[3]}${achDone[a[0]] ? ' (unlocked ' + new Date(achDone[a[0]]).toLocaleDateString() + ')' : ''}">${a[1]}</div>`);
+  }
+  achEl.innerHTML = shown.join('');
   const n = Object.keys(achDone).filter(k => ACHIEVEMENTS.some(a => a[0] === k)).length;
   achCountEl.textContent = `${n} of ${ACHIEVEMENTS.length} unlocked · stored in this browser`;
 }
@@ -65,8 +79,32 @@ function unlock(id) {
 function checkAchievementText(text) {
   for (const a of ACHIEVEMENTS) if (!achDone[a[0]] && a[4].test(text)) unlock(a[0]);
 }
+// Tiers: the same badge, earned again at each mark. The badge shows the highest tier reached.
+const TIERS = [
+  ['burned', '🌳', 'Scorched Earth', 'trees burned', 'treesBurned', [1000, 10000, 100000, 1000000]],
+  ['boomtown', '🏙️', 'Boomtown', 'biggest town', 'peakTown', [250, 500, 1000, 2500]],
+  ['dynasty', '📜', 'Dynasty', 'years run', 'years', [10, 25, 50, 100]],
+  ['dragonbane', '⚔️', 'Dragonbane', 'dragons slain', 'dragonsSlain', [1, 3, 10]],
+  ['longarm', '⚖️', 'The Long Arm', 'criminals caught', 'caught', [10, 50, 200]],
+  ['silkroad', '🐪', 'Silk Road', 'caravans', 'caravans', [10, 100, 500]],
+  ['timber', '🪓', 'Timber!', 'trees felled', 'felled', [100, 1000, 10000]],
+  ['breadbasket', '🌾', 'Breadbasket', 'harvests', 'harvests', [100, 1000, 10000]],
+  ['builder', '🏗️', 'Master Builder', 'buildings raised', 'built', [100, 1000, 10000]],
+  ['stormchaser', '⚡', 'Storm Chaser', 'lightning strikes', 'lightning', [10, 100, 1000]],
+  ['uprising', '✊', 'Uprisings', 'elders overthrown', 'overthrows', [1, 5, 20]],
+  ['doomsday', '🍄', 'Doomsday', 'bombs dropped', 'nukes', [1, 3, 10]],
+];
+const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
+for (const [id, icon, name, what, , marks] of TIERS) marks.forEach((m, k) => ACHIEVEMENTS.push([`${id}-${k + 1}`, icon, `${name} ${ROMAN[k]}`, `${m.toLocaleString()} ${what}`, /$^/, id, k + 1]));
+function tierValue(key) {
+  const ev = (world.stats || newStats()).ev;
+  if (key === 'years') return world.tick / YEAR;
+  return ev[key] || 0;
+}
 function checkAchievementStats() {
   if (world.tick % 50 !== 0) return;
+  { let peak = 0; for (const t of world.towns) if (t.popLeft > peak) peak = t.popLeft; const ev = (world.stats || (world.stats = newStats())).ev; if (peak > (ev.peakTown || 0)) ev.peakTown = peak; }
+  for (const [id, , , , key, marks] of TIERS) { const v = tierValue(key); marks.forEach((m, k) => { if (v >= m) unlock(`${id}-${k + 1}`); }); }
   if (world.tick >= 10 * YEAR && !achDone['decade']) unlock('decade');
   if (world.popLeft >= 1000) unlock('thousand');
   if ((world.snowCover || 0) >= 0.95) unlock('whiteout');

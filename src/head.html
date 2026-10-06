@@ -419,6 +419,8 @@
   .ach { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; }
   .ach .badge { aspect-ratio: 1; display: flex; align-items: center; justify-content: center; font-size: 16px; background: #120e0c; border: 1px solid var(--panel-edge); opacity: 0.25; filter: grayscale(1); cursor: help; }
   .ach .badge.on { opacity: 1; filter: none; border-color: var(--ember-hot); box-shadow: 0 0 10px var(--ember-glow); }
+  .ach .badge.tier { position: relative; }
+  .ach .badge.tier small { position: absolute; right: 2px; bottom: 1px; font-size: 8px; line-height: 1; color: var(--ember-hot); font-family: inherit; }
   .ach-count { font-size: 10px; color: var(--ink-dim); }
   .toast { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
   .toast div { background: #1b1613; border: 1px solid var(--ember-hot); box-shadow: 0 0 0 1px #000, 0 0 18px var(--ember-glow); padding: 8px 12px; font-size: 11px; color: var(--ink); animation: toastIn 300ms ease, toastOut 600ms ease 4.4s forwards; }

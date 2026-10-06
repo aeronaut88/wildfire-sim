@@ -92,9 +92,9 @@ function render(now, tickFrac) {
     if (t.workers && !tiny) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
       if (!vis(x, y)) continue;
-      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' ? SPR.fugitive : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' ? SPR.fugitive : w.job === 'forage' ? SPR.forager : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
-      if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
+      if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.job === 'forage' ? '#4ea955' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }
     for (const c of t.crews) {
       const x = (c.px + (c.x - c.px) * tickFrac) * cellPx, y = (c.py + (c.y - c.py) * tickFrac) * cellPx;
@@ -222,6 +222,12 @@ function render(now, tickFrac) {
     const sz = Math.max(cellPx, 10);
     if (s.face < 0) { ctx.save(); ctx.translate(x + sz, y - (sz - cellPx)); ctx.scale(-1, 1); ctx.drawImage(SPR16.trader, 0, 0, sz, sz); ctx.restore(); }
     else ctx.drawImage(SPR16.trader, x, y - (sz - cellPx), sz, sz);
+  }
+
+  for (const b of world.firebugs || []) {
+    const x = (b.px + (b.x - b.px) * tickFrac) * cellPx, y = (b.py + (b.y - b.py) * tickFrac) * cellPx;
+    if (!vis(x, y)) continue;
+    ctx.drawImage(SPR.fugitive, x, y);
   }
 
   for (const p of world.bombers) {

@@ -14,6 +14,7 @@ function growTown(town) {
   updateUnrest(town);
   leaderActs(town);
   updateLaw(town);
+  updateHealer(town);
   for (const k of RES_KINDS) if (!Number.isFinite(town.res[k])) town.res[k] = 0; // a broken number never gets to spread
   if (town.popLeft < 0) { world.popLeft -= town.popLeft; town.popLeft = 0; }
   for (const k of RES_KINDS) if (k !== 'coin' && town.res[k] > resCap(town, k)) town.res[k] = resCap(town, k); // nowhere to keep it
@@ -108,10 +109,11 @@ function growTown(town) {
 function bigCityTroubles(town) {
   const over = town.R - Math.max(params.townCap, town.R0);
   if (town.popLeft >= (biomeAt(town.cx, town.cy) === 6 ? 180 : 350) && town.civ < 2 && Math.random() < 0.0025 * (1 + Math.max(0, over)) * (biomeAt(town.cx, town.cy) === 6 ? 1.6 : 1)) {
-    const dead = Math.round(town.popLeft * (0.05 + Math.random() * 0.1));
+    let dead = Math.round(town.popLeft * (0.05 + Math.random() * 0.1));
+    const saved = heal(town, dead, 'plague'); dead -= saved;
     applyLosses(town, dead, 'plague');
     town.plagues = (town.plagues || 0) + 1; stat('ev', 'plagues'); town.plagueUntil = world.tick + 300;
-    log(`Plague in the crowded streets of ${town.name}: ${dead} dead. A waterworks would help.`, 'loss');
+    log(`Plague in the crowded streets of ${town.name}: ${dead} dead${saved ? `, ${saved} pulled through under the healer's roof` : ''}. A waterworks would help.`, 'loss');
     const [x, y] = cellCenter(town.cy * world.n + town.cx); popups.push({ x, y: y - town.R * cellPx - 14, text: 'PLAGUE', color: '#9fe8d8', t0: performance.now(), dur: 2500 });
     return;
   }
@@ -246,6 +248,8 @@ function buildCivic(town) {
   if (town.civ >= 3 && !hasPlanned(town, T.TOWER)) want.push([T.TOWER, false, 'builds a watchtower']);
   if ((town.mil >= 4 || town.civ >= 3 || (town.civ >= 2 && town.power >= 3)) && countPlanned(town, T.FACTORY) < 1 + Math.floor(town.popLeft / 300) && town.popLeft >= 120) want.push([T.FACTORY, false, 'opens a factory']);
   if (town.mil >= 6 && !hasPlanned(town, T.SILO)) want.push([T.SILO, false, 'digs a missile silo']);
+  if (town.civ >= 1 && !hasPlanned(town, T.HEALER) && town.popLeft >= (has(town, 'physician') ? 15 : 40)) want.push([T.HEALER, true, "opens a healer's house"]);
+  if (town.civ >= 2 && hasType(town, T.HEALER) && !hasPlanned(town, T.HOSPITAL) && town.popLeft >= (has(town, 'physician') ? 80 : 150)) want.push([T.HOSPITAL, true, 'opens a hospital']);
   if (town.wantGaol && town.align.order > 0 && !hasPlanned(town, T.GAOL) && town.popLeft >= 30) want.push([T.GAOL, true, 'builds a gaol']);
   if (town.mil >= 5 && !hasPlanned(town, T.AIRBASE) && town.popLeft >= 120 && town.res.oil >= 4) want.push([T.AIRBASE, false, 'lays out a military air base']);
   if (town.popLeft >= 20 && !hasPlanned(town, T.LUMBERYARD)) want.push([T.LUMBERYARD, false, 'opens a lumberyard']);
@@ -256,7 +260,7 @@ function buildCivic(town) {
   const cost = COST[type];
   if (!canAfford(town, cost)) {
     const k = lacking(town, cost);
-    if (town.wishLogged !== type && Math.random() < 0.3) { town.wishLogged = type; log(`${town.name} wants a ${BUILDING_NAMES[type].toLowerCase()} but has no ${k}`, 'build'); }
+    if (town.wishLogged !== type && Math.random() < 0.3) { town.wishLogged = type; log(k ? `${town.name} wants a ${BUILDING_NAMES[type].toLowerCase()} but has no ${k}` : `${town.name} wants a ${BUILDING_NAMES[type].toLowerCase()} but is saving for the next step`, 'build'); }
     return;
   }
   const i = placeCivic(town, type, nearCentre);

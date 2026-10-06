@@ -95,7 +95,7 @@ function finishBattle(bt, from, to) {
   if (bt.def <= 0 && bt.att > 0) {
     // Overrun: torch homes, carry people off.
     // A sack is a catastrophe: a third to two thirds of the homes burn, workshops are wrecked, people are carried off, and evil puts the rest to the sword.
-    const torch = Math.min(to.housesLeft, Math.max(2, Math.round(to.housesLeft * (0.3 + Math.random() * 0.35) * (from.mil >= 3 ? 1.3 : 1))));
+    const torch = Math.min(to.housesLeft, Math.max(2, Math.round(to.housesLeft * (0.3 + Math.random() * 0.35) * (from.mil >= 3 ? 1.3 : 1) * (to.spy && to.spy.from === from.id ? 1.3 : 1))));
     let captives = Math.min(Math.max(0, to.popLeft - 1), Math.round(bt.att * (1 + Math.random())));
     world.raidfire = true;
     const homes = to.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0).sort(() => Math.random() - 0.5);
@@ -150,6 +150,8 @@ function annex(from, to) {
 
 function applyLosses(t, dead, cause) {
   dead = Math.min(dead, t.popLeft);
+  if (dead <= 0) return;
+  if (cause === 'battle' || cause === 'dragon' || cause === 'fallout') dead -= heal(t, dead, cause);
   if (dead <= 0) return;
   t.popLeft -= dead; world.popLeft -= dead; world.deaths += dead; t.deaths += dead;
   stat('deaths', cause || 'battle', dead); stat('deathsTown', t.name, dead);
