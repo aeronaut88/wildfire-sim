@@ -4985,7 +4985,7 @@ function growTown(town) {
       if (i >= 0) { pay(town, COST[T.GRANARY]); log(`${town.name} ${gr ? 'raises another granary' : 'raises a granary'}`, 'build'); }
     }
   }
-  const pressure = town.popLeft >= capacity * 0.8 || town.housesLeft < 3;
+  const pressure = town.popLeft >= housingCapacity(town) * 0.8 || town.housesLeft < 3; // beds, not bread: a hungry town does not sprawl
   if (pressure && Math.random() < 0.5) buildHouse(town, false);
   bigCityTroubles(town);
   if (pressure && town.housesLeft >= 6 && Math.random() < 0.1 && canAfford(town, COST.road)) { pay(town, COST.road); expandRoads(town); }
