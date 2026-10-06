@@ -366,6 +366,12 @@
   .log li.weather, .log li:first-child.weather { color: #a8c8ff; }
   .log li.build, .log li:first-child.build { color: #d9c48a; }
   .log li { display: flex; gap: 8px; }
+  .log li.go { cursor: pointer; }
+  .log li.go:hover span:nth-child(2) { text-decoration: underline dotted; }
+  .log li .fol { margin-left: auto; background: none; border: 1px solid var(--panel-edge); color: var(--ember-hot); font-size: 10px; line-height: 1; padding: 1px 5px; cursor: pointer; border-radius: 3px; }
+  .log li .fol:hover { background: var(--ember-hot); color: #000; }
+  .card .chron .go { cursor: pointer; }
+  .card .chron .go:hover span:nth-child(2) { text-decoration: underline dotted; }
   .log li .t { font-family: var(--pixel); font-size: 9px; color: #6a5c4e; min-width: 34px; padding-top: 2px; }
   .log li.alarm { color: var(--ember-hot); }
   .log li.loss { color: #ff8a73; }
@@ -474,6 +480,7 @@
         <span class="zoom" id="hudZoom">1x</span>
         <span class="sep"></span>
         <span class="tk" id="hudMode" title="Ctrl toggles">click: missile</span>
+        <span class="tk" id="hudFollow" style="display:none"></span>
         <span class="zoomctl"><button id="zoomIn" title="zoom in (+)">+</button><button id="zoomOut" title="zoom out (-)">&minus;</button><button id="zoomReset" title="whole map (0)">&#8962;</button></span>
       </div>
       <div class="tip" id="tip"></div>
@@ -6321,14 +6328,103 @@ function dropAt(p) {
 
 const logEntries = [];
 const logEl = document.getElementById('log');
-function log(text, kind) {
-  logEntries.unshift({ tick: world.tick, text, kind: kind || '' });
+// Every line carries a place (the first town it names, or a cell the caller gives) and, where the
+// line is about something moving, what to follow. Click the line to go there; the arrow follows.
+function whereOf(text, at) {
+  let town = null; for (const t of world.towns) if (text.includes(t.name)) { town = t; break; }
+  const where = { at: at !== undefined && at >= 0 ? at : town ? town.cy * world.n + town.cx : -1, follow: null };
+  const f = (kind, id) => { where.follow = { kind, id }; };
+  if (/dragon/i.test(text) && world.dragon && !world.dragon.slain) f('dragon', 0);
+  else if (/caravan/.test(text) && world.trader) f('trader', 0);
+  else if (/marches|raiding party|meet .* at the wall|column/.test(text) && world.warbands.length) { const b = world.warbands[world.warbands.length - 1]; f('warband', b.from + ':' + b.to); }
+  else if (/bomber lifts off/.test(text) && world.bombers.length) f('bomber', world.bombers[world.bombers.length - 1].from);
+  else if (/scrambles a jet/.test(text) && world.fighters.length) f('fighter', world.fighters[world.fighters.length - 1].from);
+  else if (/firebug driven out|slips away into the hills|walks into the hills/.test(text) && (world.firebugs || []).length) f('firebug', world.firebugs[world.firebugs.length - 1].name);
+  else if (/settlers|refugees/.test(text) && world.settlers) f('settlers', 0);
+  else if (/^Constable|slips out of|walks out of|goes looking for|starts asking/.test(text) && town) f('law', town.id);
+  else if (/fireboat|fishing boat/.test(text) && world.boats.length) f('boat', world.boats[world.boats.length - 1].town);
+  else if (/wagons|Wagons/.test(text) && (world.wagons || []).length) f('wagon', 0);
+  return where;
+}
+function log(text, kind, at) {
+  const where = whereOf(text, at);
+  logEntries.unshift({ tick: world.tick, text, kind: kind || '', at: where.at, follow: where.follow });
   if (logEntries.length > 60) logEntries.length = 60;
   renderLog();
   // Chronicle: every town named in the line remembers it.
-  for (const t of world.towns) if (text.includes(t.name)) { t.chronicle = t.chronicle || []; t.chronicle.unshift({ tick: world.tick, text }); if (t.chronicle.length > 40) t.chronicle.length = 40; }
+  for (const t of world.towns) if (text.includes(t.name)) { t.chronicle = t.chronicle || []; t.chronicle.unshift({ tick: world.tick, text, at: where.at }); if (t.chronicle.length > 40) t.chronicle.length = 40; }
   checkAchievementText(text);
 }
+// Where a followed thing is right now, in cells, or null when it is gone.
+function followPos(f) {
+  if (!f) return null;
+  const w = world;
+  switch (f.kind) {
+    case 'dragon': return w.dragon ? [w.dragon.x, w.dragon.y] : null;
+    case 'trader': return w.trader ? [w.trader.x, w.trader.y] : null;
+    case 'warband': { const [a, b] = f.id.split(':').map(Number); const band = w.warbands.find(q => q.from === a && q.to === b); if (band) return [band.x, band.y]; const bt = w.battles.find(q => q.from === a && q.to === b); return bt && bt.attAgents && bt.attAgents.length ? [bt.attAgents[0].x, bt.attAgents[0].y] : null; }
+    case 'bomber': { const p = w.bombers.find(q => q.from === f.id); return p ? [p.x, p.y] : null; }
+    case 'fighter': { const p = w.fighters.find(q => q.from === f.id); return p ? [p.x, p.y] : null; }
+    case 'firebug': { const b = (w.firebugs || []).find(q => q.name === f.id); return b ? [b.x, b.y] : null; }
+    case 'settlers': return w.settlers ? [w.settlers.x, w.settlers.y] : null;
+    case 'law': { const t = w.towns[f.id]; if (!t) return null; const x = t.workers.find(q => q.job === 'fugitive') || t.workers.find(q => q.job === 'constable'); return x ? [x.x, x.y] : null; }
+    case 'boat': { const b = w.boats.find(q => q.town === f.id); return b ? [b.x, b.y] : null; }
+    case 'wagon': { const g = (w.wagons || [])[0]; return g ? [g.x, g.y] : null; }
+  }
+  return null;
+}
+let following = null, followLabel = '';
+function followName(f) {
+  const w = world;
+  switch (f.kind) {
+    case 'dragon': return w.dragon ? w.dragon.name || 'the dragon' : 'the dragon';
+    case 'trader': return 'the caravan';
+    case 'warband': { const [a, b] = f.id.split(':').map(Number); return `${w.towns[a] ? w.towns[a].name : 'a'} column`; }
+    case 'bomber': return `${w.towns[f.id] ? w.towns[f.id].name + "'s" : 'a'} bomber`;
+    case 'fighter': return `${w.towns[f.id] ? w.towns[f.id].name + "'s" : 'a'} jet`;
+    case 'firebug': return f.id;
+    case 'settlers': return 'the settlers';
+    case 'law': { const t = w.towns[f.id]; return t && t.case ? t.case.who : 'the fugitive'; }
+    case 'boat': return 'the boat';
+    case 'wagon': return 'the wagons';
+  }
+  return 'it';
+}
+const markers = [];
+// Centre the view on a cell at a close zoom and flash a ring there.
+function goTo(cell, zoom) {
+  if (cell < 0) return;
+  const n = world.n, x = cell % n, y = Math.floor(cell / n);
+  view.zoom = Math.max(view.zoom, zoom || 3);
+  const span = canvas.width / view.zoom;
+  view.x = (x + 0.5) * cellPx - span / 2; view.y = (y + 0.5) * cellPx - span / 2;
+  clampView(); updateZoomHud();
+  markers.push({ cell, t0: performance.now(), dur: 2600 });
+}
+function follow(f, label) {
+  following = f; followLabel = label || '';
+  const el = $('hudFollow'); if (el) { el.textContent = f ? `following: ${followLabel} · Esc` : ''; el.style.display = f ? '' : 'none'; }
+  if (f) { const p = followPos(f); if (p) goTo(Math.round(p[1]) * world.n + Math.round(p[0]), 4); }
+}
+function stopFollowing() { if (following) follow(null); }
+function updateFollow() {
+  if (!following) return;
+  const p = followPos(following);
+  if (!p) { follow(null); return; }
+  const span = canvas.width / view.zoom;
+  view.x = (p[0] + 0.5) * cellPx - span / 2; view.y = (p[1] + 0.5) * cellPx - span / 2; clampView();
+}
+function logEntryHtml(e, k) {
+  const go = e.at >= 0 ? ' go' : '', fol = e.follow ? `<button class="fol" data-k="${k}" title="follow">➤</button>` : '';
+  return `<li class="${e.kind}${go}" data-k="${k}"><span class="t">t${e.tick}</span><span>${e.text}</span>${fol}</li>`;
+}
+logEl.addEventListener('click', ev => {
+  const b = ev.target.closest('button.fol'); const li = ev.target.closest('li');
+  if (!li || li.dataset.k === undefined) return;
+  const e = logEntries[+li.dataset.k]; if (!e) return;
+  if (b) { follow(e.follow, followName(e.follow)); return; }
+  if (e.at >= 0) { stopFollowing(); goTo(e.at); }
+});
 
 // Achievements live in this browser's local storage, across valleys.
 const ACHIEVEMENTS = [
@@ -6439,7 +6535,7 @@ ACHIEVEMENTS.push(['decade', '📜', 'Ten Years', 'Run a valley for ten years', 
 renderAchievements();
 function renderLog() {
   if (!logEntries.length) { logEl.innerHTML = '<li class="empty">all quiet</li>'; return; }
-  logEl.innerHTML = logEntries.map(e => `<li class="${e.kind}"><span class="t">t${e.tick}</span><span>${e.text}</span></li>`).join('');
+  logEl.innerHTML = logEntries.map((e, k) => logEntryHtml(e, k)).join('');
 }
 
 /* ───────────────────────── Rendering ───────────────────────── */
@@ -6596,7 +6692,7 @@ function zoomAt(factor, sx, sy) { // sx, sy in canvas pixels
   view.x = wx - sx / view.zoom; view.y = wy - sy / view.zoom;
   clampView(); updateZoomHud();
 }
-function panBy(dx, dy) { view.x -= dx / view.zoom; view.y -= dy / view.zoom; clampView(); }
+function panBy(dx, dy) { if (typeof stopFollowing === 'function') stopFollowing(); view.x -= dx / view.zoom; view.y -= dy / view.zoom; clampView(); }
 function resetView() { view.zoom = 1; view.x = 0; view.y = 0; updateZoomHud(); }
 function updateZoomHud() { const el = $('hudZoom'); if (el) el.textContent = view.zoom < 1.05 ? '1x' : view.zoom.toFixed(1).replace(/\.0$/, '') + 'x'; }
 function canvasPoint(clientX, clientY) { const r = canvas.getBoundingClientRect(); return [(clientX - r.left) / r.width * canvas.width, (clientY - r.top) / r.height * canvas.height]; }
@@ -6890,6 +6986,13 @@ function render(now, tickFrac) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); drawWeather(now); ctx.restore(); // weather is a screen-space effect
   drawEffects(now);
 
+  for (let k = markers.length - 1; k >= 0; k--) {
+    const m = markers[k], t = (now - m.t0) / m.dur;
+    if (t >= 1) { markers.splice(k, 1); continue; }
+    const [mx, my] = cellCenter(m.cell), r = cellPx * (1.5 + t * 6);
+    ctx.globalAlpha = 1 - t; ctx.lineWidth = Math.max(1.5, cellPx * 0.3) / view.zoom * 2; ctx.strokeStyle = '#ffe866';
+    ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+  }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const stacks = new Map(); // popups near the same spot stack upward instead of overprinting
   for (let k = popups.length - 1; k >= 0; k--) {
@@ -7237,6 +7340,7 @@ function frame(now) {
     if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
     if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
 
+    updateFollow();
     render(now, Math.min(1, tickAcc));
     updateStats();
     updateHud();
@@ -7584,7 +7688,7 @@ function cardHtml(t) {
   const resLine = RES_KINDS.filter(k => k !== 'coin' && t.res[k] > 0).map(k => row(k, `${t.res[k]} <span class="dim">/ ${resCap(t, k) >= 1e8 ? '' : resCap(t, k)}</span>`)).join('') || '<div class="dim">nothing in store</div>';
   const ls = t.livestock ? LIVESTOCK.filter(k => t.livestock[k]).map(k => `${t.livestock[k]} ${k}`).join(', ') : '';
   const folk = (t.people || []).slice().sort((a, b) => (b.alive - a.alive) || (a.role === 'elder' ? -1 : b.role === 'elder' ? 1 : a.born - b.born)).map(p => `<div class="${p.alive ? '' : 'dead'}"><b>${p.name}</b>, ${roleLabel(p)}${p.trait ? ' (' + TRAITS[p.trait].label + ')' : ''}${p.alive ? `, ${personAge(p)}` : ` † ${p.cause || ''}`}. ${p.story[0].toUpperCase() + p.story.slice(1)}.${p.deeds.length ? ` <span class="deed">Last: ${p.deeds[p.deeds.length - 1].text}.</span>` : ''}</div>`).join('');
-  const chron = (t.chronicle || []).slice(0, 8).map(e => `<div><span class="t">t${e.tick}</span><span>${e.text}</span></div>`).join('');
+  const chron = (t.chronicle || []).slice(0, 8).map(e => `<div class="${e.at >= 0 ? 'go' : ''}" data-at="${e.at >= 0 ? e.at : ''}"><span class="t">t${e.tick}</span><span>${e.text}</span></div>`).join('');
   return `<button class="x" data-act="close">close</button><h3>${t.name}</h3>` +
     `<div class="dim">${alignName(t.align)} · ${BIOME_NAMES[biomeAt(t.cx, t.cy)]} · founded Y${Math.floor(t.founded / YEAR) + 1} · ${dead ? '<span class="d">in ruins</span>' : t.mobilized ? '<span class="d">fighting a fire</span>' : t.famine ? '<span class="d">famine</span>' : 'calm'}</div>` +
     (l ? `<div class="lead">Elder ${l.name}, ${TRAITS[l.trait] ? TRAITS[l.trait].label : 'elder'}, ${personAge(l)}: ${TRAITS[l.trait] ? TRAITS[l.trait].blurb : ''}.</div>` : '') +
@@ -7608,6 +7712,7 @@ function cardHtml(t) {
 function openCard(t) { cardTown = t.id; cardEl.innerHTML = cardHtml(t); cardEl.classList.add('on'); cardAt = performance.now(); }
 function closeCard() { cardTown = -1; cardEl.classList.remove('on'); }
 cardEl.addEventListener('click', ev => {
+  const g = ev.target.closest('.chron .go'); if (g && g.dataset.at) { stopFollowing(); goTo(+g.dataset.at); return; }
   const b = ev.target.closest('button'); if (!b) return;
   const t = world.towns[cardTown];
   if (b.dataset.act === 'close') closeCard();
@@ -7800,7 +7905,7 @@ window.addEventListener('keydown', ev => {
     case 'ArrowUp': case 'w': case 'W': ev.preventDefault(); panBy(0, canvas.height * 0.08); break;
     case 'ArrowDown': case 's': case 'S': ev.preventDefault(); panBy(0, -canvas.height * 0.08); break;
     case 'h': case 'H': showTab('History'); break;
-    case 'Escape': if (histFull) toggleHistFull(); else if (cardTown >= 0) closeCard(); break;
+    case 'Escape': if (histFull) toggleHistFull(); else if (following) stopFollowing(); else if (cardTown >= 0) closeCard(); break;
     case 'Control': if (!ev.repeat) toggleClickMode(); break;
     case ' ': ev.preventDefault(); setRunning(!running); break;
     case 'm': case 'M': launchMissile(randomFuelCell()); break;

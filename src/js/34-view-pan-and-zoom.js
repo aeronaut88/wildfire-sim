@@ -14,7 +14,7 @@ function zoomAt(factor, sx, sy) { // sx, sy in canvas pixels
   view.x = wx - sx / view.zoom; view.y = wy - sy / view.zoom;
   clampView(); updateZoomHud();
 }
-function panBy(dx, dy) { view.x -= dx / view.zoom; view.y -= dy / view.zoom; clampView(); }
+function panBy(dx, dy) { if (typeof stopFollowing === 'function') stopFollowing(); view.x -= dx / view.zoom; view.y -= dy / view.zoom; clampView(); }
 function resetView() { view.zoom = 1; view.x = 0; view.y = 0; updateZoomHud(); }
 function updateZoomHud() { const el = $('hudZoom'); if (el) el.textContent = view.zoom < 1.05 ? '1x' : view.zoom.toFixed(1).replace(/\.0$/, '') + 'x'; }
 function canvasPoint(clientX, clientY) { const r = canvas.getBoundingClientRect(); return [(clientX - r.left) / r.width * canvas.width, (clientY - r.top) / r.height * canvas.height]; }
@@ -308,6 +308,13 @@ function render(now, tickFrac) {
   ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); drawWeather(now); ctx.restore(); // weather is a screen-space effect
   drawEffects(now);
 
+  for (let k = markers.length - 1; k >= 0; k--) {
+    const m = markers[k], t = (now - m.t0) / m.dur;
+    if (t >= 1) { markers.splice(k, 1); continue; }
+    const [mx, my] = cellCenter(m.cell), r = cellPx * (1.5 + t * 6);
+    ctx.globalAlpha = 1 - t; ctx.lineWidth = Math.max(1.5, cellPx * 0.3) / view.zoom * 2; ctx.strokeStyle = '#ffe866';
+    ctx.beginPath(); ctx.arc(mx, my, r, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+  }
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   const stacks = new Map(); // popups near the same spot stack upward instead of overprinting
   for (let k = popups.length - 1; k >= 0; k--) {

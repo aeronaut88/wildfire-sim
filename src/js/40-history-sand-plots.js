@@ -150,7 +150,7 @@ window.addEventListener('keydown', ev => {
     case 'ArrowUp': case 'w': case 'W': ev.preventDefault(); panBy(0, canvas.height * 0.08); break;
     case 'ArrowDown': case 's': case 'S': ev.preventDefault(); panBy(0, -canvas.height * 0.08); break;
     case 'h': case 'H': showTab('History'); break;
-    case 'Escape': if (histFull) toggleHistFull(); else if (cardTown >= 0) closeCard(); break;
+    case 'Escape': if (histFull) toggleHistFull(); else if (following) stopFollowing(); else if (cardTown >= 0) closeCard(); break;
     case 'Control': if (!ev.repeat) toggleClickMode(); break;
     case ' ': ev.preventDefault(); setRunning(!running); break;
     case 'm': case 'M': launchMissile(randomFuelCell()); break;

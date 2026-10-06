@@ -98,6 +98,7 @@ function frame(now) {
     if (now - lastWater > 700) { lastWater = now; waterFrame ^= 1; redrawWater(); }
     if (now - lastFire > 110) { lastFire = now; fireFrame = (fireFrame + 1) % 3; }
 
+    updateFollow();
     render(now, Math.min(1, tickAcc));
     updateStats();
     updateHud();

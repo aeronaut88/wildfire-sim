@@ -473,6 +473,14 @@ its capacity, coin, its workshops, power, arms and learning, who it is at war or
 every named resident with a bio and last deed, and its latest chronicle. Buttons fire a
 missile or a lightning strike at it, or jump to its line in the history. Escape closes it.
 
+## Watching
+
+Every log line knows where it happened: click it and the view jumps there at a close zoom with
+a ring flashing on the spot. Lines about something on the move carry a follow arrow: a dragon,
+a caravan, a column of soldiers, a bomber or a jet, a fugitive and the constable after them, a
+roaming firebug, settlers on the road. Following keeps the camera on them until they are gone,
+you pan, or you press Esc. The town card's recent-events list works the same way.
+
 ## The sidebar
 
 Five tabs: Play (run, ignite, dispatch, save and seed), Towns, History, Settings (world,

@@ -366,6 +366,12 @@
   .log li.weather, .log li:first-child.weather { color: #a8c8ff; }
   .log li.build, .log li:first-child.build { color: #d9c48a; }
   .log li { display: flex; gap: 8px; }
+  .log li.go { cursor: pointer; }
+  .log li.go:hover span:nth-child(2) { text-decoration: underline dotted; }
+  .log li .fol { margin-left: auto; background: none; border: 1px solid var(--panel-edge); color: var(--ember-hot); font-size: 10px; line-height: 1; padding: 1px 5px; cursor: pointer; border-radius: 3px; }
+  .log li .fol:hover { background: var(--ember-hot); color: #000; }
+  .card .chron .go { cursor: pointer; }
+  .card .chron .go:hover span:nth-child(2) { text-decoration: underline dotted; }
   .log li .t { font-family: var(--pixel); font-size: 9px; color: #6a5c4e; min-width: 34px; padding-top: 2px; }
   .log li.alarm { color: var(--ember-hot); }
   .log li.loss { color: #ff8a73; }
@@ -474,6 +480,7 @@
         <span class="zoom" id="hudZoom">1x</span>
         <span class="sep"></span>
         <span class="tk" id="hudMode" title="Ctrl toggles">click: missile</span>
+        <span class="tk" id="hudFollow" style="display:none"></span>
         <span class="zoomctl"><button id="zoomIn" title="zoom in (+)">+</button><button id="zoomOut" title="zoom out (-)">&minus;</button><button id="zoomReset" title="whole map (0)">&#8962;</button></span>
       </div>
       <div class="tip" id="tip"></div>
