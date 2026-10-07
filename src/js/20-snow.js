@@ -11,6 +11,20 @@ function thawWet(i) {
   world.wet[i] = Math.max(world.wet[i], 30);
   world.wetKind[i] = 3; // damp, not shown as a puddle
 }
+// A mixed hash of cell and tick: every bit depends on every bit, so the fall and the melt come
+// scattered rather than in stripes. (A plain multiply left the low bits a function of i mod 16, and
+// the snow came in diagonal bands.)
+function snowHash(i, tick) { let h = (i * 0x9E3779B1 ^ tick * 0x85EBCA6B) | 0; h = Math.imul(h ^ (h >>> 15), 0x2C1B3C6D); h = Math.imul(h ^ (h >>> 12), 0x297A2D39); h ^= h >>> 15; return h >>> 0; }
+// Where snow lies and where it goes first: a smooth map of hollows and exposed ground, plus a little
+// grain, so cover builds and melts in patches rather than in stripes or static.
+function snowFac(i) {
+  let f = world.snowFac;
+  if (!f || f.length !== world.n * world.n) {
+    const n = world.n; f = world.snowFac = new Float32Array(n * n);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = fbm(x / 9, y / 9, 7700 + (world.seed || 0) % 1000, 3); f[y * n + x] = Math.max(0, Math.min(1, (v - 0.3) * 2.5)) * 0.85 + ((snowHash(y * n + x, 13) >>> 10) % 16) / 100; }
+  }
+  return f[i];
+}
 function updateSnow() {
   const snowing = world.weather.kind === 'snow';
   if (!snowing && !world.snowCells) return;
@@ -24,12 +38,12 @@ function updateSnow() {
     if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
     else if (snowing) {
       if (d >= 255) { cells++; continue; }
-      if ((((i * 2654435761) + tick * 40503) >>> 0) % 16 < 11) d++; else { if (d) cells++; continue; }
+      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground
     } else {
       if (!d) continue;
-      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1);
+      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8); // and hollows hold their snow longest: the melt comes in patches, not as one front
       let dec = Math.floor(m);
-      if (((((i * 2654435761) + tick * 40503) >>> 0) & 1023) / 1024 < m - dec) dec++;
+      if (((snowHash(i, tick) >>> 8) & 1023) / 1024 < m - dec) dec++;
       if (!dec) { cells++; continue; }
       d = Math.max(0, d - dec);
       if (!d) thawWet(i);

@@ -1770,16 +1770,16 @@ function updatePacks() {
           let town = null, td = p.kind === 'bear' ? 16 : (cold ? 40 : 22); for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - p.x, t.cy - p.y); if (d < td) { td = d; town = t; } }
           if (town) {
             // A lone worker outside the walls is easy meat.
-            const lone = town.workers.find(w => (w.job === 'forage' || w.job === 'hunt' || w.job === 'log' || w.job === 'fugitive') && Math.hypot(w.x - p.x, w.y - p.y) <= 1.5);
+            const lone = (town.workers || []).find(w => (w.job === 'forage' || w.job === 'hunt' || w.job === 'log' || w.job === 'fugitive') && Math.hypot(w.x - p.x, w.y - p.y) <= 1.5);
             if (lone && Math.random() < (p.kind === 'bear' ? 0.5 : 0.25)) {
-              town.workers = town.workers.filter(w => w !== lone); applyLosses(town, 1, p.kind === 'bear' ? 'bear' : 'wolves'); p.hunger = 0; p.next = world.tick + 300; stat('ev', p.kind === 'bear' ? 'bearKills' : 'wolfKills');
+              town.workers = (town.workers || []).filter(w => w !== lone); applyLosses(town, 1, p.kind === 'bear' ? 'bear' : 'wolves'); p.hunger = 0; p.next = world.tick + 300; stat('ev', p.kind === 'bear' ? 'bearKills' : 'wolfKills');
               log(`${p.kind === 'bear' ? 'The bear' : 'Wolves'} take${p.kind === 'bear' ? 's' : ''} ${lone.job === 'forage' ? 'a forager' : lone.job === 'hunt' ? 'a hunter' : lone.job === 'log' ? 'a logger' : 'someone'} from ${town.name} in the woods ${daypart()}`, 'loss');
             } else if (p.kind === 'wolves' && cold && Math.hypot(town.cx - p.x, town.cy - p.y) <= town.R + 3) {
               const k = ['sheep', 'chickens', 'pigs'].find(k => (town.livestock || {})[k] > 0);
               if (k) { const took = Math.min(town.livestock[k], 1 + Math.floor(Math.random() * 2)); town.livestock[k] -= took; p.hunger = 0; p.next = world.tick + 200; stat('ev', 'wolfKills', took); log(`Wolves take ${took} ${k} from ${town.name}'s pasture in the night`, 'loss'); }
               else { p.next = world.tick + 100; }
               // The town answers: hunters and militia go out, and the pack pays.
-              if (town.militia >= 4 || town.workers.some(w => w.job === 'hunt')) { const dead = Math.min(p.size, 1 + Math.floor(Math.random() * 2)); p.size -= dead; stat('ev', 'wolvesKilled', dead); p.wx = Math.max(0, Math.min(n - 1, p.x + (p.x - town.cx > 0 ? 10 : -10))); p.wy = p.y; log(`${town.name}'s ${town.workers.some(w => w.job === 'hunt') ? 'hunters' : 'militia'} go out after the wolves and kill ${dead}. The rest run for the trees.`, 'win'); if (p.size <= 0) continue; }
+              if (town.militia >= 4 || (town.workers || []).some(w => w.job === 'hunt')) { const dead = Math.min(p.size, 1 + Math.floor(Math.random() * 2)); p.size -= dead; stat('ev', 'wolvesKilled', dead); p.wx = Math.max(0, Math.min(n - 1, p.x + (p.x - town.cx > 0 ? 10 : -10))); p.wy = p.y; log(`${town.name}'s ${(town.workers || []).some(w => w.job === 'hunt') ? 'hunters' : 'militia'} go out after the wolves and kill ${dead}. The rest run for the trees.`, 'win'); if (p.size <= 0) continue; }
               target = -1;
             } else if (p.kind === 'wolves' && cold) target = town.cy * n + town.cx;
           }
@@ -1795,7 +1795,7 @@ function updatePacks() {
       }
     }
     // Hunters with a bow and a reason bring a bear down.
-    if (p.kind === 'bear') { const t = world.towns.find(t => isAlive(t) && Math.hypot(t.cx - p.x, t.cy - p.y) <= t.R + 12 && t.workers.some(w => w.job === 'hunt' && Math.hypot(w.x - p.x, w.y - p.y) <= 3)); if (t && Math.random() < 0.3) { addRes(t, 'game', 6); const h = person(t, 'hunter'); if (h) deed(h, 'brought down the bear in the deep timber'); stat('ev', 'bearsKilled'); log(`${t.name}'s hunters bring down the bear${h ? `; ${h.name} took the shot` : ''}. There is meat for a month.`, 'win'); continue; } }
+    if (p.kind === 'bear') { const t = world.towns.find(t => isAlive(t) && Math.hypot(t.cx - p.x, t.cy - p.y) <= t.R + 12 && (t.workers || []).some(w => w.job === 'hunt' && Math.hypot(w.x - p.x, w.y - p.y) <= 3)); if (t && Math.random() < 0.3) { addRes(t, 'game', 6); const h = person(t, 'hunter'); if (h) deed(h, 'brought down the bear in the deep timber'); stat('ev', 'bearsKilled'); log(`${t.name}'s hunters bring down the bear${h ? `; ${h.name} took the shot` : ''}. There is meat for a month.`, 'win'); continue; } }
     if (p.wx >= 0) {
       const steps = scared ? 2 : 1;
       for (let st = 0; st < steps; st++) { const dx = Math.sign(p.wx - p.x), dy = Math.sign(p.wy - p.y); if (!dx && !dy) break; let moved = false; for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [-dx, dy], [dx, -dy]]) { const nx = p.x + mx, ny = p.y + my; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!passable(world.type[j]) || isBuilding(world.type[j]) || world.burnLeft[j] > 0) continue; p.x = nx; p.y = ny; moved = true; if (mx) p.face = mx; break; } if (!moved) { p.wx = -1; break; } }
@@ -1880,7 +1880,7 @@ function generate(n, seed) {
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.snowFac = null; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
   const a0 = Math.random() * Math.PI * 2;
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
@@ -4167,6 +4167,20 @@ function thawWet(i) {
   world.wet[i] = Math.max(world.wet[i], 30);
   world.wetKind[i] = 3; // damp, not shown as a puddle
 }
+// A mixed hash of cell and tick: every bit depends on every bit, so the fall and the melt come
+// scattered rather than in stripes. (A plain multiply left the low bits a function of i mod 16, and
+// the snow came in diagonal bands.)
+function snowHash(i, tick) { let h = (i * 0x9E3779B1 ^ tick * 0x85EBCA6B) | 0; h = Math.imul(h ^ (h >>> 15), 0x2C1B3C6D); h = Math.imul(h ^ (h >>> 12), 0x297A2D39); h ^= h >>> 15; return h >>> 0; }
+// Where snow lies and where it goes first: a smooth map of hollows and exposed ground, plus a little
+// grain, so cover builds and melts in patches rather than in stripes or static.
+function snowFac(i) {
+  let f = world.snowFac;
+  if (!f || f.length !== world.n * world.n) {
+    const n = world.n; f = world.snowFac = new Float32Array(n * n);
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const v = fbm(x / 9, y / 9, 7700 + (world.seed || 0) % 1000, 3); f[y * n + x] = Math.max(0, Math.min(1, (v - 0.3) * 2.5)) * 0.85 + ((snowHash(y * n + x, 13) >>> 10) % 16) / 100; }
+  }
+  return f[i];
+}
 function updateSnow() {
   const snowing = world.weather.kind === 'snow';
   if (!snowing && !world.snowCells) return;
@@ -4180,12 +4194,12 @@ function updateSnow() {
     if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
     else if (snowing) {
       if (d >= 255) { cells++; continue; }
-      if ((((i * 2654435761) + tick * 40503) >>> 0) % 16 < 11) d++; else { if (d) cells++; continue; }
+      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground
     } else {
       if (!d) continue;
-      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1);
+      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8); // and hollows hold their snow longest: the melt comes in patches, not as one front
       let dec = Math.floor(m);
-      if (((((i * 2654435761) + tick * 40503) >>> 0) & 1023) / 1024 < m - dec) dec++;
+      if (((snowHash(i, tick) >>> 8) & 1023) / 1024 < m - dec) dec++;
       if (!dec) { cells++; continue; }
       d = Math.max(0, d - dec);
       if (!d) thawWet(i);
