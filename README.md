@@ -504,7 +504,9 @@ Acts of god are truly rare and change the map. An earthquake cracks walls, bring
 breaks dams into floods, and throws up a ridge of bare rock or opens a rift that fills with
 water across the land, so the old paths no longer go through. A comet falls as a second sun and
 leaves a crater lake in a ring of rock, burns everything for a long way round, and brings a year
-of ash in which the crops barely grow.
+of ash in which the crops barely grow. The crater's ring is worth digging: sky iron, copper,
+sometimes gold, and now and then a trace of something that hums, and an earthquake's ridge
+can expose a seam too. Every town within a walk will want it.
 
 ## The log does not repeat itself
 

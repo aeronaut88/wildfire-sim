@@ -14,7 +14,13 @@ function maybeActOfGod() {
 function nearestTown(x, y) { let near = null, nd = Infinity; for (const t of world.towns) { const d = Math.hypot(t.cx - x, t.cy - y); if (d < nd) { nd = d; near = t; } } return [near, nd]; }
 function inAnyTown(x, y, pad) { return world.towns.some(t => isAlive(t) && Math.hypot(t.cx - x, t.cy - y) <= t.R + (pad || 1)); }
 function makeWater(i) { const t = world.type[i]; if (t === T.WATER) return; if (isTree(t)) world.treeCount--; if (isBuilding(t)) onBuildingDestroyed(i, 'blast'); world.type[i] = T.WATER; world.road[i] = 0; world.burnLeft[i] = 0; world.water.push(i); dirty.add(i); }
-function makeRock(i) { const t = world.type[i]; if (t === T.ROCK) return; if (isTree(t)) world.treeCount--; if (isBuilding(t)) onBuildingDestroyed(i, 'blast'); world.type[i] = T.ROCK; world.road[i] = 0; world.burnLeft[i] = 0; dirty.add(i); }
+function makeRock(i, seam) {
+  const t = world.type[i]; if (t === T.ROCK && !seam) return;
+  if (t !== T.ROCK) { if (isTree(t)) world.treeCount--; if (isBuilding(t)) onBuildingDestroyed(i, 'blast'); world.type[i] = T.ROCK; world.road[i] = 0; world.burnLeft[i] = 0; }
+  // What the earth throws up, or what fell from the sky, is sometimes worth digging.
+  if (seam && !world.oreKind[i]) { const r = Math.random(); const kind = r < 0.45 ? 1 : r < 0.8 ? 2 : r < 0.95 ? 6 : 4; world.oreKind[i] = kind; world.ore[i] = kind === 4 ? 40 + Math.floor(Math.random() * 60) : kind === 6 ? 40 + Math.floor(Math.random() * 60) : 150 + Math.floor(Math.random() * 200); stat('ev', 'seamsRevealed'); }
+  dirty.add(i);
+}
 
 function earthquake() {
   const n = world.n, mag = 1 + Math.floor(Math.random() * 3);
@@ -44,10 +50,10 @@ function earthquake() {
       const x = Math.round(ex + Math.cos(a) * k + (Math.random() - 0.5) * 1.5), y = Math.round(ey + Math.sin(a) * k + (Math.random() - 0.5) * 1.5);
       if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1 || inAnyTown(x, y, 2)) continue;
       const i = y * n + x; if (world.type[i] === T.WATER && !rift) continue;
-      if (rift) makeWater(i); else makeRock(i); made++;
+      if (rift) makeWater(i); else makeRock(i, Math.random() < 0.12); made++;
       if (Math.random() < 0.4) { const j = i + (Math.random() < 0.5 ? 1 : n); if (j < n * n && !inAnyTown(j % n, Math.floor(j / n), 2)) { if (rift) makeWater(j); else makeRock(j); } }
     }
-    if (made) log(rift ? `The ground splits open ${near ? 'near ' + near.name : 'in the hills'} and water fills the rift. The valley has a new lake, long and narrow.` : `A ridge of bare rock is thrown up across the land ${near ? 'near ' + near.name : 'in the hills'}. The old paths no longer go through.`, 'weather', ey * n + ex);
+    if (made) log(rift ? `The ground splits open ${near ? 'near ' + near.name : 'in the hills'} and water fills the rift. The valley has a new lake, long and narrow.` : `A ridge of bare rock is thrown up across the land ${near ? 'near ' + near.name : 'in the hills'}. The old paths no longer go through${Math.random() < 0.5 ? ', and there is colour in the new stone' : ''}.`, 'weather', ey * n + ex);
     stat('ev', 'landChanged', made);
   } else if (Math.random() < 0.5 && !inAnyTown(ex, ey, 3)) { makeWater(ey * n + ex); for (const [ox, oy] of OFFS8) { const j = (ey + oy) * n + ex + ox; if (Math.random() < 0.5) makeWater(j); } log(`A spring breaks out of the ground where the quake was centred${near ? ', within a walk of ' + near.name : ''}`, 'weather', ey * n + ex); }
 }
@@ -70,14 +76,17 @@ function cometStrike(i) {
     const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
     const d = Math.hypot(dx, dy), j = y * n + x;
     if (d <= R - 3) makeWater(j);
-    else if (d <= R) makeRock(j);
+    else if (d <= R) makeRock(j, Math.random() < 0.3);
     else if (d <= R + 10) { const t = world.type[j]; if (isBuilding(t) && d <= R + 6) { onBuildingDestroyed(j, 'blast'); world.type[j] = T.RUBBLE; dirty.add(j); } else if (isFuel(t) && Math.random() < 0.6 * (1 - (d - R) / 10)) { world.wet[j] = 0; ignite(j); world.intensity[j] = isTree(t) ? 1 : 0; } }
   }
   for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - cx, t.cy - cy); if (d > R + 14) continue; const dead = Math.round(t.popLeft * Math.max(0.1, 0.5 * (1 - (d - R) / 14))); applyLosses(t, dead, 'blast'); remember(t, 'comet'); log(`${t.name} is under the fall: ${dead} dead, the town flattened at the edge, the sky black.`, 'loss'); }
   stat('ev', 'landChanged', R * R * 3);
   const [px, py] = cellCenter(i); popups.push({ x: px, y: py, text: 'IMPACT', color: '#fff0b0', t0: performance.now(), dur: 5000 });
   explosions.push({ x: px, y: py, t0: performance.now(), dur: 1800, r: (R + 10) * cellPx });
-  log(`IMPACT${near && nd < R + 20 ? ' beside ' + near.name : ' in the wilds'}. A lake lies in a ring of broken rock where there was ground, and everything for a long way round is burning. Ash begins to fall.`, 'alarm', i);
+  { let fe = 0, cu = 0, au = 0, u = 0; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const j = y * n + x; if (world.type[j] !== T.ROCK || Math.hypot(dx, dy) > R) continue; const k = world.oreKind[j]; if (k === 1) fe++; else if (k === 2) cu++; else if (k === 6) au++; else if (k === 4) u++; }
+    world.craterSeams = { fe, cu, au, u };
+    log(`IMPACT${near && nd < R + 20 ? ' beside ' + near.name : ' in the wilds'}. A lake lies in a ring of broken rock where there was ground, and everything for a long way round is burning. Ash begins to fall.`, 'alarm', i);
+    if (fe + cu + au + u) log(`When the rock cools, the ring of the crater glitters: ${[fe ? 'iron' : '', cu ? 'copper' : '', au ? 'gold' : '', u ? 'something green that hums' : ''].filter(Boolean).join(', ')}. Sky iron, the old people call it. Every town within a walk will want it.`, 'tech', i); }
   world.cometWinter = world.tick + YEAR; stat('ev', 'cometWinters');
   if (params.weatherMode === 'auto') setWeather('ashfall', true);
   for (const t of world.towns) if (isAlive(t)) remember(t, 'comet');
