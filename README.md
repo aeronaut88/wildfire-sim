@@ -498,7 +498,7 @@ towns get the fever in summer, a cistern left too low breeds cholera, and a sick
 gates: no caravans, no wagons, no refugees until it passes. Friends come into a war on their
 ally's side. Every few years the biggest town calls a council and envoys walk in from the rest;
 it ends a war, agrees a road, sets a shared fire watch, collapses in insults, or just feasts.
-A big, restless, lawless town can tear itself in two in the streets.
+A big, restless, lawless town can tear itself in two in the streets. A revolt builds in the open: from seventy unrest a crowd stands outside the hall and grows with the mood, the log says so, and the odds of the people rising climb from two per cent a growth tick at eighty to twelve at a hundred. When it comes, the elder is dragged out and walked to the gallows, or to the gate and out into the woods as an exile, in front of everyone.
 
 Acts of god are truly rare and change the map. An earthquake cracks walls, brings houses down,
 breaks dams into floods, and throws up a ridge of bare rock or opens a rift that fills with

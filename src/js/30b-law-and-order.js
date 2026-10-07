@@ -586,6 +586,17 @@ function spawnCrowd(town, dest, linger, count) {
 }
 function updateCrowd(town, w) {
   const n = world.n;
+  if (w.ousted) {
+    const tx = w.target % n, ty = Math.floor(w.target / n);
+    const l = findPerson(town, w.ousted) || { name: w.ousted, alive: true, role: 'ousted', story: w.story || 'ran the town until the town had had enough', deeds: [], born: world.tick - 50 * YEAR };
+    if (Math.max(Math.abs(w.x - tx), Math.abs(w.y - ty)) <= 1 || world.tick >= w.until) {
+      if (w.hanged) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; log(`${l.name} is hanged on the gallows at ${town.name} with the whole town watching. ${pick(['Nobody speaks.', 'Somebody cheers, and is hushed.', 'It is over quickly.', 'The new elder watches from the hall steps.'])}`, 'loss'); }
+      else { town.people = town.people.filter(p => p !== l); exile(town, l, `is marched out of ${town.name}'s gate by the mob with a sack and a stick, and the gate shut behind them`); }
+      return false;
+    }
+    stepToward(w, tx, ty, 1, false); if (w.stall > 6) { w.stall = 0; w.lastCell = -1; }
+    return true;
+  }
   if (w.job === 'home') { const hx = w.target % n, hy = Math.floor(w.target / n); if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) return false; stepToward(w, hx, hy, 1, false); return w.stall < 12; }
   if (world.tick >= w.until) { const h = campPoint(town); if (h < 0) return false; w.target = h; w.job = 'home'; w.lastCell = -1; w.stall = 0; return true; }
   if (w.rounds && (w.target < 0 || (w.x === w.target % n && w.y === Math.floor(w.target / n) && ++w.linger > 6))) { const homes = town.buildings.filter(i => isHome(world.type[i])); if (!homes.length) return false; w.target = homes[Math.floor(Math.random() * homes.length)]; w.linger = 0; w.lastCell = -1; }

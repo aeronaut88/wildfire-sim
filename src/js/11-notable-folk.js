@@ -5,7 +5,7 @@
 const FIRST_NAMES = ['Agnes', 'Mattias', 'Rook', 'Ida', 'Tobias', 'Wren', 'Hollis', 'Marta', 'Ezra', 'Pim', 'Sunniva', 'Cormac', 'Dagny', 'Lucan', 'Bea', 'Otto', 'Freya', 'Silas', 'Nell', 'Ansel', 'Greta', 'Jory', 'Thea', 'Ambrose', 'Petra', 'Roan', 'Elspeth', 'Hugo', 'Maren', 'Caspar', 'Liv', 'Barnaby', 'Signe', 'Teodor', 'Hazel', 'Emrys', 'Rosalind', 'Finn', 'Ingrid', 'Oskar', 'Winnie', 'Lorcan', 'Astrid', 'Benedikt', 'Tamsin', 'Soren', 'Clem', 'Juniper', 'Rufus', 'Odile'];
 const LAST_NAMES = ['Thorne', 'Ashby', 'Fairweather', 'Coalbrook', 'Hollins', 'Marsh', 'Quill', 'Stannard', 'Greaves', 'Pike', 'Wexley', 'Oakes', 'Brandt', 'Fenwick', 'Larkspur', 'Dunmore', 'Haskell', 'Birchwood', 'Kettle', 'Ravel', 'Tolliver', 'Moss', 'Sedge', 'Hartigan', 'Bramble', 'Underhill', 'Crane', 'Fallow', 'Wick', 'Northey', 'Tully', 'Varga', 'Ellery', 'Blackwood', 'Hale', 'Pennyworth', 'Rourke', 'Stirling', 'Ashgrove', 'Lindqvist'];
 const BACKSTORIES = ['came over the pass with the first wagons', 'was born in a hard winter and has never minded the cold', 'once walked to the far side of the valley and back in a day', 'keeps bees and talks to them', 'has never trusted the river', 'lost a childhood home to fire and still smells smoke in dreams', 'can name every tree within a mile', 'swears a dragon once looked them in the eye', 'won the pie contest nine years running', 'reads the weather in the way the pines move', 'was found as a baby on the north road', 'has buried two spouses and outlived them both cheerfully', 'carves animals out of birch and gives them away', 'taught half the town to swim', 'owes money in every town in the valley', 'claims to have seen the lights under the lake', 'fought in a war nobody else remembers', 'sings when the fire bell rings', 'has a scar from a boar and a story to match', 'planted the oak outside the hall', 'never sleeps on the night of the first snow', 'grew up in a wagon and still cannot sit still', 'keeps the only clock in town', 'has argued with the elder for thirty years', 'knows where the old mine shaft goes and will not say', 'brews something in the cellar that the chief pretends not to know about', 'walked away from a town that burned and never speaks its name', 'counts the geese every autumn and writes it down', 'was struck by lightning once and says it improved them', 'sleeps with a bucket of water by the bed'];
-const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk', captain: 'militia captain', spy: 'townsfolk', healer: 'healer', child: 'child' };
+const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk', captain: 'militia captain', spy: 'townsfolk', healer: 'healer', child: 'child', ousted: 'ousted elder' };
 /* Leaders. Every elder has a trait, and the trait steers the town's choices, right or wrong:
    who it fights, what it builds, what it hoards, what draws the dragons. The people have a say
    too: famine, war, thirst and tyranny raise unrest, and an elder who lets it climb is thrown out. */
@@ -76,14 +76,31 @@ function updateUnrest(town) {
   if (tr === 'peacemaker' || tr === 'prophet' || tr === 'drunkard') d -= 0.5; if (tr === 'builder' || tr === 'greenthumb') d -= 0.3;
   if (town.align.order > 0) d -= 0.3;
   town.unrest = Math.max(0, Math.min(100, (town.unrest || 10) + d));
-  if (town.unrest >= 80 && Math.random() < 0.02) overthrow(town, l);
+  const u = town.unrest;
+  // A crowd at the hall that grows with the mood, and a word in the log as it turns.
+  if (u >= 70 && !town.mobilized) {
+    const hall = town.buildings.find(i => world.type[i] === T.TOWNHALL), dest = hall !== undefined ? hall : town.cy * world.n + town.cx;
+    const want = Math.min(14, 2 + Math.floor((u - 70) / 3)), have = town.workers.filter(w => w.unrestCrowd).length;
+    if (have < want) { const n = world.n; for (let k = have; k < want; k++) { const h = campPoint(town); if (h < 0) break; town.workers.push({ x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: dest, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + 100000, spread: k, unrestCrowd: true }); } }
+    if (u >= 80 && (!town.unrestLogged || world.tick - town.unrestLogged > 300)) { town.unrestLogged = world.tick; log(pick([`A crowd stands outside the hall at ${town.name} and does not go home when it gets dark`, `${town.name}: ${want * 10} or more at the hall, and somebody has brought a rope`, `The square at ${town.name} fills ${daypart()}. ${l.name} does not come out.`, `Stones at the hall windows in ${town.name}`]), 'war'); const [px, py] = cellCenter(dest); popups.push({ x: px, y: py - cellPx * 2, text: 'UNREST', color: '#ff6ad5', t0: performance.now(), dur: 2000 }); }
+  } else if (u < 60 && town.workers.some(w => w.unrestCrowd)) { for (const w of town.workers) if (w.unrestCrowd) w.until = world.tick; }
+  if (u >= 80 && Math.random() < 0.02 + 0.10 * (u - 80) / 20) overthrow(town, l);
 }
 function overthrow(town, l) {
   const tr = TRAITS[l.trait] ? TRAITS[l.trait].label : 'elder';
   const hanged = (l.trait === 'tyrant' || l.trait === 'warmonger') && Math.random() < 0.5;
-  l.alive = false; l.died = world.tick; l.cause = hanged ? 'hanged by the mob' : 'thrown out by the mob';
+  l.role = 'ousted';
   stat('ev', 'overthrows'); town.overthrows = (town.overthrows || 0) + 1;
-  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and ${hanged ? 'hang them from the hall' : 'run them out of town'}`, 'war'); remember(town, 'revolt', { who: l.name });
+  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and drag them out of the hall${hanged ? '. Somebody has a rope.' : '.'}`, 'war'); remember(town, 'revolt', { who: l.name });
+  { // The walk: to the gallows or the hall beam, or to the gate and out.
+    const n = world.n, hall = town.buildings.find(i => world.type[i] === T.TOWNHALL), from = hall !== undefined ? hall : town.cy * n + town.cx;
+    const gallows = town.buildings.find(i => world.type[i] === T.GALLOWS);
+    const dest = hanged ? (gallows !== undefined ? gallows : from) : (hideout(town) >= 0 ? hideout(town) : from);
+    for (const w of town.workers) if (w.unrestCrowd) { w.target = dest; w.until = world.tick + 200; w.unrestCrowd = false; }
+    town.workers.push({ x: from % n, y: Math.floor(from / n), px: from % n, py: Math.floor(from / n), target: dest, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + 400, spread: 0, ousted: l.name, story: l.story, hanged, lastCell: -1 });
+    spawnCrowd(town, dest, 120, 6);
+    if (hanged && dest === from) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; log(`${l.name} is hanged from the hall beam at ${town.name} before the crowd has finished shouting`, 'loss'); town.workers = town.workers.filter(w => w.ousted !== l.name); }
+  }
   for (const q of town.people) if (q.alive && q.grudge && q.grudge.against === 'the law') { q.grudge = null; deed(q, 'was in the crowd at the hall the day the elder fell, and called it settled'); }
   const [px, py] = cellCenter(town.cy * world.n + town.cx); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'REVOLT', color: '#ff6ad5', t0: performance.now(), dur: 2600 });
   town.militia = Math.floor(town.militia * 0.75); town.unrest = 30;
@@ -107,7 +124,7 @@ function leaderActs(town) {
     const i = placeCivic(town, T.TOWER, false); if (i >= 0) { pay(town, COST[T.TOWER]); log(`${l.name} of ${town.name} orders a watchtower raised against the fire to come`, 'build'); }
   } else if (tr === 'tyrant' && town.res.coin >= 20) { const cut = Math.floor(town.res.coin * 0.1); town.res.coin -= cut; l.hoard = (l.hoard || 0) + cut; if (Math.random() < 0.3) log(`${l.name} of ${town.name} takes ${cut} coin from the chest for the palace`, 'loss'); }
 }
-const DEATH_VERB = { hanged: 'is hanged', banished: 'is banished', fever: 'dies of the marsh fever', cholera: 'dies of cholera', wolves: 'is taken by wolves', bear: 'is killed by a bear', earthquake: 'is killed in the earthquake', fire: 'dies in the fire', 'dragon fire': 'is taken by the dragon', 'torched in a raid': 'dies when the raiders torch the town', famine: 'starves', battle: 'falls in battle', 'put to the sword': 'is put to the sword', plague: 'dies of the plague', thirst: 'dies of thirst', fallout: 'wastes away from the fallout', blast: 'is killed in the blast', dragon: 'is killed by the dragon', 'fire crews lost': 'is lost with the fire crews' };
+const DEATH_VERB = { hanged: 'is hanged', banished: 'is banished', 'hanged by the mob': 'is hanged by the mob', 'thrown out by the mob': 'is thrown out by the mob', fever: 'dies of the marsh fever', cholera: 'dies of cholera', wolves: 'is taken by wolves', bear: 'is killed by a bear', earthquake: 'is killed in the earthquake', fire: 'dies in the fire', 'dragon fire': 'is taken by the dragon', 'torched in a raid': 'dies when the raiders torch the town', famine: 'starves', battle: 'falls in battle', 'put to the sword': 'is put to the sword', plague: 'dies of the plague', thirst: 'dies of thirst', fallout: 'wastes away from the fallout', blast: 'is killed in the blast', dragon: 'is killed by the dragon', 'fire crews lost': 'is lost with the fire crews' };
 function killNotable(town, cause) {
   const living = (town.people || []).filter(p => p.alive); if (!living.length) return;
   const p = living[Math.floor(Math.random() * living.length)];
