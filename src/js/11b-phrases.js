@@ -15,7 +15,7 @@ function weatherWord() {
 }
 function seasonWord() { return ['spring', 'summer', 'autumn', 'winter'][season()]; }
 function elderOf(town) { const l = leader(town); return l ? l.name : 'the elder'; }
-function moodWord(town) { const u = town.unrest || 0; return u >= 70 ? 'the town is at the end of its patience' : u >= 45 ? 'tempers are short' : u <= 15 ? 'the town is in good heart' : 'people take it in their stride'; }
+function moodWord(town) { const u = town.unrest || 0; return u >= 70 ? pick(['patience is running out', 'people are close to the end of it', 'the mood is ugly']) : u >= 45 ? pick(['tempers are short', 'there is muttering in the square', 'nobody is in the mood for it']) : u <= 15 ? pick(['spirits are high', 'people are in good spirits', 'nobody is complaining']) : pick(['people take it in their stride', 'life goes on', 'nobody says much about it']); }
 function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 // Say an event one of several ways, never repeating the last two phrasings for that key.
 const phraseUsed = {};
