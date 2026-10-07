@@ -4285,7 +4285,8 @@ function naturalLightning() {
 
 function maybeActOfGod() {
   if (world.tick < YEAR) return;
-  if (world.cometLand && world.tick >= world.cometLand.at) { cometStrike(world.cometLand.i); world.cometLand = null; return; }
+  // The strike lands when the fall is seen to land (detonate), whatever the tick rate; this is the fallback for a paused or stepped world.
+  if (world.cometLand && (!running || performance.now() - world.cometLand.t0 > 4000)) { const i = world.cometLand.i; world.cometLand = null; cometStrike(i); return; }
   if (world.cometWinter && world.tick >= world.cometWinter) { world.cometWinter = null; log('The sky clears at last. The comet year is over, and the first green shows through the ash.', 'weather'); if (params.weatherMode === 'auto') setWeather('clear', false); }
   const r = Math.random();
   if (r < 1 / (YEAR * 30)) earthquake();
@@ -4343,7 +4344,7 @@ function comet() {
   const i = Math.floor(Math.random() * n * n);
   const [tx, ty] = cellCenter(i);
   missiles.push({ sx: tx + (Math.random() - 0.5) * canvas.width * 0.8, sy: -80, tx, ty, target: i, t0: performance.now(), dur: 2600, arc: 0, lastSmoke: 0, radius: 2, nuke: false, meteor: true, comet: true });
-  world.cometLand = { i, at: world.tick + 3 };
+  world.cometLand = { i, t0: performance.now() };
   log('A SECOND SUN. Something very large is falling out of the sky, and the whole valley stops to watch it.', 'alarm', i);
   stat('ev', 'comets');
 }
@@ -8070,6 +8071,7 @@ function missilePos(m, t) {
 function detonate(m) {
   const n = world.n;
   if (m.nuke) { detonateNuke(m.target); return; }
+  if (m.comet) { if (world.cometLand) { const i = world.cometLand.i; world.cometLand = null; cometStrike(i); } return; } // the comet lands where and when it is seen to
   const radius = m.radius !== undefined ? m.radius : params.blast;
   if (m.meteor) {
     const n = world.n, cx = m.target % n, cy = Math.floor(m.target / n);

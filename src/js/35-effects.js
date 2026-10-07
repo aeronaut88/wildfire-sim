@@ -63,6 +63,7 @@ function missilePos(m, t) {
 function detonate(m) {
   const n = world.n;
   if (m.nuke) { detonateNuke(m.target); return; }
+  if (m.comet) { if (world.cometLand) { const i = world.cometLand.i; world.cometLand = null; cometStrike(i); } return; } // the comet lands where and when it is seen to
   const radius = m.radius !== undefined ? m.radius : params.blast;
   if (m.meteor) {
     const n = world.n, cx = m.target % n, cy = Math.floor(m.target / n);
