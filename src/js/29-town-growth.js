@@ -81,8 +81,10 @@ function growTown(town) {
   if (pressure && Math.random() < 0.5) buildHouse(town, false);
   bigCityTroubles(town);
   if (pressure && town.housesLeft >= 6 && Math.random() < 0.1 && canAfford(town, COST.road)) { pay(town, COST.road); expandRoads(town); }
-  // Dense housing once masonry (civil tech 1) is known: replace a house with a tenement when hemmed in.
-  if (pressure && town.civ >= 1 && town.housesLeft >= 8 && Math.random() < 0.12) buildTenement(town);
+  // Dense housing once masonry is known: replace a house with a tenement when hemmed in.
+  if (pressure && knowsMasonry(town) && town.housesLeft >= 8 && Math.random() < 0.12) buildTenement(town);
+  // A town that knows masonry and has stone to spare turns its timber houses to stone, one at a time.
+  if (knowsMasonry(town) && town.res.stone >= resCap(town, 'stone') * 0.5 && Math.random() < (town.code && town.code.stone ? 0.5 : 0.2)) refaceHouse(town);
   buildCivic(town);
   buildSites(town);
 
@@ -129,7 +131,7 @@ function bigCityTroubles(town) {
   // A big, restless, lawless town tears itself in two.
   if (town.popLeft >= 400 && (town.unrest || 0) >= 75 && town.align.order < 0 && !town.mobilized && Math.random() < 0.003) {
     const dead = Math.round(town.militia * 0.3); applyLosses(town, dead, 'battle'); town.militia -= dead;
-    const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); for (let k = 0; k < 3 && homes.length; k++) ignite(homes.splice(Math.floor(Math.random() * homes.length), 1)[0]);
+    const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); for (let k = 0; k < 3 && homes.length; k++) { const h = homes.splice(Math.floor(Math.random() * homes.length), 1)[0]; if (!world.mat[h] || Math.random() < 0.35) ignite(h); }
     spawnCrowd(town, town.cy * world.n + town.cx, 60, 10); stat('ev', 'civilWars'); remember(town, 'revolt', { who: elderOf(town) });
     log(`CIVIL WAR in the streets of ${town.name}: militia against militia, ${dead} dead, the slums alight. ${elderOf(town)} ${Math.random() < 0.3 ? 'is dragged from the hall' : 'barricades the hall'}.`, 'war');
     town.unrest = 40; const l = leader(town); if (l && Math.random() < 0.3) overthrow(town, l);
@@ -146,7 +148,7 @@ function bigCityTroubles(town) {
   }
   if (over > 0 && town.popLeft >= 500 && town.align.order < 0 && Math.random() < 0.004 * over) {
     const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0);
-    if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`Riots in ${town.name}. Someone put a torch to the slums.`, 'arson'); }
+    if (homes.length) { const h = homes[Math.floor(Math.random() * homes.length)]; if (!world.mat[h] || Math.random() < 0.35) ignite(h); log(`Riots in ${town.name}. Someone put a torch to the slums.`, 'arson'); }
     return;
   }
   if (over > 1 && Math.random() < 0.0015 * over) {
@@ -226,13 +228,14 @@ function hasPlanned(town, type) { return countPlanned(town, type) > 0; }
 // Upgrade a house near the centre into a tenement.
 function buildTenement(town) {
   const n = world.n;
+  if (!knowsMasonry(town)) return false;
   const houses = town.buildings.filter(i => world.type[i] === T.HOUSE && world.burnLeft[i] <= 0);
   if (!houses.length) return false;
   houses.sort((a, b) => Math.hypot(a % n - town.cx, Math.floor(a / n) - town.cy) - Math.hypot(b % n - town.cx, Math.floor(b / n) - town.cy));
   const i = houses[Math.floor(Math.random() * Math.min(4, houses.length))];
   if (!canAfford(town, COST[T.TENEMENT])) return false;
   pay(town, COST[T.TENEMENT]);
-  world.type[i] = T.TENEMENT; dirty.add(i); town.housesTotal++; town.housesLeft++; world.buildingsTotal++; world.buildingsLeft++; toSite(town, i, T.TENEMENT);
+  world.type[i] = T.TENEMENT; dirty.add(i); town.housesTotal++; town.housesLeft++; world.buildingsTotal++; world.buildingsLeft++; toSite(town, i, T.TENEMENT, undefined, true);
   if (Math.random() < 0.3) log(`${town.name} raises a tenement block`, 'build');
   return true;
 }
@@ -259,9 +262,28 @@ function placeCivic(town, type, nearCentre) {
   if (!town.buildings.includes(best)) town.buildings.push(best);
   world.buildingsTotal++; world.buildingsLeft++;
   dirty.add(best);
-  toSite(town, best, type);
+  const stone = wantsStone(town, type);
+  if (stone) pay(town, { stone: STONE_EXTRA }); // the caller pays the timber price; the stone is on top
+  toSite(town, best, type, undefined, stone);
   return best;
 }
+
+// Refacing: a timber house near the centre comes down to its frame and goes back up in quarried stone.
+function refaceHouse(town) {
+  const n = world.n;
+  if (!canAfford(town, COST.reface) || shortages(town).size) return false;
+  const houses = town.buildings.filter(i => world.type[i] === T.HOUSE && !world.mat[i] && world.burnLeft[i] <= 0);
+  if (!houses.length) return false;
+  houses.sort((a, b) => Math.hypot(a % n - town.cx, Math.floor(a / n) - town.cy) - Math.hypot(b % n - town.cx, Math.floor(b / n) - town.cy));
+  const i = houses[Math.floor(Math.random() * Math.min(3, houses.length))];
+  pay(town, COST.reface);
+  town.refaced = (town.refaced || 0) + 1; stat('ev', 'refaced');
+  toSite(town, i, T.HOUSE, true, true);
+  if (town.refaced === 1) log(`${town.name} takes down a timber house and raises it again in quarried stone`, 'build');
+  else if (Math.random() < 0.15) log(`${town.name} refaces another house in stone (${stoneHomes(town)} stone homes)`, 'build');
+  return true;
+}
+function stoneHomes(town) { let c = 0; for (const i of town.buildings) if (world.mat[i] && isHome(world.type[i])) c++; return c; }
 
 // What a town builds as it learns and grows.
 function buildCivic(town) {
@@ -317,19 +339,20 @@ function buildHouse(town, quiet) {
     for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 2) { foreign = true; break; }
     if (foreign) continue;
     let touch = false;
-    for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (isBuilding(type[j]) || world.road[j] || type[j] === T.RUBBLE) { touch = true; break; } }
+    for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (isBuilding(type[j]) || world.road[j] || type[j] === T.RUBBLE || type[j] === T.SHELL) { touch = true; break; } }
     if (!touch) continue;
     let score = d * 0.6 + Math.random() * 2.2;
-    if (t === T.RUBBLE) score -= 6;
+    if (t === T.RUBBLE || t === T.SHELL) score -= 6;
     if (isTree(t)) score += 1.5;
     if (touchesRoad(x, y)) score -= 2.5; else score += 1.5; // hug the streets
     if (score < bestScore) { bestScore = score; best = i; }
   }
   if (best < 0) return false;
-  pay(town, COST[T.HOUSE]);
   const t = type[best];
+  const onShell = t === T.SHELL, stone = onShell || wantsStone(town, T.HOUSE); // a shell only wants a roof
+  pay(town, onShell ? COST.shell : stone ? COST.stoneHouse : COST[T.HOUSE]);
   if (isTree(t)) world.treeCount--;
-  const rebuilt = t === T.RUBBLE;
+  const rebuilt = t === T.RUBBLE || onShell;
   type[best] = T.HOUSE;
   world.variant[best] = Math.random() < 0.6 ? 0 : 1;
   world.townOf[best] = town.id;
@@ -337,7 +360,8 @@ function buildHouse(town, quiet) {
   town.housesTotal++; town.housesLeft++;
   world.buildingsTotal++; world.buildingsLeft++;
   town.built++;
-  toSite(town, best, T.HOUSE);
+  toSite(town, best, T.HOUSE, undefined, stone);
+  if (onShell) town.sites[best].need = Math.max(4, Math.round(town.sites[best].need * 0.4));
   if (town.destroyed) { town.destroyed = false; if (!quiet) log(`${town.name} rebuilds from the ashes`, 'build'); }
   const d = Math.hypot((best % n) - town.cx, Math.floor(best / n) - town.cy);
   if (d > town.R + 0.3) {

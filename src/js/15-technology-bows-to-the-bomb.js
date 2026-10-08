@@ -5,6 +5,19 @@ const CIV_TECH = ['Buckets', 'Fire brigade', 'Waterworks', 'Lookout tower', 'Geo
 // Cumulative research needed for each level. Research trickles in at pop/1000 per tick, so the top takes a long time.
 const MIL_COST = [0, 300, 900, 2000, 4000, 7000, 11000];
 const CIV_COST = [0, 250, 700, 1500, 3000, 5000];
+// The third ladder: hearth and craft. Slow, and every step opens a building or a way of eating.
+const CRAFT_TECH = ['Hearth', 'Smoking', 'Masonry', 'Milling', 'Root cellars', 'Brewing', 'Cookery', 'Orchards', 'Mastery'];
+const CRAFT_COST = [0, 120, 300, 550, 800, 1100, 1500, 2000, 2800];
+const CRAFT_CAP = 8;
+function craftBanked(t) { return (t.craft || 0) >= CRAFT_CAP || (t.craftPts || 0) >= CRAFT_COST[(t.craft || 0) + 1]; }
+// A food-minded town learns its kitchen first.
+function craftShare(t) { const f = t.temper ? t.temper.food : 1; return Math.max(0.15, Math.min(0.4, 0.22 + 0.18 * (f - 1))); }
+// Beyond the resources, what a craft step needs standing in the town.
+function craftGate(t, next) {
+  if (next === 2 && !hasType(t, T.QUARRY)) return 'a quarry';
+  if (next === 8 && !(hasType(t, T.BAKERY) && hasType(t, T.SMOKEHOUSE) && hasType(t, T.INN))) return 'a bakery, a smokehouse and an inn';
+  return null;
+}
 
 function militarism(t) {
   let m = 0.5;
@@ -26,6 +39,7 @@ function techWants(t) {
   const out = new Set();
   if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1]) { const k = lacking(t, MIL_NEED[t.mil + 1]); if (k) out.add(k); }
   if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1]) { const k = lacking(t, CIV_NEED[t.civ + 1]); if (k) out.add(k); }
+  if ((t.craft || 0) < CRAFT_CAP && (t.craftPts || 0) >= CRAFT_COST[(t.craft || 0) + 1]) { const k = lacking(t, CRAFT_NEED[(t.craft || 0) + 1]); if (k) out.add(k); }
   return out;
 }
 // What the town is saving for: the resource needs of every step it has the points for.
@@ -33,6 +47,8 @@ function techReserve(t) {
   let out = null;
   if (t.mil < milCap(t) && (t.milPts || 0) >= MIL_COST[t.mil + 1] && MIL_NEED[t.mil + 1]) out = Object.assign({}, MIL_NEED[t.mil + 1]);
   if (t.civ < 5 && (t.civPts || 0) >= CIV_COST[t.civ + 1] && CIV_NEED[t.civ + 1]) { out = out || {}; for (const k in CIV_NEED[t.civ + 1]) out[k] = (out[k] || 0) + CIV_NEED[t.civ + 1][k]; }
+  const cn = (t.craft || 0) + 1;
+  if (cn <= CRAFT_CAP && (t.craftPts || 0) >= CRAFT_COST[cn] && CRAFT_NEED[cn]) { out = out || {}; for (const k in CRAFT_NEED[cn]) out[k] = (out[k] || 0) + CRAFT_NEED[cn][k]; }
   return out;
 }
 function updateTech(t) {
@@ -46,9 +62,10 @@ function updateTech(t) {
   const m = militarism(t);
   t.research += pts;
   // Split research between tracks by temperament, unless one track is banked and waiting: then all of it goes where it can still be spent.
-  const mb = milBanked(t), cb = civBanked(t);
-  const milShare = mb && !cb ? 0 : cb && !mb ? 1 : Math.min(0.85, m), civShare = 1 - milShare; // even a warlord's town keeps a few scholars
-  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare;
+  const mb = milBanked(t), cb = civBanked(t), kb = craftBanked(t);
+  const cs = kb ? 0 : (mb && cb ? 1 : craftShare(t)), rest = 1 - cs; // the kitchen and the workshops take their share first
+  const milShare = mb && !cb ? 0 : cb && !mb ? rest : rest * Math.min(0.85, m), civShare = rest - milShare; // even a warlord's town keeps a few scholars
+  t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare; t.craftPts = (t.craftPts || 0) + pts * cs;
   if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {
     const next = t.mil + 1, need = MIL_NEED[next];
     const why = lacking(t, need) || (next === 5 && !(hasType(t, T.FACTORY) && t.powerRatio >= 0.5) ? 'a powered factory' : next === 6 && !hasType(t, T.UNIVERSITY) ? 'a university' : null);
@@ -67,6 +84,16 @@ function updateTech(t) {
       pay(t, need); t.civ++;
       log(`${t.name} learns ${CIV_TECH[t.civ].toLowerCase()}`, 'tech');
       if (t.civ === 2) for (const tr of t.trucks) { tr.cap = 30; }
+    }
+  }
+  t.craft = t.craft || 0;
+  if (t.craft < CRAFT_CAP && (t.craftPts || 0) >= CRAFT_COST[t.craft + 1]) {
+    const next = t.craft + 1, need = CRAFT_NEED[next], why = lacking(t, need) || craftGate(t, next);
+    if (why) { if (t.craftGateLogged !== next) { t.craftGateLogged = next; log(`${t.name} has the recipe for ${CRAFT_TECH[next].toLowerCase()} but needs ${RES_KINDS.includes(why) ? 'more ' + why : why}`, 'tech'); } }
+    else {
+      pay(t, need); t.craft++; stat('ev', 'craftSteps');
+      log(`${t.name} learns ${CRAFT_TECH[t.craft].toLowerCase()}`, 'tech');
+      if (t.craft === 2 && t.codeWish && world.tick - t.codeWish < 2400) adoptCode(t); // the fire is still fresh in everyone's mind
     }
   }
   if (t.mil === 6 && t.nukes < 2 && hasType(t, T.SILO) && canAfford(t, COST.nuke) && Math.random() < 0.03) {

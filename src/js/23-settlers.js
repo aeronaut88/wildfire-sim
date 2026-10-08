@@ -114,7 +114,7 @@ function throwEmber(x, y, hasWind, crown) {
   if (tx < 0 || ty < 0 || tx >= n || ty >= n) return;
   const j = ty * n + tx;
   if (!isFuel(world.type[j]) || world.burnLeft[j] > 0) return;
-  let p = FUEL[world.type[j]].ignite * (crown ? 0.9 : 0.8);
+  let p = FUEL[world.type[j]].ignite * (crown ? 0.9 : 0.8) * (world.mat[j] ? 0.15 : 1);
   if (world.wet[j] > 0) p *= 0.1;
   if (Math.random() < p) {
     ignite(j);
@@ -148,7 +148,9 @@ function burnout(i) {
   if (isTree(t)) { world.treeCount--; stat('ev', 'treesBurned'); }
   if (isBuilding(t)) onBuildingDestroyed(i, 'fire');
   if (t === T.HANGAR) onHangarDestroyed('burns to the ground');
-  world.type[i] = FUEL[t] ? FUEL[t].after : T.ASH;
+  const after = FUEL[t] ? FUEL[t].after : T.ASH;
+  if (world.mat[i] && isBuilding(t) && after === T.RUBBLE) { world.type[i] = T.SHELL; stat('ev', 'shells'); } // the roof is gone; the walls stand
+  else { world.type[i] = after; world.mat[i] = 0; }
   world.burnLeft[i] = 0;
   world.glow[i] = 4 + Math.floor(Math.random() * 5);
   world.glowing.push(i);
@@ -179,7 +181,7 @@ function strikeCell(cx, cy, radius) {
           if (isTree(t)) world.treeCount--;
           if (isBuilding(t)) onBuildingDestroyed(i, 'blast');
           if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
-          world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH;
+          world.type[i] = FUEL[t].after === T.RUBBLE ? T.RUBBLE : T.ASH; world.mat[i] = 0; // a blast flattens stone too
           world.burnedCount++;
         } else continue;
         world.since[i] = world.tick;

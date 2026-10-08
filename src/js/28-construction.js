@@ -4,7 +4,7 @@
    counts, shelters anyone, or works. A frame that burns is lost. */
 const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45, [T.GAOL]: 24, [T.CISTERN]: 16, [T.TOWER_W]: 30, [T.HEALER]: 20, [T.HOSPITAL]: 40 };
 // Turn a just-placed building into a site, taking back the counts the placement added.
-function toSite(town, i, finalType, counted) {
+function toSite(town, i, finalType, counted, stone) {
   const home = isHome(finalType);
   if (counted !== false) {
     if (home) { town.housesTotal--; town.housesLeft--; }
@@ -12,13 +12,14 @@ function toSite(town, i, finalType, counted) {
     else { world.buildingsTotal--; world.buildingsLeft--; }
   }
   town.sites = town.sites || {};
-  town.sites[i] = { type: finalType, need: BUILD_TIME[finalType] || 20, progress: 0, variant: world.variant[i] };
-  world.type[i] = T.SITE; dirty.add(i); forgetCounts(town);
+  town.sites[i] = { type: finalType, need: Math.round((BUILD_TIME[finalType] || 20) * (stone ? 1.6 : 1)), progress: 0, variant: world.variant[i], mat: stone ? 1 : 0 };
+  world.type[i] = T.SITE; world.mat[i] = 0; dirty.add(i); forgetCounts(town); // a frame is timber until the walls go up
 }
 function finishSite(town, i) {
   const st = town.sites[i]; if (!st) return;
   delete town.sites[i];
-  world.type[i] = st.type; world.variant[i] = st.variant || 0; dirty.add(i); forgetCounts(town);
+  world.type[i] = st.type; world.variant[i] = st.variant || 0; world.mat[i] = st.mat ? 1 : 0; dirty.add(i); forgetCounts(town);
+  if (st.mat) { stat('ev', 'stoneBuilt'); town.stoneBuilt = (town.stoneBuilt || 0) + 1; if (town.stoneBuilt === 1) log(`${town.name} finishes its first building in quarried stone`, 'build'); }
   if (isHome(st.type)) { town.housesTotal++; town.housesLeft++; }
   if (st.type === T.FARM) { town.farms = (town.farms || 0) + 1; world.crop[i] = 0; }
   else { world.buildingsTotal++; world.buildingsLeft++; }
@@ -94,7 +95,7 @@ function growCrops(town) {
 function shortages(town) {
   const out = new Set();
   if (town.res.wood < resCap(town, 'wood') * 0.25 || town.short === 'wood') out.add('wood');
-  if (town.res.stone < resCap(town, 'stone') * 0.2 && (town.wishLogged || town.popLeft >= 60)) out.add('stone');
+  if (town.res.stone < resCap(town, 'stone') * (town.code && town.code.stone ? 0.5 : 0.2) && (town.wishLogged || town.popLeft >= 60 || town.code)) out.add('stone');
   if (!town.fed || (town.res.grain + town.res.fish + town.res.game) < Math.ceil(town.popLeft / 30) * 4) out.add('food');
   if (town.res.water < resCap(town, 'water') * 0.3) out.add('water');
   for (const k of techWants(town)) out.add(k);

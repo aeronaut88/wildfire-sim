@@ -6,9 +6,9 @@ function cardHtml(t) {
   const row = (k, v, cls) => `<div class="row${cls ? ' ' + cls : ''}"><span>${k}</span><b>${v}</b></div>`;
   // "Buckets · 62% to fire brigade", or what the finished plans are waiting on.
   const techNext = (t, track) => {
-    const mil = track === 'mil', lv = mil ? t.mil : t.civ, names = mil ? MIL_TECH : CIV_TECH, costs = mil ? MIL_COST : CIV_COST, needs = mil ? MIL_NEED : CIV_NEED;
-    if (mil ? lv >= milCap(t) : lv >= 5) return ' <span class="dim">· the limit</span>';
-    const pts = (mil ? t.milPts : t.civPts) || 0, next = names[lv + 1].toLowerCase();
+    const mil = track === 'mil', craft = track === 'craft', lv = mil ? t.mil : craft ? (t.craft || 0) : t.civ, names = mil ? MIL_TECH : craft ? CRAFT_TECH : CIV_TECH, costs = mil ? MIL_COST : craft ? CRAFT_COST : CIV_COST, needs = mil ? MIL_NEED : craft ? CRAFT_NEED : CIV_NEED;
+    if (mil ? lv >= milCap(t) : craft ? lv >= CRAFT_CAP : lv >= 5) return ' <span class="dim">· the limit</span>';
+    const pts = (mil ? t.milPts : craft ? t.craftPts : t.civPts) || 0, next = names[lv + 1].toLowerCase();
     if (pts < costs[lv + 1]) return ` <span class="dim">· ${Math.floor(100 * pts / costs[lv + 1])}% to ${next}</span>`;
     const k = lacking(t, needs[lv + 1]); return ` <span class="dim">· ${next} needs ${k ? k : 'building'}</span>`;
   };
@@ -25,12 +25,12 @@ function cardHtml(t) {
     `<div class="dim">${alignName(t.align)} · ${BIOME_NAMES[biomeAt(t.cx, t.cy)]} · founded Y${Math.floor(t.founded / YEAR) + 1} · ${dead ? '<span class="d">in ruins</span>' : t.mobilized ? '<span class="d">fighting a fire</span>' : t.famine ? '<span class="d">famine</span>' : 'calm'}</div>` +
     (l ? `<div class="lead">Elder ${l.name}, ${TRAITS[l.trait] ? TRAITS[l.trait].label : 'elder'}, ${personAge(l)}: ${TRAITS[l.trait] ? TRAITS[l.trait].blurb : ''}.</div>` : '') +
     `<h4>people</h4><div class="grid">` + row('alive', t.popLeft) + row('ever lived here', t.popTotal) + row('dead', t.deaths, t.deaths ? 'd' : '') + row('of the valley', `${Math.round(t.popLeft / Math.max(1, world.popLeft) * 100)}%`) +
-    row('homes', `${t.housesLeft} <span class="dim">(${t.homesLost} lost)</span>`) + row('housing for', housingCapacity(t)) + row('militia', t.militia) + row('unrest', `${Math.round(t.unrest || 0)}%`, (t.unrest || 0) >= 70 ? 'd' : '') + `</div>` +
+    row('homes', `${t.housesLeft} <span class="dim">(${t.homesLost} lost)</span>`) + row('housing for', housingCapacity(t)) + (stoneHomes(t) || (t.code && t.code.stone) ? row('in stone', `${stoneHomes(t)} homes${t.code && t.code.stone ? ' <span class="dim">· the stone code</span>' : ''}`) : '') + row('militia', t.militia) + row('unrest', `${Math.round(t.unrest || 0)}%`, (t.unrest || 0) >= 70 ? 'd' : '') + `</div>` +
     `<h4>food and water</h4><div class="grid">` + row('fed', t.famine ? 'famine' : t.fed === false ? 'hungry' : 'yes', t.fed === false ? 'd' : 'g') + row('eats per 16 ticks', Math.ceil(t.popLeft / 30)) + row('fields', `${countType(t, T.FARM)} <span class="dim">(${t.buildings.filter(i => world.type[i] === T.FARM && world.crop[i] >= 100).length} ripe)</span>`) + row('granaries', countType(t, T.GRANARY)) +
     row('water', `${t.res.water} / ${resCap(t, 'water')}`, t.water === false ? 'd' : '') + row('wells', `${countType(t, T.WELL)} <span class="dim">(${Object.values(t.wells || {}).filter(v => v <= 0).length} dry)</span>`) + (ls ? row('livestock', ls) : '') + (hasType(t, T.HEALER) || hasType(t, T.HOSPITAL) ? row('healer', `${person(t, 'healer') ? person(t, 'healer').name : 'nobody yet'} <span class="dim">· ${t.res.herbs || 0} herbs, ${t.healed || 0} saved</span>`) : '') + `</div>` +
     `<h4>stores</h4><div class="grid">` + resLine + `</div>` + row('coin', t.res.coin) +
     `<h4>works</h4><div class="grid">` + Object.entries(bld).map(([k, v]) => row(k, v)).join('') + (Object.keys(bld).length ? '' : '<div class="dim">only homes and fields</div>') + row('power', `${t.power || 0} / ${t.powerNeed || 0}`) + `</div>` +
-    `<h4>tech</h4><div class="grid">` + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + row('research', `${Math.round(t.research || 0)} <span class="dim">(${Math.round(100 * Math.min(0.85, militarism(t)))}% to arms)</span>`) +
+    `<h4>tech</h4><div class="grid">` + row('arms', MIL_TECH[t.mil] + techNext(t, 'mil')) + row('learning', CIV_TECH[t.civ] + techNext(t, 'civ')) + row('craft', CRAFT_TECH[t.craft || 0] + techNext(t, 'craft')) + row('research', `${Math.round(t.research || 0)} <span class="dim">(${Math.round(100 * Math.min(0.85, militarism(t)))}% to arms)</span>`) +
     (hasType(t, T.AIRBASE) ? row('bombers', `${t.bombers || 0} / 3${world.bombers.some(b => b.from === t.id) ? ' <span class="dim">(one airborne)</span>' : ''}`) : '') + (hasType(t, T.AIRBASE) && t.civ >= 5 ? row('jets', `${t.fighters || 0} / 2${(world.fighters || []).some(f => f.from === t.id) ? ' <span class="dim">(scrambled)</span>' : ''}`) : '') + (t.nukes ? row('bombs', t.nukes, 'd') : '') + `</div>` +
     `<h4>law</h4><div class="grid">` + row('the law here', lawLabel(t)) + row('record', `${t.crimes || 0} crimes <span class="dim">(${t.caught || 0} caught)</span>`) +
     (t.case ? row('open case', `${CRIME_LABEL[t.case.kind]}${t.case.hunt ? `, hunting ${t.case.who}` : ', nobody on it'} <span class="dim">(${world.tick - t.case.started} ticks)</span>`, 'd') : '') +

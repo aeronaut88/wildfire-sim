@@ -50,6 +50,7 @@ function generate(n, seed) {
   world.oreKind = new Uint8Array(N); world.ore = new Uint16Array(N); // seams in the rock: kind and units left
   world.biome = new Uint8Array(N); // 0 mixed forest, 1 pine highland, 2 broadleaf lowland, 3 dry scrubland, 4 marsh
   world.crop = new Uint8Array(N); // how far along each field's crop is, 0 to 100
+  world.mat = new Uint8Array(N); // what a building is made of: 0 timber, 1 stone
   world.deep = new Uint8Array(N); world.deepAmt = new Uint16Array(N); world.surveyed = new Uint8Array(N); // what lies under the ground, found only by geologists
   world.trader = null; world.nextTrader = 0; world.traderWary = 0; world.roadProjects = [];
   world.stats = newStats();

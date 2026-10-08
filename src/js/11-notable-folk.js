@@ -193,7 +193,7 @@ function foundTown(cx, cy, R, opts) {
     deaths: 0, homesLost: 0, fires: 0, founded: world.tick,
     align: rollAlignment(rng), militia: 0, relations: {}, wars: {}, raidCooldown: 0, wallR: 0, raidsMade: 0, raidsSuffered: 0,
     shape: [0.25 + rng() * 0.3, rng() * 6.283, 0.15 + rng() * 0.25, rng() * 6.283, rng() * 0.15, rng() * 6.283],
-    mil: 0, civ: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
+    mil: 0, civ: 0, craft: 0, craftPts: 0, research: 0, nukes: 0, shellCooldown: 0, nukeCooldown: 0, sick: 0,
     res: { wood: 24, stone: 10, iron: 0, copper: 0, coal: 0, uranium: 0, gold: 0, oil: 0, grain: 12, fish: 0, game: 0, water: 30, coin: 20 }, gathered: { wood: 0, stone: 0, iron: 0, copper: 0, coal: 0, uranium: 0, gold: 0, oil: 0, grain: 0, fish: 0, game: 0, water: 0, coin: 0 },
     wells: {}, sites: {}, fed: true, hunger: 0,
     temper: { wood: 0.7 + rng() * 0.6, stone: 0.7 + rng() * 0.6, food: 0.7 + rng() * 0.6, build: 0.7 + rng() * 0.6, trade: 0.7 + rng() * 0.6 }, // no two towns weigh things alike

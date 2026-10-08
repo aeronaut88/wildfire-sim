@@ -8,6 +8,7 @@ function ignite(i) {
   if (!isFuel(t) || world.burnLeft[i] > 0) return false;
   const f = FUEL[t];
   world.burnLeft[i] = f.burn[0] + Math.floor(Math.random() * (f.burn[1] - f.burn[0] + 1));
+  if (world.mat[i]) world.burnLeft[i] = Math.max(2, Math.round(world.burnLeft[i] * 0.6)); // less to burn inside stone walls
   world.burning.push(i);
   world.intensity[i] = 0;
   if (isBuilding(t)) onBuildingIgnite(i);
@@ -68,7 +69,7 @@ function step() {
   const current = world.burning;
   const count = current.length;
   const next = [];
-  const type = world.type, burnLeft = world.burnLeft, wet = world.wet, snow = world.snow, biome = world.biome;
+  const type = world.type, burnLeft = world.burnLeft, wet = world.wet, snow = world.snow, biome = world.biome, mat = world.mat;
   const hasWind = params.windStrength > 0 && (params.windX !== 0 || params.windY !== 0);
   const W = WEATHER[world.weather.kind];
   const spreadMul = params.spread * W.spread;
@@ -82,15 +83,16 @@ function step() {
     const x = i % n, y = (i - x) / n;
     if (!world.intensity[i]) maybeCrown(i, x, y, hasWind, W);
     const crown = world.intensity[i] === 1;
-    const heat = crown ? 1.5 : 1;
+    const heat = (crown ? 1.5 : 1) * (mat[i] ? 0.5 : 1); // a fire inside stone walls warms the street less
     for (let d = 0; d < offs.length; d++) {
       const nx = x + offs[d][0], ny = y + offs[d][1];
       if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue;
       const j = ny * n + nx;
       const tj = type[j];
       if (!isFuel(tj) || burnLeft[j] > 0) continue;
-      if (offs[d][0] !== 0 && offs[d][1] !== 0 && type[y * n + nx] === T.WALL && type[ny * n + x] === T.WALL) continue; // wall corners touch: flame does not squeeze through the diagonal
+      if (offs[d][0] !== 0 && offs[d][1] !== 0) { const a = y * n + nx, b = ny * n + x; if ((type[a] === T.WALL || (mat[a] && isBuilding(type[a]))) && (type[b] === T.WALL || (mat[b] && isBuilding(type[b])))) continue; } // stone corners touch: flame does not squeeze through the diagonal
       let p = spreadMul * FUEL[tj].ignite * dirMult[d] * heat * BIOME_FIRE[biome[j]];
+      if (mat[j]) p *= STONE_IGNITE;
       if (wet[j] > 0) p *= crown ? 0.3 : 0.1;
       if (snow[j] > 10) p *= crown ? 0.2 : 0.06; // fuel under snow barely takes
       if (Math.random() < p) ignite(j);
@@ -98,7 +100,7 @@ function step() {
     if (crown) {
       // A crown fire showers embers far ahead of the front, even without wind.
       for (let k = 0; k < 2; k++) if (Math.random() < (params.spotting ? 0.04 : 0.015) * (W.spot || 0.5)) throwEmber(x, y, hasWind, true);
-    } else if (spotP > 0 && FUEL[type[i]].spots && Math.random() < spotP) throwEmber(x, y, hasWind, false);
+    } else if (spotP > 0 && FUEL[type[i]].spots && !mat[i] && Math.random() < spotP) throwEmber(x, y, hasWind, false); // slate roofs throw no embers
     burnLeft[i]--;
     if (burnLeft[i] > 0) next.push(i);
     else burnout(i);

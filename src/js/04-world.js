@@ -2,7 +2,8 @@
 
 const T = { WATER: 0, ROCK: 1, GRASS: 2, PINE: 3, OAK: 4, ASH: 5, STUMP: 6, HOUSE: 7, STATION: 8, RUBBLE: 9, DIRT: 10, PAD: 11, HANGAR: 12, BIGPINE: 13, WALL: 14, BIRCH: 23, SCRUB: 24, SNAG: 25, FARM: 26, BRIDGE: 27, DAM: 28, MUD: 29,
   TENEMENT: 15, BARRACKS: 16, FORGE: 17, FACTORY: 18, UNIVERSITY: 19, TOWER: 20, SILO: 21, TOWNHALL: 22,
-  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49, GAOL: 50, CISTERN: 51, TOWER_W: 52, HEALER: 53, HOSPITAL: 54, GALLOWS: 55, GRAVE: 56, MONUMENT: 57 };
+  LUMBERYARD: 30, MINE: 31, QUARRY: 32, WELL: 33, WHEEL: 34, PLANT: 35, SOLAR: 36, HYDRO: 37, NUCLEAR: 38, DERRICK: 39, SHAFT: 40, PASTURE: 41, REEDS: 42, SAND: 43, JUNGLE: 44, CACTUS: 45, SITE: 46, GRANARY: 47, FELLED: 48, AIRBASE: 49, GAOL: 50, CISTERN: 51, TOWER_W: 52, HEALER: 53, HOSPITAL: 54, GALLOWS: 55, GRAVE: 56, MONUMENT: 57,
+  SHELL: 58, SPRING: 59, FISHERY: 60, BAKERY: 61, SMOKEHOUSE: 62, INN: 63, MILL: 64, BREWERY: 65, CELLAR: 66 };
 const FUEL = {
   [T.GRASS]:   { ignite: 1.0,  burn: [2, 4],   after: T.ASH,    spots: false },
   [T.PINE]:    { ignite: 0.75, burn: [6, 10],  after: T.STUMP,  spots: true },
@@ -53,7 +54,9 @@ const FUEL = {
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
 };
 const isFuel = t => FUEL[t] !== undefined;
-const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE || t === T.GAOL || t === T.CISTERN || t === T.TOWER_W || t === T.HEALER || t === T.HOSPITAL || t === T.GALLOWS || t === T.GRAVE || t === T.MONUMENT;
+// Material: 0 timber, 1 stone. Stone walls do not burn; the roof and floors inside them do, slowly and rarely.
+const STONE_IGNITE = 0.12;
+const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && t <= T.TOWNHALL) || (t >= T.LUMBERYARD && t <= T.PASTURE) || t === T.GRANARY || t === T.AIRBASE || t === T.GAOL || t === T.CISTERN || t === T.TOWER_W || t === T.HEALER || t === T.HOSPITAL || t === T.GALLOWS || t === T.GRAVE || t === T.MONUMENT || (t >= T.FISHERY && t <= T.CELLAR);
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',

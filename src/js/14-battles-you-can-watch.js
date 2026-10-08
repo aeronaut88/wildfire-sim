@@ -99,7 +99,7 @@ function finishBattle(bt, from, to) {
     let captives = Math.min(Math.max(0, to.popLeft - 1), Math.round(bt.att * (1 + Math.random())));
     world.raidfire = true;
     const homes = to.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0).sort(() => Math.random() - 0.5);
-    for (let k = 0; k < torch && k < homes.length; k++) ignite(homes[k]);
+    for (let k = 0; k < torch && k < homes.length; k++) if (!world.mat[homes[k]] || Math.random() < 0.35) ignite(homes[k]); // torches bounce off slate
     let wrecked = 0;
     for (const i of to.buildings) { const tt = world.type[i]; if ((tt === T.BARRACKS || tt === T.FORGE || tt === T.FACTORY || tt === T.UNIVERSITY || tt === T.SILO || tt === T.STATION) && Math.random() < 0.5) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); wrecked++; } }
     world.raidfire = false;

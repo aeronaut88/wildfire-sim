@@ -6,7 +6,8 @@ function onBuildingIgnite(i) {
   if (!town.firstHit) { town.firstHit = true; say(town, 'reaches', {}, 'loss'); }
   const res = occupants(town);
   if (res > 0 && isHome(world.type[i])) {
-    const survive = (world.dragonfire ? 0.5 : world.raidfire ? 0.7 : (town.mobilized ? 0.92 : 0.6)) + (town.align.moral > 0 ? 0.04 : 0);
+    const stone = world.mat[i] === 1; // a stone house burns slowly enough to get out of
+    const survive = (world.dragonfire ? (stone ? 0.7 : 0.5) : world.raidfire ? (stone ? 0.85 : 0.7) : (town.mobilized ? 0.92 : stone ? 0.85 : 0.6)) + (town.align.moral > 0 ? 0.04 : 0);
     let lost = 0;
     for (let k = 0; k < res; k++) if (Math.random() > survive) lost++;
     lost = Math.min(lost, town.popLeft);
@@ -39,7 +40,7 @@ function onBuildingDestroyed(i, cause) {
   if (t === T.AIRBASE && town.fighters) { log(`${town.fighters} jet${town.fighters > 1 ? 's' : ''} burn on the apron at ${town.name}`, 'loss'); stat('ev', 'fightersLost', town.fighters); town.fighters = 0; }
   if (t === T.AIRBASE && town.bombers) { log(`${town.bombers} bomber${town.bombers > 1 ? 's' : ''} burn in the hangars at ${town.name}`, 'loss'); stat('ev', 'bombersLost', town.bombers); town.bombers = 0; }
   if (t === T.PASTURE && town.livestock) { const pastures = Math.max(1, countType(town, T.PASTURE)); const lost = []; for (const k of LIVESTOCK) { const n0 = town.livestock[k] || 0, d = Math.min(n0, Math.ceil(n0 / pastures)); if (d > 0) { town.livestock[k] -= d; lost.push(`${d} ${k}`); stat('ev', 'animalsBurned', d); } } if (lost.length) log(`${town.name} loses ${lost.join(', ')} with the pasture`, 'loss'); }
-  if (isHome(t)) { town.housesLeft--; town.homesLost++; }
+  if (isHome(t)) { town.housesLeft--; town.homesLost++; noteHomeLoss(town); }
   else if (t !== T.STATION && BUILDING_NAMES[t]) say(town, 'buildingLost', { what: BUILDING_NAMES[t].toLowerCase() }, 'loss');
   if (t === T.STATION) {
     town.hasStation = false;
@@ -55,6 +56,24 @@ function onBuildingDestroyed(i, cause) {
 
 function occupants(town) {
   return Math.min(24, Math.ceil(town.popLeft / Math.max(1, town.housesLeft)));
+}
+
+// The building code. A town that loses a quarter of its homes in one fire (a lawful town, a sixth) and knows
+// masonry decrees that every new wall is stone. London did the same in 1666, and banned thatch in 1212.
+function noteHomeLoss(town) {
+  if (world.tick - (town.lossTick || -1000) > 200) { town.lossRun = 0; town.lossTick = world.tick; }
+  town.lossRun = (town.lossRun || 0) + 1;
+  const homesBefore = town.housesLeft + town.lossRun, frac = town.align.order > 0 ? 0.15 : 0.25;
+  if (town.lossRun >= Math.max(2, Math.ceil(homesBefore * frac))) {
+    if (knowsMasonry(town)) adoptCode(town);
+    else town.codeWish = world.tick; // they would, if they knew how
+  }
+}
+function adoptCode(town) {
+  if (town.code && town.code.stone) return;
+  town.code = { stone: true, since: world.tick }; stat('ev', 'codes');
+  const e = person(town, 'elder'); if (e) deed(e, 'decreed the stone code');
+  log(`After the fire, ${town.name}'s ${e ? 'elder ' + e.name : 'council'} decrees it: no more thatch. Every new roof is tile and every wall is quarried stone.`, 'build');
 }
 
 function loseCrew(town, crew, why) {

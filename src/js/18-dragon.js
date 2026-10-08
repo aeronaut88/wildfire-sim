@@ -215,7 +215,7 @@ function breathe(d) {
     if (x < 0 || y < 0 || x >= n || y >= n) continue;
     const i = y * n + x;
     if (!isFuel(world.type[i]) || world.burnLeft[i] > 0) continue;
-    if (Math.random() < (dx * dx + dy * dy <= 1 ? 0.8 : 0.45)) {
+    if (Math.random() < (dx * dx + dy * dy <= 1 ? (world.mat[i] ? 0.25 : 0.8) : (world.mat[i] ? 0.08 : 0.45))) { // slate takes dragonfire badly, but it takes it
       world.wet[i] = 0; // dragonfire does not care about your hoses
       d.cells = (d.cells || 0) + 1;
       if (isBuilding(world.type[i])) d.lit++;

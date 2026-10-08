@@ -2,7 +2,7 @@
 
 function townRubble(town) {
   const out = [];
-  for (const i of town.buildings) if (world.type[i] === T.RUBBLE) out.push(i);
+  for (const i of town.buildings) if (world.type[i] === T.RUBBLE || world.type[i] === T.SHELL) out.push(i);
   return out;
 }
 
@@ -44,7 +44,7 @@ function updateWorkers(town) {
       if (w.target >= 0) { stepToward(w, w.target % n, Math.floor(w.target / n), 1, false); if (w.stall > 3) { w.stall = 0; w.target = -1; } }
       keep.push(w); continue;
     }
-    if (w.target < 0 || (w.job === 'rebuild' && type[w.target] !== T.RUBBLE)) {
+    if (w.target < 0 || (w.job === 'rebuild' && type[w.target] !== T.RUBBLE && type[w.target] !== T.SHELL)) {
       // Pick a job: rebuild rubble when there is any, otherwise wander the roads, or go back indoors.
       if (w.job === 'home' || (w.job !== 'rebuild' && !rubble.length && Math.random() < 0.3)) {
         if ((w.homeTries = (w.homeTries || 0) + 1) > 1) continue; // could not reach the door: they found another
@@ -79,12 +79,15 @@ function updateWorkers(town) {
 }
 
 function rebuildAt(town, i) {
-  if (world.type[i] !== T.RUBBLE) return;
-  if (!canAfford(town, COST[T.HOUSE])) {
+  const shell = world.type[i] === T.SHELL;
+  if (world.type[i] !== T.RUBBLE && !shell) return;
+  const stone = shell || (town.code && town.code.stone && knowsMasonry(town) && canAfford(town, COST.stoneHouse)); // under the code, rubble comes back in stone when the stone is there
+  const cost = shell ? COST.shell : stone ? COST.stoneHouse : COST[T.HOUSE];
+  if (!canAfford(town, cost)) {
     // No timber: now and then they rebuild from what the ruins still hold. Slow, but nobody is ever stuck for good.
     if (Math.random() < 0.12) { if (!town.scavLogged || world.tick - town.scavLogged > 600) { town.scavLogged = world.tick; log(`${town.name} rebuilds with timber scavenged from the ruins`, 'build'); } }
     else { town.short = 'wood'; if (!town.shortLogged || world.tick - town.shortLogged > 300) { town.shortLogged = world.tick; log(`${town.name} wants to rebuild but has no timber`, 'loss'); } return; }
-  } else pay(town, COST[T.HOUSE]); // paced by the woodpile
+  } else pay(town, cost); // paced by the woodpile
   town.short = null;
   world.type[i] = T.HOUSE;
   world.variant[i] = Math.random() < 0.6 ? 0 : 1;
@@ -92,7 +95,8 @@ function rebuildAt(town, i) {
   town.housesTotal++; town.housesLeft++;
   world.buildingsTotal++; world.buildingsLeft++;
   town.built++;
-  toSite(town, i, T.HOUSE);
+  toSite(town, i, T.HOUSE, undefined, stone);
+  if (shell) town.sites[i].need = Math.max(4, Math.round(town.sites[i].need * 0.4)); // the walls are standing; it wants a roof
   if (town.destroyed) { town.destroyed = false; log(`${town.name} rebuilds from the ashes`, 'build'); }
   else if (Math.random() < 0.1) log(`${town.name} is rebuilding (${town.housesLeft} homes)`, 'build');
   dirty.add(i);

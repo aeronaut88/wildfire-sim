@@ -614,4 +614,14 @@ const ORE_NAMES = ['', 'iron', 'copper', 'coal', 'uranium', 'oil', 'gold'];
 });
 SPRITES.logger = SPRITES.worker.map(r => r.replace(/u/g, 'd')); // red plaid
 SPRITES.miner = SPRITES.worker.map(r => r.replace(/u/g, '7').replace(/m/g, 'Y')); // dark coat, yellow helmet
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear']) SPR16[k] = buildSprite16(SPRITES[k]);
+// Stone: the same buildings in grey ashlar under slate, for towns that have learned masonry.
+const STONE_SWAP = { c: 'R', C: 'r', d: 'l', D: '7', u: 'L', U: '5', '8': 'R', '6': 'r', '9': 'l' };
+const STONE_KEYS = ['house0', 'house1', 'tenement', 'granary', 'townhall', 'barracks', 'gaol', 'hospital', 'healer', 'station', 'university'];
+for (const k of STONE_KEYS) SPRITES[k + '_s'] = SPRITES[k].map(r => r.replace(/[cCdDuU869]/g, ch => STONE_SWAP[ch]));
+SPRITES.shell = [ // a burnt-out stone house: walls standing, roof gone, black inside
+  'gggggggggggggggg','gggggggggggggggg','gggggggggggggggg','gggggggggggggggg',
+  'gggggggggggggggg','gggRrrRggRrRRggg','gRrRRrRRRRrRRrRg','gRkkkkkkkkkkkkRg',
+  'grkkbkkkkkbkkkrg','gRkkkkkkkkkkkkRg','grkkkkkkkbkkkkrg','gRkkkkkkkkkkkkRg',
+  'gRrrRrRRrRrRRrRg','grrrrrrrrrrrrrrg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
+];
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear', 'shell', ...STONE_KEYS.map(k => k + '_s')]) SPR16[k] = buildSprite16(SPRITES[k]);

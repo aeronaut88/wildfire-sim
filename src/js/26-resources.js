@@ -12,6 +12,7 @@ const COST = {
   [T.WELL]: { stone: 4, wood: 2 }, [T.WHEEL]: { wood: 10, iron: 2 }, [T.PLANT]: { stone: 10, iron: 6 }, [T.SOLAR]: { copper: 8, iron: 4 },
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
   [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 }, [T.CISTERN]: { stone: 6, wood: 2 }, [T.TOWER_W]: { stone: 10, iron: 4, wood: 4 }, [T.HEALER]: { wood: 6, stone: 4 }, [T.HOSPITAL]: { stone: 10, copper: 4, wood: 6 },
+  stoneHouse: { wood: 2, stone: 5 }, reface: { stone: 5 }, shell: { wood: 2, stone: 1 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -19,6 +20,7 @@ const WOOD_YIELD = { [T.PINE]: 3, [T.OAK]: 5, [T.BIGPINE]: 6, [T.BIRCH]: 2, [T.S
 // What research alone cannot give you.
 const MIL_NEED = [null, { iron: 10 }, null, { coal: 8 }, { iron: 15 }, { iron: 20 }, { uranium: 20 }];
 const CIV_NEED = [null, { wood: 10 }, { copper: 8, stone: 10 }, { stone: 6 }, { iron: 12, copper: 8 }, { oil: 10, iron: 20, copper: 10 }]; // no aviation without hydrocarbons
+const CRAFT_NEED = [null, { wood: 6 }, { stone: 12 }, { wood: 10, stone: 6 }, { stone: 8 }, { wood: 12, copper: 2 }, { iron: 4, stone: 6 }, { wood: 8 }, null];
 function resCap(t, kind) {
   if (kind === 'coin') return 1e9;
   if (kind === 'water') return 40 + 30 * countType(t, T.WELL) + (t.civ >= 2 ? 40 : 0) + 60 * countType(t, T.CISTERN) + 150 * countType(t, T.TOWER_W); // storage against the dry months
@@ -30,7 +32,19 @@ function resCap(t, kind) {
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT, T.CISTERN, T.TOWER_W].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell]));
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT, T.CISTERN, T.TOWER_W].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell, COST.stoneHouse, COST.shell]));
+// Building in stone: the same works with four more stone on the pile, slower to raise and far harder to burn.
+const STONE_EXTRA = 4;
+const STONE_OK = new Set([T.HOUSE, T.TENEMENT, T.TOWNHALL, T.GRANARY, T.BARRACKS, T.GAOL, T.HOSPITAL, T.HEALER, T.STATION, T.UNIVERSITY, T.FORGE, T.TOWER, T.BAKERY, T.INN, T.BREWERY, T.CELLAR, T.MILL]);
+function knowsMasonry(t) { return (t.craft || 0) >= 2; }
+function stoneCostOf(type) { return type === T.HOUSE ? COST.stoneHouse : { ...COST[type], stone: ((COST[type] || {}).stone || 0) + STONE_EXTRA }; }
+// Whether a placement goes up in stone: never without masonry; always under the code; civic works when the stone is there; houses by temperament.
+function wantsStone(t, type) {
+  if (!knowsMasonry(t) || !STONE_OK.has(type) || !COST[type] || !canAfford(t, stoneCostOf(type))) return false;
+  if (type === T.TENEMENT || (t.code && t.code.stone)) return true;
+  if (isHome(type)) return Math.random() < (t.temper ? t.temper.stone : 1) * 0.5;
+  return true;
+}
 // Whether the town can pay. A town that has the points for a tech step holds back what the step needs,
 // the way a player saves for an upgrade, except for the works that bring resources in.
 function canAfford(t, cost) {
@@ -210,9 +224,9 @@ function buildSites(town) {
       if (buildOn(town, i, type)) { pay(town, COST[type]); town.deepSite[i] = kind; log(kind === 5 ? `${town.name} raises an oil derrick` : `${town.name} sinks a shaft to the deep ${ORE_NAMES[kind]}`, 'build'); if (Math.hypot(x - town.cx, y - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
-  if (town.popLeft >= 25 && !hasPlanned(town, T.QUARRY) && canAfford(town, COST[T.QUARRY])) {
+  if (town.popLeft >= 25 && countPlanned(town, T.QUARRY) < 1 + Math.floor(town.popLeft / 150) + (town.code && town.code.stone ? 1 : 0) && canAfford(town, COST[T.QUARRY])) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
-    if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens a quarry`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
+    if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens ${hasType(town, T.QUARRY) ? 'another quarry' : 'a quarry'}`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
   }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
     const wants = techWants(town), order = [6, 1, 2, 3, 4]; // gold first: everyone knows what that is
