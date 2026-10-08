@@ -359,3 +359,15 @@ Each step is a plan, a feature branch, a soak-tested commit, and a push once the
 2. Inns, beer, several crops with bonuses and cooking mastery are all in scope. "Do it all."
 3. Soldiers at 12 per barracks, double weight: proceed as specified.
 4. Dragon cooldown of two to four years: proceed as specified.
+
+---
+
+## Addendum, 2026-10-08: spirits, drink, tobacco, and idle hands
+
+James's play notes: bread, jerky and beer stocks looked low and nothing rewarded converting; and a quarter of a town stood idle.
+
+- **Why stocks were low.** Converted food was eaten before raw food, so bread never showed in the stores; nothing consumed beer; brewing waited on three cycles of grain in hand. Fixes: workshops run before the town eats; eating order is fish, game, meals, fruit, grain, bread, jerky (loaves and smoked meat are the reserve and so they pile up); the inn pours a cup per sixty people a cycle; brewers do two batches and keep less grain back; barley is planted as soon as there is a mill.
+- **Spirits** (`town.cheer`, 0 to 100, drifting toward 50): +0.8 beer at the inn, +0.5 meals (+1 with fruit), +0.2 fruit and bread in the larder, +0.4 a pipe, +8 festival; -1 unfed, -1.5 famine, -1 thirst, -deaths/10, -0.6 a dry inn in a town that has known beer. Effects: unrest drifts by (cheer-50)/50 x 0.5 per cycle; growth chance 0.8 above 70 and 0.4 below 30; research x1.1 above 70, x0.85 below 30; below 25, two percent leave for the happiest town within reach with beds. Shown on the town card, the settlements line, and a *spirits* history metric.
+- **Drink.** `jobs.drunk` is 3 to 8 percent of the pool wherever beer flows (more in high spirits, more under a drunkard elder); yields drop five percent while anyone is at the inn; up to three carousers stand at the inn's door in the evening hours and wander home crooked. A named **town drunk** (role `sot`) is elected once beer flows; deeds with a four percent chance per cycle: knocks a lamp over (30% the inn catches), found on the ice (25% dies), falls in the river, sleeps in the smokehouse, sings under the elder's window, starts a brawl (counts as a crime, 30% someone dies), swears off drink.
+- **Tobacco.** Crop kind 4 on the Brewing step, warm dry ground only, drought-tolerant like barley, yield 5 leaf to a `tobacco` stock (price 3, cap 20 + 10 per granary; caravans carry it). A pipe per 120 people a cycle lifts spirits by 0.4; each cycle smoked has a 1.5 percent chance of a death to the cough, halved with a healer's house or hospital.
+- **Idle hands.** Spare hands after the slotted trades go to the open-ended ones (35% fields, 15% woods, 15% sites, 10% shore, 10% quarry, 5% herds, 5% mines); fully staffed fields ripen 20% faster and neglected ones 20% slower; surplus farmers push the town to clear new fields; visible caps rise to eight builders, harvesters and loggers. Seventy percent of what remains keeps house; the rest are idle.

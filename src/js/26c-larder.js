@@ -3,12 +3,12 @@
    turn the autumn kill and the catch into jerky that keeps; mills and bakeries turn grain into bread
    that goes further; a brewery turns barley into beer; an inn's cooks turn bread and cured meat into
    hot meals. Fields grow four crops with their own seasons. All of it is gated on the craft tree. */
-const FOOD_KINDS = ['fish', 'game', 'meals', 'fruit', 'bread', 'grain', 'jerky']; // eaten in this order: fresh first, the winter reserve last
+const FOOD_KINDS = ['fish', 'game', 'meals', 'fruit', 'grain', 'bread', 'jerky']; // eaten in this order: fresh first, then the sacks, then the loaves, the smokehouse last
 const THEFT_ORDER = ['bread', 'grain', 'fish', 'game', 'jerky', 'fruit', 'meals'];
-const CROP_NAMES = ['wheat', 'barley', 'turnips', 'orchard'];
-const CROP_YIELD = [9, 8, 7, 6];
+const CROP_NAMES = ['wheat', 'barley', 'turnips', 'orchard', 'tobacco'];
+const CROP_YIELD = [9, 8, 7, 6, 6];
 // Growth by season for each crop: spring, summer, autumn, winter.
-const CROP_SEASON = [[0.9, 1, 1.1, 0], [0.9, 1, 1.1, 0], [0.6, 0.9, 1.2, 0.3], [0.5, 0.8, 1.0, 0]];
+const CROP_SEASON = [[0.9, 1, 1.1, 0], [0.9, 1, 1.1, 0], [0.6, 0.9, 1.2, 0.3], [0.5, 0.8, 1.0, 0], [0.7, 1.2, 0.9, 0]];
 function foodStock(t) { let s = 0; for (const k of FOOD_KINDS) s += t.res[k] || 0; return s; }
 function cropKindAt(i) { return world.cropKind ? world.cropKind[i] : 0; }
 function barleyFields(t) { let c = 0; for (const i of t.buildings) if (world.type[i] === T.FARM && cropKindAt(i) === 1) c++; return c; }
@@ -17,9 +17,10 @@ function barleyFields(t) { let c = 0; for (const i of t.buildings) if (world.typ
 function pickCrop(t) {
   const c = t.craft || 0, cold = world.climate && (world.climate.name === 'cold' || world.climate.name === 'ridge');
   const opts = [[0, 3]];
-  if (c >= 3) opts.push([1, hasType(t, T.BREWERY) || c >= 5 ? 3 : 1]);
+  if (c >= 3) opts.push([1, 3]); // barley as soon as there is a mill to grind it: the brewery will want it
   if (c >= 4) opts.push([2, cold || t.famine || t.hadFamine ? 3 : 1.2]);
   if (c >= 7 && t.fed && !shortages(t).has('stone')) opts.push([3, 1]);
+  if (c >= 5 && !cold && latCold(t.cy * world.n + t.cx) < 0.2 && biomeAt(t.cx, t.cy) !== 1 && biomeAt(t.cx, t.cy) !== 4) opts.push([4, 1.5]); // tobacco wants warm, dry ground, and not the far north
   let sum = 0; for (const o of opts) sum += o[1];
   let r = Math.random() * sum; for (const o of opts) { r -= o[1]; if (r <= 0) return o[0]; }
   return 0;
@@ -68,8 +69,8 @@ function updateProcessing(t) {
   // Brewery: barley into beer, if there are barley fields to speak of.
   const br = workshop(T.BREWERY);
   if (br !== undefined && jobCount(t, 'brewer') > 0 && barleyFields(t) >= 2) {
-    let b = batchesOf('brewer', 1), done = 0, fuel = 0;
-    while (b-- > 0 && (t.res.beer || 0) < resCap(t, 'beer') && (t.res.grain || 0) - 2 >= eat * 3 && (t.res.wood || 0) >= (fuel % 2 === 0 ? 1 : 0)) {
+    let b = batchesOf('brewer', 2), done = 0, fuel = 0;
+    while (b-- > 0 && (t.res.beer || 0) < resCap(t, 'beer') && (t.res.grain || 0) - 2 >= eat * 2 && (t.res.wood || 0) >= (fuel % 2 === 0 ? 1 : 0)) {
       t.res.grain -= 2; if (fuel++ % 2 === 0) t.res.wood -= 1; addRes(t, 'beer', out); done++;
       t.brewed = (t.brewed || 0) + out;
     }
@@ -181,4 +182,92 @@ function drinkFromSpring(t) {
   if (!springNear(t)) return;
   addRes(t, 'water', 3);
   if (!t.springLogged) { t.springLogged = true; log(`${t.name} draws its water from the spring. It has never run dry and never frozen.`, 'build'); }
+}
+
+// ── Spirits: how life feels in a town, as against unrest, which is how it feels about its elder. ──
+// Beer at the inn, hot meals, fruit and bread in the larder, festivals and feasts lift it; hunger, thirst,
+// deaths and a dry inn sink it. High spirits calm a town and draw newcomers; low spirits drive families
+// out to wherever the inn is open. And where there is beer, some drink too much.
+function cheerOf(t) { return Number.isFinite(t.cheer) ? t.cheer : 50; }
+function updateCheer(t) {
+  const c0 = cheerOf(t), inn = hasType(t, T.INN) && t.buildings.some(i => world.type[i] === T.INN && world.burnLeft[i] <= 0);
+  let d = (50 - c0) * 0.02; // drifts back toward the middle
+  d += t.fed ? 0.3 : -1; if (t.famine) d -= 1.5; if (t.water === false) d -= 1;
+  const deaths = t.deaths - (t.cheerDeaths || 0); t.cheerDeaths = t.deaths; d -= Math.min(2, deaths / 10);
+  // The inn serves beer: a cup for every sixty people a cycle. A town that has had beer and runs dry feels it.
+  t.drank = 0;
+  if (inn && (t.res.beer || 0) > 0) { const cups = Math.min(t.res.beer, Math.max(1, Math.ceil(t.popLeft / 60))); t.res.beer -= cups; t.drank = cups; t.beerKnown = world.tick; d += 0.8; }
+  else if (inn && t.beerKnown && world.tick - t.beerKnown < 2400) { d -= 0.6; if (!t.dryLoggedInn || world.tick - t.dryLoggedInn > 1200) { t.dryLoggedInn = world.tick; log(pick([`The inn at ${t.name} is dry. ${moodWord(t)[0].toUpperCase() + moodWord(t).slice(1)}.`, `No beer at ${t.name}'s inn ${daypart()}, and the talk turns sour`, `${t.name}'s brewer has nothing in the vats. The inn sits empty and so do the people.`]), 'loss'); } }
+  if (t.ateMeals) d += t.mealsFruit && world.tick - t.mealsFruit < 32 ? 1 : 0.5;
+  if ((t.res.fruit || 0) > 0) d += 0.2; if ((t.res.bread || 0) > 0) d += 0.2;
+  // A pipe after work. A little tobacco never hurt anyone, they say; the healer's ledger says otherwise.
+  t.smoked = 0;
+  if ((t.res.tobacco || 0) > 0) {
+    const pipes = Math.min(t.res.tobacco, Math.max(1, Math.ceil(t.popLeft / 120))); t.res.tobacco -= pipes; t.smoked = pipes; d += 0.4;
+    if (!t.pipeLogged) { t.pipeLogged = true; log(`Pipe smoke over ${t.name} ${daypart()}: the first tobacco comes in and everyone tries it`, 'good'); }
+    if (Math.random() < 0.015 * (hasType(t, T.HEALER) || hasType(t, T.HOSPITAL) ? 0.5 : 1)) {
+      applyLosses(t, 1, 'the cough'); t.coughs = (t.coughs || 0) + 1; stat('ev', 'coughs');
+      if (t.coughs === 1) log(`${t.name} buries the first of its pipe-smokers. The healer calls it the cough and says the pipe has nothing to do with it.`, 'loss');
+      else if (Math.random() < 0.2) log(pick([`Another at ${t.name} goes to the cough. Half the town smokes; nobody blames the pipe.`, `The cough takes one more at ${t.name}. The pipes are lit at the graveside.`]), 'loss');
+    }
+  }
+  if (t.festivalYear === Math.floor(world.tick / YEAR) && !t.cheerFest) { t.cheerFest = true; d += 8; } else if (t.festivalYear !== Math.floor(world.tick / YEAR)) t.cheerFest = false;
+  t.cheer = Math.max(0, Math.min(100, c0 + d));
+  // Low spirits: families leave for the happiest town within reach that has beds.
+  if (t.cheer < 25 && t.popLeft >= 40 && world.tick % 80 < 16 && Math.random() < 0.5) {
+    let best = null; for (const o of world.towns) if (o !== t && isAlive(o) && cheerOf(o) >= 55 && o.popLeft < housingCapacity(o) && Math.hypot(o.cx - t.cx, o.cy - t.cy) < world.n * 0.6 && (!best || cheerOf(o) > cheerOf(best))) best = o;
+    if (best) {
+      const k = Math.max(2, Math.round(t.popLeft * 0.02));
+      t.popLeft -= k; best.popLeft += k; best.popTotal += k; stat('ev', 'leftForCheer', k);
+      log(pick([`${k} leave ${t.name} for ${best.name}, where the inn is open and nobody is hungry`, `A handful of families walk out of ${t.name} ${daypart()}. They are bound for ${best.name}, which is said to be a better place`, `${t.name} loses ${k} people to ${best.name}. There is nothing to keep them.`]), 'loss');
+    }
+  }
+}
+// Where there is beer, some drink too much: a few at the inn through the day instead of at their work,
+// and one who makes a name for it.
+function drunkShare(t) { return t.drank > 0 || ((t.res.beer || 0) > 0 && hasType(t, T.INN)) ? (0.03 + (cheerOf(t) > 70 ? 0.02 : 0) + (has(t, 'drunkard') ? 0.03 : 0)) : 0; }
+function updateSot(t) {
+  if (!t.drank || !t.people) return;
+  let sot = person(t, 'sot');
+  if (!sot) {
+    if (Math.random() > 0.3) return;
+    sot = elect(t, 'sot', true); if (!sot) return;
+    sot.story = pick(['has not been sober since the brewery opened', 'drinks to forget something nobody has asked about', 'sings when drunk, which is always', 'claims to have seen the dragon up close, twice']);
+    log(`${sot.name} is the first to be found asleep under a table at ${t.name}'s inn. It will not be the last time.`, 'good');
+    return;
+  }
+  if (Math.random() > 0.04) return; // a deed now and then
+  const inn = t.buildings.find(i => world.type[i] === T.INN && world.burnLeft[i] <= 0);
+  const frozen = world.water.some(i => world.snow[i] >= ICE_AT);
+  const r = Math.random();
+  if (r < 0.12 && inn !== undefined) {
+    deed(sot, 'knocked a lamp over at the inn'); log(`${sot.name} knocks a lamp over at ${t.name}'s inn ${daypart()}. ${Math.random() < 0.3 ? 'It catches.' : 'Someone stamps it out, and throws them in the street.'}`, 'arson');
+    if (Math.random() < 0.3) ignite(inn);
+  } else if (r < 0.2 && frozen) {
+    if (Math.random() < 0.25) { sot.alive = false; sot.cause = 'froze on the ice, drunk'; applyLosses(t, 1, 'froze'); deed(sot, 'went to sleep on the ice'); log(`${sot.name} of ${t.name} is found on the ice at first light, frozen where ${pick(['he', 'she', 'they'])} lay down. The fishers cut the hole for the body.`, 'loss'); }
+    else { deed(sot, 'was carried in off the ice'); log(`${sot.name} is found asleep on the ice and carried in by ${t.name}'s fishers, swearing at them`, 'good'); }
+  } else if (r < 0.35) { deed(sot, 'fell in the river'); log(`${sot.name} falls in the river at ${t.name} ${daypart()} and is fished out ${Math.random() < 0.5 ? 'by the fishers' : 'downstream, still holding the cup'}`, 'good'); }
+  else if (r < 0.5) { deed(sot, 'slept in the smokehouse'); log(`${sot.name} sleeps the night in ${t.name}'s smokehouse and comes out cured`, 'good'); }
+  else if (r < 0.65) { const e = person(t, 'elder'); deed(sot, `sang under ${e ? e.name : "the elder"}'s window`); log(`${sot.name} sings under ${e ? e.name + "'s" : "the elder's"} window at ${t.name} until dawn. ${e ? e.name : 'The elder'} ${pick(['throws a boot', 'joins in on the second verse', 'has the constable fetch a bucket', 'says nothing, and remembers'])}.`, 'good'); t.unrest = Math.max(0, (t.unrest || 0) + (Math.random() < 0.5 ? 1 : -1)); }
+  else if (r < 0.8) { deed(sot, 'started a brawl at the inn'); const hurt = Math.random() < 0.3 ? 1 : 0; if (hurt) applyLosses(t, 1, 'brawl'); log(`A brawl at ${t.name}'s inn: ${sot.name} ${pick(['says something about the elder', 'takes a swing at a trader', 'calls the brewer a thief'])} and the room comes down on ${pick(['him', 'her', 'them'])}. ${hurt ? 'One does not get up.' : 'Two in the gaol by morning.'}`, 'loss'); t.crimes = (t.crimes || 0) + 1; }
+  else { deed(sot, 'swore off drink'); log(`${sot.name} swears off drink in front of the whole of ${t.name}. ${pick(['It lasts a week.', 'It lasts until the next festival.', 'Nobody takes the bet.'])}`, 'good'); }
+}
+// Evenings at the inn: a few walkers with cups who stand about the door and wander home crooked.
+function updateCarouser(town, w) {
+  const n = world.n;
+  if (!town.drank && (town.res.beer || 0) <= 0) return false;
+  if (w.site < 0 || world.type[w.site] !== T.INN) return false;
+  const tx = w.site % n, ty = (w.site - tx) / n;
+  if (w.phase === 'out') {
+    if (Math.max(Math.abs(w.x - tx), Math.abs(w.y - ty)) <= 1) { w.phase = 'work'; w.work = 0; w.carry = 1; w.kind = 'beer'; }
+    else { stepToward(w, tx, ty, 1, false); if (w.stall > 4 || ++w.stuck > 80) return false; }
+    return true;
+  }
+  if (w.phase === 'work') { if (++w.work >= 30 + Math.random() * 40) { w.phase = 'back'; w.lastCell = -1; } return true; }
+  // Home, crooked: every other step goes somewhere else.
+  const hx = w.home % n, hy = (w.home - hx) / n;
+  if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) return false;
+  if (Math.random() < 0.35) { const dx = Math.floor(Math.random() * 3) - 1, dy = Math.floor(Math.random() * 3) - 1, j = (w.y + dy) * n + w.x + dx; if (dx || dy) if (j >= 0 && j < n * n && passable(world.type[j]) && !isBuilding(world.type[j])) { w.x += dx; w.y += dy; } return true; }
+  stepToward(w, hx, hy, 1, false);
+  return !(++w.stuck > 160);
 }

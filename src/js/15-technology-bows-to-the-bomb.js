@@ -58,6 +58,7 @@ function updateTech(t) {
   pts *= 1 + 0.5 * countType(t, T.UNIVERSITY) + 0.3 * countType(t, T.FORGE) + 0.4 * countType(t, T.FACTORY);
   if (t.powerNeed > 0) pts *= 0.5 + 0.5 * (t.powerRatio === undefined ? 1 : t.powerRatio); // brownouts slow the labs
   if (t.power > t.powerNeed) pts *= 1.3; // lamps in the workshops: a powered town learns faster
+  if (cheerOf(t) >= 70) pts *= 1.1; else if (cheerOf(t) < 30) pts *= 0.85; // spirits
   if (has(t, 'scholar')) pts *= 1.4; else if (has(t, 'prophet')) pts *= 0.6; else if (has(t, 'madman')) pts *= 0.8;
   const m = militarism(t);
   t.research += pts;

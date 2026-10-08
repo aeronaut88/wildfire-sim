@@ -38,10 +38,10 @@ function updateSnow() {
     if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
     else if (snowing) {
       if (d >= 255) { cells++; continue; }
-      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground
+      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5) + Math.round(latCold(i) * 4)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground, and the north catches more than the south
     } else {
       if (!d) continue;
-      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8); // and hollows hold their snow longest: the melt comes in patches, not as one front
+      const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8) * (1 - latCold(i) * 0.8); // hollows hold their snow longest, and the north holds it longer than the south: the melt comes in patches, not as one front
       let dec = Math.floor(m);
       if (((snowHash(i, tick) >>> 8) & 1023) / 1024 < m - dec) dec++;
       if (!dec) { cells++; continue; }

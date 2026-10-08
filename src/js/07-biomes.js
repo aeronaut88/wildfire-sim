@@ -21,6 +21,9 @@ function plantable(i) { // a plot can be farmed unless it is desert with no wate
   if (world.biome && world.biome[i] === 5) return nearWater(i, 4);
   return t !== T.SAND;
 }
+// Latitude: the top of the map is north. +0.5 at the north edge, -0.5 at the south, 0 in the middle.
+const LAT_SPAN = 0.22;
+function latCold(i) { const n = world.n; return 0.5 - Math.floor(i / n) / n; }
 function biomeAt(x, y) { const n = world.n; if (!world.biome || x < 0 || y < 0 || x >= n || y >= n) return 0; return world.biome[y * n + x]; }
 function herdKindFor(B) {
   if (!B || Math.random() < 0.35) return herdKind();
@@ -98,9 +101,9 @@ function generate(n, seed) {
       // Biome from height, moisture and a slow-varying noise so regions are broad and blobby.
       const bio = fbm(x * scale * 0.35 + 900, y * scale * 0.35 + 900, seed ^ 0x51a7, 3), moist = fbm(x * scale * 0.7 + 300, y * scale * 0.7 + 300, seed ^ 0x2f3d, 3) + CL.moist + (CL.name === 'split' ? grad(x, y) * 0.7 : 0);
       let B = 0;
-      const dryness = moist + (bio - 0.5) * 0.5, cold = CL.cold + (CL.name === 'ridge' ? Math.max(0, grad(x, y)) * 0.5 : 0);
+      const dryness = moist + (bio - 0.5) * 0.5, cold = CL.cold + (CL.name === 'ridge' ? Math.max(0, grad(x, y)) * 0.5 : 0) + latCold(y * n + x) * LAT_SPAN; // north is colder, south warmer, whatever the climate
       if (e > 0.62 + (bio - 0.5) * 0.1 - cold) B = 1;
-      else if (CL.name !== 'forest') { if (dryness < 0.17) B = 5; else if (e < 0.34 && moist > 0.48) B = 4; else if (dryness < 0.36) B = 3; else if (moist > (CL.name === 'jungle' ? 0.55 : 0.74) && e < 0.56) B = 6; else if (moist > 0.56 && e < 0.52) B = 2; }
+      else if (CL.name !== 'forest') { if (dryness < 0.17) B = 5; else if (e < 0.34 && moist > 0.48) B = 4; else if (dryness < 0.36) B = 3; else if (moist > (CL.name === 'jungle' ? 0.55 : 0.74) && e < 0.56 && cold < 0.08) B = 6; else if (moist > 0.56 && e < 0.52) B = 2; }
       world.biome[i] = B;
       let t;
       if (e < 0.27) t = T.WATER;

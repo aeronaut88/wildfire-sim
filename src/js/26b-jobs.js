@@ -3,12 +3,12 @@
    among trades by what it has to work with and what it is short of. The counts drive the extra
    mechanics (haulers, smiths, traders, soldiers, idle hands) and set how many of each trade are
    out on the map; the walkers you see are a sample of the trade, not the whole of it. */
-const JOB_LIST = ['young', 'soldier', 'militia', 'constable', 'healer', 'farmer', 'fisher', 'hunter', 'forager', 'carrier', 'logger', 'quarrier', 'miner', 'builder', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'trader', 'household', 'idle'];
-const JOB_LABEL = { young: 'young and old', soldier: 'soldiers', militia: 'militia', constable: 'constables', healer: 'healers', farmer: 'farmers', fisher: 'fishers', hunter: 'hunters', forager: 'foragers', carrier: 'water carriers', logger: 'loggers', quarrier: 'quarriers', miner: 'miners', builder: 'builders', mason: 'masons', baker: 'bakers', smoker: 'smokers', cook: 'cooks', brewer: 'brewers', smith: 'smiths', hauler: 'haulers', trader: 'traders', household: 'keeping house', idle: 'idle hands' };
+const JOB_LIST = ['young', 'soldier', 'militia', 'constable', 'healer', 'farmer', 'fisher', 'hunter', 'forager', 'carrier', 'logger', 'quarrier', 'miner', 'builder', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'trader', 'drunk', 'household', 'idle'];
+const JOB_LABEL = { young: 'young and old', soldier: 'soldiers', militia: 'militia', constable: 'constables', healer: 'healers', farmer: 'farmers', fisher: 'fishers', hunter: 'hunters', forager: 'foragers', carrier: 'water carriers', logger: 'loggers', quarrier: 'quarriers', miner: 'miners', builder: 'builders', mason: 'masons', baker: 'bakers', smoker: 'smokers', cook: 'cooks', brewer: 'brewers', smith: 'smiths', hauler: 'haulers', trader: 'traders', drunk: 'at the inn', household: 'keeping house', idle: 'idle hands' };
 // The resource each trade answers a shortage of, so the short trades fill first.
 const JOB_FOR_SHORT = { wood: 'logger', stone: 'quarrier', food: 'farmer', water: 'carrier', iron: 'miner', copper: 'miner', coal: 'miner', uranium: 'miner', gold: 'miner' };
 const CRAFT_JOBS = { [T.BAKERY]: 'baker', [T.SMOKEHOUSE]: 'smoker', [T.INN]: 'cook', [T.BREWERY]: 'brewer', [T.FORGE]: 'smith' };
-const CRAFT_SLOTS = { [T.BAKERY]: 3, [T.SMOKEHOUSE]: 2, [T.INN]: 2, [T.BREWERY]: 2, [T.FORGE]: 2 };
+const CRAFT_SLOTS = { [T.BAKERY]: 3, [T.SMOKEHOUSE]: 2, [T.INN]: 2, [T.BREWERY]: 3, [T.FORGE]: 2 };
 const PRODUCTION = [T.QUARRY, T.MINE, T.LUMBERYARD, T.FISHERY, T.BAKERY, T.SMOKEHOUSE, T.BREWERY, T.FORGE, T.MILL];
 
 function jobCount(t, k) { return t.jobs && t.jobs[k] ? t.jobs[k] : 0; }
@@ -29,6 +29,7 @@ function allocateJobs(t) {
   take('militia', Math.min(t.militia || 0, pool));
   if (t.case && t.case.hunt) take('constable', 1 + countType(t, T.GAOL));
   take('healer', countType(t, T.HEALER) + 2 * countType(t, T.HOSPITAL));
+  take('drunk', pool * drunkShare(t)); // some are at the inn instead of at their work
   // Food before anything.
   const farms = countType(t, T.FARM);
   take('farmer', Math.ceil(farms / 2) * tp.food);
@@ -58,8 +59,20 @@ function allocateJobs(t) {
   take('hauler', Math.ceil(Math.max(0, prod - 1) / 2) * tp.trade);
   let roads = 0; for (const k in (world.tradeRoads || {})) { const r = world.tradeRoads[k]; if (!r.building && (r.a === t.id || r.b === t.id)) roads++; }
   take('trader', roads + (hasType(t, T.TOWNHALL) ? 1 : 0));
-  // Half of whoever is left keeps the homes, the gardens and the animals; the rest are idle hands.
-  take('household', pool * 0.55);
+  // Spare hands go to the fields, the woods, the sites, the shore and the quarry: a town does not leave people standing about.
+  // Land, timber and rock are the limit, not people.
+  const spare = pool;
+  if (spare > 0) {
+    take('farmer', farms ? spare * 0.35 : 0);
+    take('logger', spare * 0.15);
+    take('builder', sites.length ? spare * 0.15 : 0);
+    take('fisher', countType(t, T.FISHERY) ? spare * 0.1 : 0);
+    take('quarrier', countType(t, T.QUARRY) ? spare * 0.1 : 0);
+    take('hunter', herdsNear ? spare * 0.05 : 0);
+    take('miner', mines ? spare * 0.05 : 0);
+  }
+  // Most of whoever is left keeps the homes, the gardens and the animals; the rest are idle hands.
+  take('household', pool * 0.7);
   jobs.idle = pool;
   t.jobs = jobs;
   // Idle hands: a word in the log now and then, and unrest (in updateUnrest).
@@ -81,7 +94,7 @@ function soldierPower(t) { return 1 + 0.08 * Math.min(12, t.soldiers || 0); }
 // better tools in everyone's hands.
 function logistics(t) { const prod = t.buildings.filter(i => PRODUCTION.includes(world.type[i])).length; const wanted = Math.ceil(Math.max(0, prod - 1) / 2); return wanted <= 0 ? 1 : 1 + 0.25 * Math.min(1, jobCount(t, 'hauler') / wanted); }
 function tools(t) { return jobCount(t, 'smith') >= 1 && (t.res.iron || 0) >= 2 ? 1.2 : 1; }
-function yieldMul(t, job) { return logistics(t) * (job === 'log' || job === 'quarry' || job === 'mine' || job === 'harvest' ? tools(t) : 1); }
+function yieldMul(t, job) { return logistics(t) * (job === 'log' || job === 'quarry' || job === 'mine' || job === 'harvest' ? tools(t) : 1) * (jobCount(t, 'drunk') > 0 ? 0.95 : 1); } // a town with drinkers gets a little less done
 function wearTools(t) { if (tools(t) > 1 && world.tick % 200 < 16 && t.res.iron > 0) { t.res.iron--; t.toolsWorn = (t.toolsWorn || 0) + 1; } }
 
 // ── Walkers for the new trades ──

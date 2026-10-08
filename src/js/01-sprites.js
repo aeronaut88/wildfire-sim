@@ -624,6 +624,7 @@ SPRITES.cook = SPRITES.worker.map(r => r.replace(/u/g, 'x').replace(/m/g, 'd'));
 SPRITES.brewer = SPRITES.worker.map(r => r.replace(/u/g, '6').replace(/m/g, 'V')); // tan, a leather cap
 SPRITES.smith = SPRITES.worker.map(r => r.replace(/u/g, 'a').replace(/m/g, 'k')); // leather apron
 SPRITES.hauler = SPRITES.worker.map(r => r.replace(/u/g, 'V').replace(/t/g, 'z')); // a pack frame
+SPRITES.drunk = SPRITES.worker.map(r => r.replace(/u/g, '9').replace(/t/g, 'y').replace(/s/g, 'y')); // red in the face, a cup
 // The larder's buildings, beasts and fields.
 SPRITES.smokehouse = SPRITES.granary.map(r => r.replace(/D/g, 'b').replace(/d/g, 'B').replace(/6/g, 'a').replace(/V/g, 'k')); // a dark shed
 SPRITES.bakery = SPRITES.house0.map((r, j) => (j === 1 ? 'ggggggDDDDggkkgg' : j === 2 ? 'gggggDddddDgkkgg' : r).replace(/D/g, '7').replace(/d/g, 'l').replace(/c/g, '8').replace(/C/g, '6').replace(/i/g, 'E')); // a chimney and an oven glow
@@ -653,6 +654,7 @@ SPRITES.hare = [
 SPRITES.farm_b = SPRITES.farm.map(r => r.replace(/6/g, 'Y')); // barley, gold
 SPRITES.farm_t = SPRITES.farm.map(r => r.replace(/6/g, 'd')); // turnips, purple-topped
 SPRITES.farm_o = SPRITES.farm.map(r => r.replace(/6/g, 'o').replace(/Z/g, 't')); // young orchard rows
+SPRITES.farm_x = SPRITES.farm.map(r => r.replace(/6/g, 'O')); // tobacco, broad bright leaves
 SPRITES.farm_or = SPRITES.farm.map(r => r.split('').map((c, i) => c === '6' ? (i % 3 === 1 ? 'e' : 'o') : c === 'Z' ? 't' : c).join('')); // orchard in fruit
 // Stone: the same buildings in grey ashlar under slate, for towns that have learned masonry.
 const STONE_SWAP = { c: 'R', C: 'r', d: 'l', D: '7', u: 'L', U: '5', '8': 'R', '6': 'r', '9': 'l' };
@@ -664,4 +666,4 @@ SPRITES.shell = [ // a burnt-out stone house: walls standing, roof gone, black i
   'grkkbkkkkkbkkkrg','gRkkkkkkkkkkkkRg','grkkkkkkkbkkkkrg','gRkkkkkkkkkkkkRg',
   'gRrrRrRRrRrRRrRg','grrrrrrrrrrrrrrg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear', 'shell', 'farmer', 'fisher', 'icefisher', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'smokehouse', 'bakery', 'inn', 'mill', 'brewery', 'cellar', 'fishery', 'spring', 'elk', 'hare', 'farm_b', 'farm_t', 'farm_o', 'farm_or', ...STONE_KEYS.map(k => k + '_s')]) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear', 'shell', 'farmer', 'fisher', 'icefisher', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'drunk', 'smokehouse', 'bakery', 'inn', 'mill', 'brewery', 'cellar', 'fishery', 'spring', 'elk', 'hare', 'farm_b', 'farm_t', 'farm_o', 'farm_or', 'farm_x', ...STONE_KEYS.map(k => k + '_s')]) SPR16[k] = buildSprite16(SPRITES[k]);

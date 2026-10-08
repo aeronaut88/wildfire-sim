@@ -73,7 +73,7 @@ function updateHarvester(town, w) {
   }
   if (w.phase === 'work') {
     if (Math.random() < 0.4) dust(w.target);
-    if (++w.work >= 5) { if (world.type[w.target] === T.FARM && world.crop[w.target] >= 100) { const ck = cropKindAt(w.target); w.carry = Math.max(ck === 3 ? 2 : 3, Math.round(CROP_YIELD[ck] * BIOME_YIELD[biomeAt(town.cx, town.cy)] * yieldMul(town, 'harvest'))); w.kind = ck === 3 ? 'fruit' : 'grain'; world.crop[w.target] = ck === 3 ? 60 : 0; dirty.add(w.target); stat('ev', ck === 3 ? 'fruitHarvests' : 'harvests'); } w.phase = 'back'; }
+    if (++w.work >= 5) { if (world.type[w.target] === T.FARM && world.crop[w.target] >= 100) { const ck = cropKindAt(w.target); w.carry = Math.max(ck === 3 ? 2 : 3, Math.round(CROP_YIELD[ck] * BIOME_YIELD[biomeAt(town.cx, town.cy)] * yieldMul(town, 'harvest'))); w.kind = ck === 3 ? 'fruit' : ck === 4 ? 'tobacco' : 'grain'; world.crop[w.target] = ck === 3 ? 60 : 0; dirty.add(w.target); stat('ev', ck === 3 ? 'fruitHarvests' : 'harvests'); } w.phase = 'back'; }
     return true;
   }
   const hx = w.home % n, hy = (w.home - hx) / n;
@@ -87,12 +87,15 @@ function growCrops(town) {
   const base = (world.cometWinter ? 0.25 : 1) * 16 * 0.5 * (has(town, 'greenthumb') ? 1.5 : 1);
   const cold = world.climate && (world.climate.name === 'cold' || world.climate.name === 'ridge');
   const stage = c => c < 35 ? 0 : c < 75 ? 1 : c < 100 ? 2 : 3;
+  const farms = countType(town, T.FARM), staffed = farms ? jobCount(town, 'farmer') / farms : 1; // hands per field
+  const hands = staffed >= 1 ? 1.2 : staffed >= 0.5 ? 1 : 0.8; // well-tended fields ripen faster; neglected ones slower
   for (const i of town.buildings) {
     if (world.type[i] !== T.FARM || world.crop[i] >= 100) continue;
     const k = cropKindAt(i);
-    let rate = base * CROP_SEASON[k][sea];
-    if (wk === 'rain' || wk === 'storm') rate *= 1.3; else if (wk === 'drought' || wk === 'drystorm') rate *= k === 1 ? 0.6 : 0.3; else if (wk === 'snow' || wk === 'ashfall') rate *= k === 2 && wk === 'snow' ? 0.5 : 0; // barley shrugs off drought; turnips keep growing under snow
+    let rate = base * hands * CROP_SEASON[k][sea];
+    if (wk === 'rain' || wk === 'storm') rate *= 1.3; else if (wk === 'drought' || wk === 'drystorm') rate *= k === 1 || k === 4 ? 0.6 : 0.3; else if (wk === 'snow' || wk === 'ashfall') rate *= k === 2 && wk === 'snow' ? 0.5 : 0; // barley shrugs off drought; turnips keep growing under snow
     if (k === 2 && (cold || world.biome[i] === 1)) rate *= 1.2;
+    rate *= k === 2 ? 1 + latCold(i) * 0.2 : 1 - latCold(i) * 0.3; // the south grows faster; turnips do not mind the north
     if (k === 3) rate *= 0.5; // an orchard takes seasons to establish
     if (rate <= 0) continue;
     const before = stage(world.crop[i]);

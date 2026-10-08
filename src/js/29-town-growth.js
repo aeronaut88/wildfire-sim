@@ -35,7 +35,8 @@ function growTown(town) {
     if (town.res.game > 10 && Math.random() < 0.3 * cellar) town.res.game--;
     if ((town.res.meals || 0) > 4 && Math.random() < 0.4 * cellar) town.res.meals--; // hot food does not keep
     if ((town.res.fruit || 0) > 10 && cellar === 1 && Math.random() < 0.2) town.res.fruit--;
-    if ((town.res.beer || 0) > 20 && Math.random() < 0.15) town.res.beer--; }
+    if ((town.res.beer || 0) > 20 && Math.random() < 0.15) town.res.beer--;
+    if ((town.res.bread || 0) > 30 && Math.random() < 0.2) town.res.bread--; } // stale
   updateLivestock(town);
   maybeLaunchBoat(town); drinkFromSpring(town);
   if (town.civ >= 4 && hasType(town, T.UNIVERSITY) && Math.random() < 0.06) surveyFor(town);
@@ -61,6 +62,7 @@ function growTown(town) {
   growCrops(town);
   const eat = Math.ceil(town.popLeft / 30);
   let got = Math.floor(livestockFood(town) / 6);
+  updateProcessing(town); // the smokehouse and the ovens work before the town sits down to eat
   town.ateMeals = 0;
   for (const k of FOOD_KINDS) { if (got >= eat) break; const take = Math.min(town.res[k] || 0, eat - got); town.res[k] -= take; got += take; if (k === 'meals' && take > 0) town.ateMeals = take; }
   town.fed = got >= eat * 0.7;
@@ -69,12 +71,12 @@ function growTown(town) {
     if (!town.famine) { town.famine = world.tick; town.hadFamine = true; stat('ev', 'famines'); say(town, 'famine', { pop: town.popLeft }, 'loss'); remember(town, 'famine'); }
     if (Math.random() < 0.4) applyLosses(town, Math.max(1, Math.round(town.popLeft * 0.006)), 'famine');
   } else if (town.famine && town.hunger === 0) { town.famine = 0; say(town, 'famineEnds', {}, 'good'); }
-  updateProcessing(town);
   // Fields: enough for the mouths, more when the stores are thin, fewer in bad country. Each ripe field gives about six grain.
   const farmsNow = countType(town, T.FARM) + Object.values(town.sites || {}).filter(st => st.type === T.FARM).length;
-  const wantFarms = Math.ceil(town.popLeft / (9 * BIOME_YIELD[biomeAt(town.cx, town.cy)]) * (town.temper ? town.temper.food : 1)) + (town.fed ? 0 : 3);
+  const wantFarms = Math.ceil(town.popLeft / (9 * BIOME_YIELD[biomeAt(town.cx, town.cy)]) * (town.temper ? town.temper.food : 1)) + (town.fed ? 0 : 3) + Math.floor(Math.max(0, jobCount(town, 'farmer') - farmsNow) / 3); // spare farmers clear new ground
   if (farmsNow < wantFarms && Math.random() < (town.fed ? 0.5 : 0.9)) { buildFarm(town); if (!town.fed && Math.random() < 0.5) buildFarm(town); }
-  if (town.popLeft < capacity && Math.random() < 0.65) {
+  updateCheer(town); updateSot(town);
+  if (town.popLeft < capacity && Math.random() < (cheerOf(town) >= 70 ? 0.8 : cheerOf(town) < 30 ? 0.4 : 0.65)) { // a happy town draws people
     const add = Math.max(1, Math.round(town.popLeft * 0.01));
     town.popLeft += add; world.popLeft += add; town.popTotal += add; world.popTotal += add;
   }
@@ -323,8 +325,8 @@ function buildCivic(town) {
   if (kc >= 3 && town.popLeft >= 300 && countPlanned(town, T.BAKERY) < 2 && idleHands) want.push([T.BAKERY, true, 'builds a second bakery']);
   if (kc >= 3 && town.popLeft >= 50 && !hasPlanned(town, T.MILL) && hasType(town, T.WHEEL)) want.push([T.MILL, false, 'builds a mill beside the wheel']);
   if (kc >= 4 && town.popLeft >= 50 && !hasPlanned(town, T.CELLAR)) want.push([T.CELLAR, true, 'digs a root cellar']);
-  if (kc >= 5 && town.popLeft >= 80 && barleyFields(town) >= 2 && !hasPlanned(town, T.BREWERY)) want.push([T.BREWERY, false, 'opens a brewery']);
-  if (kc >= 5 && town.popLeft >= 120 && (town.res.beer || 0) > 0 && town.fed && !hasPlanned(town, T.INN)) want.push([T.INN, true, 'opens an inn']);
+  if (kc >= 5 && town.popLeft >= 80 && barleyFields(town) >= 2 && countPlanned(town, T.BREWERY) < (town.popLeft >= 400 ? 2 : 1)) { const b = [T.BREWERY, false, hasPlanned(town, T.BREWERY) ? 'opens a second brewery' : 'opens a brewery']; want.push(b, b); } // everyone wants the brewery
+  if (kc >= 5 && town.popLeft >= 120 && (hasPlanned(town, T.BREWERY) || (town.res.beer || 0) > 0) && town.fed && countPlanned(town, T.INN) < (town.popLeft >= 500 ? 2 : 1)) { const b = [T.INN, true, hasPlanned(town, T.INN) ? 'opens a second inn' : 'opens an inn']; want.push(b, b); }
   if (idleHands) for (const w of want.slice()) if ([T.SMOKEHOUSE, T.BAKERY, T.BREWERY, T.INN, T.CELLAR].includes(w[0])) want.push(w); // idle hands want a workshop
 
   if (town.popLeft >= 160 && countPlanned(town, T.LUMBERYARD) < 2) want.push([T.LUMBERYARD, false, 'opens a second lumberyard']);

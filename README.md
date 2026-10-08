@@ -348,6 +348,11 @@ towns cling to the river and the watering holes, and nothing grows on open sand.
 fields with no water within reach wither back to scrub, three times as fast in the desert. The History
 facts block names the climate, and the trees tile shows the biome shares.
 
+- **North and south.** Whatever the climate, the top of the map is colder than the bottom: the
+  highland biome reaches further down in the north, jungle only grows in the south, snow falls
+  thicker and lies longer in the north and goes first in the south, northern lakes freeze first,
+  and crops grow faster the further south the field is (turnips excepted).
+
 ## Travel
 
 Walking speed depends on the ground: a road or bridge is the fast way (over one and a half
@@ -532,9 +537,11 @@ can expose a seam too. Every town within a walk will want it.
   house, and the idle. The counts are the truth; the walkers you see are a sample of each trade,
   dressed for the job. Haulers shuttle goods from the works and speed them in; a staffed forge
   with iron puts better tools in everyone's hands; wagons need a trader to drive them and traders
-  haggle better at market; idle hands above a fifth of the workforce raise unrest and push the
-  town to build a workshop. The town card has a **work** grid and the history plots have
-  *at work* and *idle hands*.
+  haggle better at market. Spare hands are not left standing about: they go to the fields, the
+  woods, the sites, the shore and the quarry, so land, timber and rock are the limit rather than
+  people. Fully staffed fields ripen a fifth faster and surplus farmers clear new ground. What is
+  left keeps house; the few truly idle raise unrest and push the town to build a workshop. The
+  town card has a **work** grid and the history plots have *at work*, *idle hands* and *spirits*.
 - **Soldiers.** With steel and a barracks a town keeps up to twelve full-time soldiers per
   barracks. They drill, they hold the line first and fall first, and they are worth two of the
   levy. A town with drilled soldiers raids harder too.
@@ -558,10 +565,23 @@ can expose a seam too. Every town within a walk will want it.
   three hot meals, better with fruit on the table. **Mastery** makes every conversion two-to-four
   and lays out a feast at the harvest festival, named dish and all. Every workshop's first batch
   is logged, and the first person to run it gets a name and a story.
-- **Four crops.** Wheat; barley (shrugs off drought, feeds the brewery); turnips (frost-hardy,
-  the only crop that grows in winter, better in cold country, planted after a famine); and
-  orchards (slow to establish, fruit every autumn, and they burn like the trees they are). Fields
-  wear their crop's colours.
+- **Five crops.** Wheat; barley (shrugs off drought, feeds the brewery); turnips (frost-hardy,
+  the only crop that grows in winter, better in cold country, planted after a famine); orchards
+  (slow to establish, fruit every autumn, and they burn like the trees they are); and tobacco on
+  warm dry ground. Fields wear their crop's colours.
+- **Spirits.** Alongside unrest (how a town feels about its elder) every town has spirits (how life
+  feels). Beer at the inn, hot meals, fruit and bread in the larder, a pipe after work, festivals
+  and feasts lift them; hunger, thirst, deaths and a dry inn sink them. High spirits calm a town,
+  draw newcomers and help the workshops think; low spirits send families walking to wherever the
+  inn is open. The inn pours a cup for every sixty people a cycle, so the brewery has somewhere to
+  send its barrels and a town that has known beer feels it when the vats run dry.
+- **Drink.** Where there is beer, a few are at the inn instead of at their work (the town gets a
+  little less done), you can see them with cups at the door of an evening and wandering home
+  crooked, and one makes a name for it: the **town drunk**, who falls in the river, sleeps in the
+  smokehouse, sings under the elder's window, starts the odd brawl, knocks a lamp over at the
+  inn, swears off drink in front of everyone, and now and then is found on the ice.
+- **Tobacco.** A little never hurt anyone, they say. A pipe after work lifts spirits and caravans
+  pay well for the leaf; the healer's ledger shows the cough, which a healer's house halves.
 
 ## The log does not repeat itself
 

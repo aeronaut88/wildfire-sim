@@ -20,7 +20,7 @@ function updateZoomHud() { const el = $('hudZoom'); if (el) el.textContent = vie
 function canvasPoint(clientX, clientY) { const r = canvas.getBoundingClientRect(); return [(clientX - r.left) / r.width * canvas.width, (clientY - r.top) / r.height * canvas.height]; }
 function fillScreen(style) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = style; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
 
-const WALKER_SPRITE = { constable: 'constable', fugitive: 'fugitive', convict: 'fugitive', rounds: 'healer', forage: 'forager', log: 'logger', hunt: 'hunter', water: 'carrier', mine: 'miner', quarry: 'miner', tend: 'farmer', farm: 'farmer', harvest: 'farmer', haul: 'hauler', fish: 'fisher', icefish: 'icefisher' };
+const WALKER_SPRITE = { constable: 'constable', fugitive: 'fugitive', convict: 'fugitive', rounds: 'healer', forage: 'forager', log: 'logger', hunt: 'hunter', water: 'carrier', mine: 'miner', quarry: 'miner', tend: 'farmer', farm: 'farmer', harvest: 'farmer', haul: 'hauler', fish: 'fisher', icefish: 'icefisher', carouse: 'drunk' };
 function render(now, tickFrac) {
   flushDirty();
   ctx.save();

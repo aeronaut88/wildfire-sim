@@ -36,7 +36,7 @@ function spriteKey(i) {
     case T.BIRCH: return 'birch';
     case T.SCRUB: return 'scrub';
     case T.SNAG: return 'snag';
-    case T.FARM: { const k = world.cropKind ? world.cropKind[i] : 0, c = world.crop ? world.crop[i] : 100; if (k === 3) return c >= 100 ? 'farm_or' : 'farm_o'; if (c < 35) return 'farm0'; if (c < 75) return 'farm1'; return k === 1 ? 'farm_b' : k === 2 ? 'farm_t' : 'farm'; }
+    case T.FARM: { const k = world.cropKind ? world.cropKind[i] : 0, c = world.crop ? world.crop[i] : 100; if (k === 3) return c >= 100 ? 'farm_or' : 'farm_o'; if (c < 35) return 'farm0'; if (c < 75) return 'farm1'; return k === 1 ? 'farm_b' : k === 2 ? 'farm_t' : k === 4 ? 'farm_x' : 'farm'; }
     case T.SITE: return 'site';
     case T.GRANARY: return world.mat[i] ? 'granary_s' : 'granary';
     case T.FELLED: return 'felled';

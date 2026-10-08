@@ -2,8 +2,8 @@
    Everything a town builds is paid for in wood, stone, iron, copper, coal or uranium. Wood is
    cut from the forest by loggers (the trees really go), stone comes from a quarry at a rock face,
    the metals from mines on finite seams. Stockpiles are small, so towns save up, trade, or fight. */
-const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'gold', 'oil', 'grain', 'fish', 'game', 'bread', 'jerky', 'meals', 'beer', 'fruit', 'herbs', 'water', 'coin'];
-const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, grain: 1, bread: 2, jerky: 2, meals: 3, beer: 2, fruit: 1, herbs: 2, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, gold: 15, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
+const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'gold', 'oil', 'grain', 'fish', 'game', 'bread', 'jerky', 'meals', 'beer', 'fruit', 'tobacco', 'herbs', 'water', 'coin'];
+const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, grain: 1, bread: 2, jerky: 2, meals: 3, beer: 2, fruit: 1, tobacco: 3, herbs: 2, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, gold: 15, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
 const COST = {
   [T.HOUSE]: { wood: 4 }, [T.TENEMENT]: { wood: 6, stone: 8 }, [T.FARM]: { wood: 1 }, [T.STATION]: { wood: 6, stone: 3 },
   [T.TOWNHALL]: { wood: 8, stone: 6 }, [T.BARRACKS]: { wood: 8, stone: 4, iron: 2 }, [T.FORGE]: { stone: 6, iron: 2 },
@@ -13,7 +13,7 @@ const COST = {
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
   [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 }, [T.CISTERN]: { stone: 6, wood: 2 }, [T.TOWER_W]: { stone: 10, iron: 4, wood: 4 }, [T.HEALER]: { wood: 6, stone: 4 }, [T.HOSPITAL]: { stone: 10, copper: 4, wood: 6 },
   stoneHouse: { wood: 2, stone: 5 }, reface: { stone: 5 }, shell: { wood: 2, stone: 1 },
-  [T.FISHERY]: { wood: 5 }, [T.BAKERY]: { wood: 6, stone: 4 }, [T.SMOKEHOUSE]: { wood: 6 }, [T.INN]: { wood: 8, stone: 4 }, [T.MILL]: { wood: 8, stone: 4 }, [T.BREWERY]: { wood: 8, stone: 4, copper: 1 }, [T.CELLAR]: { stone: 8, wood: 2 },
+  [T.FISHERY]: { wood: 5 }, [T.BAKERY]: { wood: 6, stone: 4 }, [T.SMOKEHOUSE]: { wood: 6 }, [T.INN]: { wood: 8, stone: 4 }, [T.MILL]: { wood: 8, stone: 4 }, [T.BREWERY]: { wood: 8, stone: 4 }, [T.CELLAR]: { stone: 8, wood: 2 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -30,8 +30,9 @@ function resCap(t, kind) {
   if (kind === 'bread') return 40 + 30 * countType(t, T.BAKERY);
   if (kind === 'jerky') return 50 + 40 * countType(t, T.SMOKEHOUSE);
   if (kind === 'meals') return 20 + 20 * countType(t, T.INN);
-  if (kind === 'beer') return 30 + 30 * countType(t, T.BREWERY);
+  if (kind === 'beer') return 40 + 40 * countType(t, T.BREWERY);
   if (kind === 'fruit') return 30 + 20 * countType(t, T.CELLAR);
+  if (kind === 'tobacco') return 20 + 10 * countType(t, T.GRANARY);
   if (kind === 'oil') return 30 + 20 * countType(t, T.DERRICK);
   if (kind === 'herbs') return 12 + 12 * countType(t, T.HEALER) + 24 * countType(t, T.HOSPITAL); // the healer's shelves
   if (kind === 'wood') return 40 + 30 * countType(t, T.LUMBERYARD);
@@ -300,6 +301,7 @@ function updateGatherer(town, w) {
   if (w.job === 'water') return updateCarrier(town, w);
   if (w.job === 'haul') return updateHauler(town, w);
   if (w.job === 'fish' || w.job === 'icefish') return updateFisher(town, w);
+  if (w.job === 'carouse') return updateCarouser(town, w);
   if (w.job === 'tend') return updateTender(town, w);
   if (w.job === 'craft') return updateCrafter(town, w);
   if (w.job === 'build') return updateBuilder(town, w);
@@ -442,10 +444,10 @@ function spawnGatherers(town) {
   const J = k => jobCount(town, k), count = job => town.workers.filter(w => w.job === job).length, short = shortages(town);
   // The walkers are a sample of each trade: as many as the trade has people, up to what the map can show.
   const siteCount = Object.keys(town.sites || {}).filter(k => type[+k] === T.SITE).length;
-  if (siteCount && count('build') < Math.min(6, J('builder') + J('mason'))) { mk('build', -1, 0, muster); return; }
+  if (siteCount && count('build') < Math.min(8, J('builder') + J('mason'))) { mk('build', -1, 0, muster); return; }
   const ripeCount = town.buildings.filter(i => type[i] === T.FARM && world.crop[i] >= 100).length;
-  if (ripeCount && count('harvest') < Math.min(6, 1 + Math.floor(ripeCount / 3), Math.max(1, J('farmer')))) { mk('harvest', -1, 0, muster); return; }
-  if (season() !== 3 && J('farmer') >= 4 && count('tend') < Math.min(3, Math.floor(J('farmer') / 4))) { mk('tend', -1, 0, muster); return; }
+  if (ripeCount && count('harvest') < Math.min(8, 1 + Math.floor(ripeCount / 2), Math.max(1, J('farmer')))) { mk('harvest', -1, 0, muster); return; }
+  if (season() !== 3 && J('farmer') >= 4 && count('tend') < Math.min(5, Math.floor(J('farmer') / 4))) { mk('tend', -1, 0, muster); return; }
   const waterNear = waterCellNear(town) >= 0;
   const wantWater = waterNear && (town.res.water || 0) < resCap(town, 'water') * 0.7 ? Math.min(3, J('carrier')) : 0;
   if (count('water') < wantWater) { mk('water', -1, 0, muster); return; }
@@ -456,7 +458,7 @@ function spawnGatherers(town) {
   const wantHunt = herdsNear && town.popLeft >= 15 && (town.res.game || 0) < resCap(town, 'game') ? Math.min(4, J('hunter')) : 0;
   if (count('hunt') < wantHunt) { mk('hunt', -1, 0, muster); return; }
   const yards = town.buildings.filter(i => type[i] === T.LUMBERYARD);
-  if (count('log') < Math.min(6, J('logger')) && town.res.wood < resCap(town, 'wood')) { mk('log', -1, 0, yards.length ? yards[Math.floor(Math.random() * yards.length)] : muster); return; }
+  if (count('log') < Math.min(8, J('logger')) && town.res.wood < resCap(town, 'wood')) { mk('log', -1, 0, yards.length ? yards[Math.floor(Math.random() * yards.length)] : muster); return; }
   const blocked = i => town.unreachable && town.unreachable[i] > world.tick;
   const quarries = town.buildings.filter(i => type[i] === T.QUARRY && !blocked(i));
   for (const q of quarries) {
@@ -465,6 +467,7 @@ function spawnGatherers(town) {
   const huts = town.buildings.filter(i => type[i] === T.FISHERY && world.burnLeft[i] <= 0);
   if (huts.length && (town.res.fish || 0) < resCap(town, 'fish') && count('fish') + count('icefish') < Math.min(4, J('fisher'))) { const h = huts[Math.floor(Math.random() * huts.length)]; mk('fish', h, T.FISHERY, h); return; }
   if (count('haul') < Math.min(4, J('hauler'))) { const store = town.buildings.find(i => type[i] === T.GRANARY || type[i] === T.TOWNHALL); mk('haul', -1, 0, store !== undefined ? store : muster); return; }
+  if (J('drunk') > 0 && world.tick % 16 >= 10 && count('carouse') < Math.min(3, J('drunk'))) { const inn = town.buildings.find(i => type[i] === T.INN && world.burnLeft[i] <= 0); if (inn !== undefined) { mk('carouse', inn, T.INN, muster); return; } } // evenings at the inn
   for (const b of town.buildings) {
     const cj = CRAFT_JOBS[type[b]]; if (!cj || J(cj) < 1 || world.burnLeft[b] > 0) continue;
     if (!town.workers.some(w => w.job === 'craft' && w.site === b)) { mk('craft', b, type[b], muster); town.workers[town.workers.length - 1].craft = cj; return; }
