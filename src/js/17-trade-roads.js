@@ -116,6 +116,8 @@ function updateWagons() {
     const a = world.towns[r.a], b = world.towns[r.b];
     if (!isAlive(a) || !isAlive(b)) continue;
     if (atWar(a, b) || (a.plagueUntil || 0) > world.tick || (b.plagueUntil || 0) > world.tick) continue; // no wagons through a shut gate
+    const traders = jobCount(a, 'trader') + jobCount(b, 'trader');
+    r.wagonT += traders >= 2 ? 0.4 : traders >= 1 ? 0 : -0.6; // no traders: wagons come slowly; two or more: faster
     if (++r.wagonT >= 160 && !world.wagons.some(w => w.key === key)) {
       r.wagonT = 0;
       const fwd = Math.random() < 0.5;
@@ -142,7 +144,7 @@ function updateWagons() {
       if (from) { from.tradeFood = world.tick + 400; }
       if (to && from && to.res && from.res) { // and whatever the other side is short of, if there is spare
         let best = null, bestAmt = 0;
-        for (const k of RES_KINDS) { if (k === 'water' || k === 'coin') continue; const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
+        for (const k of RES_KINDS) { if (k === 'water' || k === 'coin' || k === 'meals') continue; const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
         if (best) { const amt = Math.min(10, Math.floor(bestAmt)), price = (PRICE[best] || 1) * amt, paid = Math.min(price, Math.max(0, Math.floor(to.res.coin || 0))); from.res[best] -= amt; addRes(to, best, amt); to.res.coin -= paid; from.res.coin += paid; stat('ev', 'tradeCoin', paid); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}${paid ? ` for ${paid} coin` : ', on credit'}`, 'build'); }
       }
       if (Math.random() < 0.25 && to && from) log(`A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');

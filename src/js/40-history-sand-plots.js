@@ -1,7 +1,7 @@
 /* ───────────────────────── History: sand plots ─────────────────────────
    Every fifty ticks each town's numbers are sampled. The chart stacks the towns as layers from
    each one's founding to its end, so a dead town shows as a band that narrows to nothing. */
-const HIST_METRICS = [['pop', 'population'], ['homes', 'homes'], ['militia', 'militia'], ['coin', 'coin'], ['food', 'food'], ['stock', 'stockpile']];
+const HIST_METRICS = [['pop', 'population'], ['homes', 'homes'], ['militia', 'militia'], ['coin', 'coin'], ['food', 'food'], ['stock', 'stockpile'], ['working', 'at work'], ['idle', 'idle hands']];
 const histState = { metric: 'pop', hidden: new Set(), hideDead: false, hover: -1 };
 let histLastLen = -1, histControlsKey = '';
 function sampleHistory() {
@@ -10,11 +10,13 @@ function sampleHistory() {
   const idx = H.ticks.length - 1;
   for (const t of world.towns) {
     let r = H.towns[t.id];
-    if (!r) r = H.towns[t.id] = { name: t.name, from: idx, pop: [], homes: [], militia: [], coin: [], food: [], stock: [] };
+    if (!r) r = H.towns[t.id] = { name: t.name, from: idx, pop: [], homes: [], militia: [], coin: [], food: [], stock: [], working: [], idle: [] };
+    if (!r.working) { r.working = []; r.idle = []; }
     r.name = t.name;
     const st = world.stats || newStats(); if (!st.max || t.popLeft > st.max.pop) st.max = { name: t.name, pop: t.popLeft, tick: world.tick };
     r.pop.push(t.popLeft); r.homes.push(t.housesLeft); r.militia.push(t.militia); r.coin.push(t.res ? t.res.coin : 0); r.food.push(foodSupply(t));
     r.stock.push(t.res ? (t.res.wood + t.res.stone + t.res.iron + t.res.copper + t.res.coal + (t.res.oil || 0) + (t.res.uranium || 0)) : 0);
+    r.working.push(workingPop(t) - jobCount(t, 'idle')); r.idle.push(jobCount(t, 'idle'));
   }
 }
 function townColor(id) { const h = (id * 137.508 + 20) % 360; return `hsl(${h}, 68%, 56%)`; }
@@ -207,7 +209,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['rock', 'rock'], ['fire1', 'burning'], ['crown1', 'crown fire'], ['ash', 'ash'], ['stump', 'burnt tree'],
     ['house0', 'house'], ['station', 'fire station'], ['rubble', 'rubble'], ['dirt', 'firebreak / road'],
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
-    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'], ['house0_s', 'stone house'], ['shell', 'burnt-out shell'],
+    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'], ['house0_s', 'stone house'], ['shell', 'burnt-out shell'], ['fishery', "fisher's hut"], ['smokehouse', 'smokehouse'], ['bakery', 'bakery'], ['mill', 'mill'], ['brewery', 'brewery'], ['inn', 'inn'], ['cellar', 'root cellar'], ['spring', 'spring'], ['farm_b', 'barley'], ['farm_t', 'turnips'], ['farm_or', 'orchard'], ['elk', 'elk'], ['hare', 'hares'], ['fisher', 'fisher'], ['icefisher', 'ice fishing'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
     ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['oreGold', 'gold seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['carrier', 'water carrier'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'], ['reeds', 'marsh reeds'], ['sand', 'desert sand'], ['cactus', 'cactus'], ['jungle', 'jungle tree'], ['site', 'building site'], ['farm1', 'growing field'], ['granary', 'granary'], ['felled', 'fresh stump'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],

@@ -27,8 +27,10 @@ function updateBattles() {
   for (const bt of world.battles) {
     const from = world.towns[bt.from], to = world.towns[bt.to];
     bt.ticks++;
-    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns);
-    const defPow = (0.7 + Math.random() * 0.6) * (1 + 0.3 * to.mil) * (to.wallR ? 1.5 : 1) * (to.align.order > 0 ? 1.2 : 1);
+    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns) * (1 + 0.04 * Math.min(12, from.soldiers || 0)); // a town with drilled soldiers raids harder too
+    const defPow = (0.7 + Math.random() * 0.6) * (1 + 0.3 * to.mil) * (to.wallR ? 1.5 : 1) * (to.align.order > 0 ? 1.2 : 1) * soldierPower(to);
+    // Soldiers hold the line and fall first.
+    if ((to.soldiers || 0) > 0 && Math.random() < 0.12) { to.soldiers--; applyLosses(to, 1, 'battle'); }
     // Casualties this tick (fractions carry over).
     bt.defCarry += bt.att * attPow * 0.025; bt.attCarry += Math.max(1, bt.def) * defPow * 0.025;
     // No more than a slice of either side falls per tick, so even a rout takes a while to watch.

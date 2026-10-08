@@ -4,8 +4,8 @@
 function updateBoats() {
   const n = world.n, type = world.type;
   if (world.tick % 5 !== 0) return;
-  const want = Math.min(6, Math.floor(world.water.length / 220));
-  const fishing = world.boats.filter(b => !b.fire).length;
+  const want = Math.min(3, Math.floor(world.water.length / 400)); // the odd wandering fisherman; towns launch their own
+  const fishing = world.boats.filter(b => !b.fire && b.town === undefined).length;
   if (fishing < want && world.water.length && Math.random() < 0.3) {
     const i = world.water[Math.floor(Math.random() * world.water.length)];
     world.boats.push({ x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, fire: false, idle: 0 });
@@ -38,8 +38,11 @@ function updateBoats() {
       if (b.catchT === undefined) b.catchT = 30 + Math.floor(Math.random() * 40);
       if (--b.catchT <= 0) {
         b.catchT = 40 + Math.floor(Math.random() * 60);
-        let near = null, nd = Infinity; for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - b.x, t.cy - b.y); if (d < nd && d <= t.R + 14) { nd = d; near = t; } }
-        if (near) { addRes(near, 'fish', 2 + Math.floor(Math.random() * 3)); const [px, py] = cellCenter(b.y * n + b.x); for (let k = 0; k < 3; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 20, life: 0, max: 400, color: '#9fd0ff', size: 2, grav: 60 }); }
+        let near = null, nd = Infinity; const owner = b.town !== undefined ? world.towns[b.town] : null;
+        if (owner && !isAlive(owner)) b.town = undefined; // the boat outlives the town and drifts
+        if (owner && isAlive(owner) && Math.hypot(owner.cx - b.x, owner.cy - b.y) <= owner.R + 20) near = owner;
+        else for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - b.x, t.cy - b.y); if (d < nd && d <= t.R + 14) { nd = d; near = t; } }
+        if (near) { addRes(near, 'fish', Math.max(1, Math.round((2 + Math.floor(Math.random() * 3)) * (owner ? fishYield(near, b.y * n + b.x) : 1)))); const [px, py] = cellCenter(b.y * n + b.x); for (let k = 0; k < 3; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 30, vy: -20 - Math.random() * 20, life: 0, max: 400, color: '#9fd0ff', size: 2, grav: 60 }); }
       }
     }
     keep.push(b);

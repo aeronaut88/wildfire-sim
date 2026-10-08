@@ -9,6 +9,7 @@ function ignite(i) {
   const f = FUEL[t];
   world.burnLeft[i] = f.burn[0] + Math.floor(Math.random() * (f.burn[1] - f.burn[0] + 1));
   if (world.mat[i]) world.burnLeft[i] = Math.max(2, Math.round(world.burnLeft[i] * 0.6)); // less to burn inside stone walls
+  if (t === T.FARM && world.cropKind && world.cropKind[i] === 3) world.burnLeft[i] = 6 + Math.floor(Math.random() * 5); // an orchard burns like the trees it is
   world.burning.push(i);
   world.intensity[i] = 0;
   if (isBuilding(t)) onBuildingIgnite(i);
@@ -144,6 +145,7 @@ function step() {
   updateWarbands();
   updateFallout();
   updateBoats();
+  if (world.tick % 50 === 0) salmonRun();
   updateHerds();
   updatePacks();
   maybeTradeRoad();

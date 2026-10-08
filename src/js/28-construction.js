@@ -2,7 +2,7 @@
    Nothing appears out of nowhere. A placement pays its cost and leaves a timber frame; builders
    walk out and raise it over ticks, more of them when the town is big. Only the finished building
    counts, shelters anyone, or works. A frame that burns is lost. */
-const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45, [T.GAOL]: 24, [T.CISTERN]: 16, [T.TOWER_W]: 30, [T.HEALER]: 20, [T.HOSPITAL]: 40 };
+const BUILD_TIME = { [T.HOUSE]: 14, [T.FARM]: 6, [T.PASTURE]: 6, [T.WELL]: 10, [T.LUMBERYARD]: 18, [T.QUARRY]: 14, [T.MINE]: 20, [T.WHEEL]: 20, [T.TOWER]: 20, [T.TOWNHALL]: 30, [T.BARRACKS]: 24, [T.FORGE]: 24, [T.TENEMENT]: 26, [T.STATION]: 22, [T.UNIVERSITY]: 40, [T.FACTORY]: 40, [T.PLANT]: 40, [T.SOLAR]: 20, [T.SILO]: 50, [T.HYDRO]: 60, [T.NUCLEAR]: 80, [T.DERRICK]: 30, [T.SHAFT]: 30, [T.GRANARY]: 20, [T.AIRBASE]: 45, [T.GAOL]: 24, [T.CISTERN]: 16, [T.TOWER_W]: 30, [T.HEALER]: 20, [T.HOSPITAL]: 40, [T.FISHERY]: 12, [T.BAKERY]: 24, [T.SMOKEHOUSE]: 16, [T.INN]: 30, [T.MILL]: 26, [T.BREWERY]: 26, [T.CELLAR]: 18 };
 // Turn a just-placed building into a site, taking back the counts the placement added.
 function toSite(town, i, finalType, counted, stone) {
   const home = isHome(finalType);
@@ -31,6 +31,8 @@ function finishSite(town, i) {
   }
   if (st.type === T.WELL && town.wells[i] === undefined) town.wells[i] = aquifer(town);
   if (BUILDING_NAMES[st.type] && st.type !== T.TENEMENT && Math.random() < 0.4) log(`${town.name} finishes its ${BUILDING_NAMES[st.type].toLowerCase()}`, 'build');
+  nameWorkshop(town, st.type);
+  if (st.mat && town.people && !person(town, 'mason')) { const p = elect(town, 'mason', true); if (p) { p.story = WORKSHOP_STORY.mason; deed(p, `laid the first stone in ${town.name}`); } }
   stat('ev', 'built');
 }
 function updateBuilder(town, w) {
@@ -46,6 +48,7 @@ function updateBuilder(town, w) {
     const st = sites[w.target];
     if (Math.random() < 0.35) dust(w.target);
     st.progress += has(town, 'builder') ? 1.4 : 1;
+    w.mason = !!st.mat; // masons on the stone sites
     if (st.progress >= st.need) { finishSite(town, w.target); w.target = -1; }
     return true;
   }
@@ -70,24 +73,30 @@ function updateHarvester(town, w) {
   }
   if (w.phase === 'work') {
     if (Math.random() < 0.4) dust(w.target);
-    if (++w.work >= 5) { if (world.type[w.target] === T.FARM && world.crop[w.target] >= 100) { w.carry = Math.max(3, Math.round(9 * BIOME_YIELD[biomeAt(town.cx, town.cy)])); world.crop[w.target] = 0; dirty.add(w.target); stat('ev', 'harvests'); } w.phase = 'back'; }
+    if (++w.work >= 5) { if (world.type[w.target] === T.FARM && world.crop[w.target] >= 100) { const ck = cropKindAt(w.target); w.carry = Math.max(ck === 3 ? 2 : 3, Math.round(CROP_YIELD[ck] * BIOME_YIELD[biomeAt(town.cx, town.cy)] * yieldMul(town, 'harvest'))); w.kind = ck === 3 ? 'fruit' : 'grain'; world.crop[w.target] = ck === 3 ? 60 : 0; dirty.add(w.target); stat('ev', ck === 3 ? 'fruitHarvests' : 'harvests'); } w.phase = 'back'; }
     return true;
   }
   const hx = w.home % n, hy = (w.home - hx) / n;
-  if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) { if (w.carry) addRes(town, 'grain', w.carry); w.carry = 0; w.phase = 'out'; w.target = -1; w.stuck = 0; }
+  if (Math.max(Math.abs(w.x - hx), Math.abs(w.y - hy)) <= 1) { if (w.carry) addRes(town, w.kind || 'grain', w.carry); w.carry = 0; w.kind = null; w.phase = 'out'; w.target = -1; w.stuck = 0; }
   else { stepToward(w, hx, hy, 1, false); if (w.stall > 10 || ++w.stuck > 100) return false; }
   return true;
 }
 // Crops grow with the season and the weather; a field is ripe at 100.
 function growCrops(town) {
   const sea = season(), wk = world.weather.kind;
-  const rate = (world.cometWinter ? 0.25 : 1) * 16 * 0.5 * (sea === 0 ? 0.9 : sea === 1 ? 1 : sea === 2 ? 1.1 : 0) * (wk === 'rain' || wk === 'storm' ? 1.3 : wk === 'drought' || wk === 'drystorm' ? 0.3 : wk === 'snow' || wk === 'ashfall' ? 0 : 1) * (has(town, 'greenthumb') ? 1.5 : 1);
-  if (rate <= 0) return;
+  const base = (world.cometWinter ? 0.25 : 1) * 16 * 0.5 * (has(town, 'greenthumb') ? 1.5 : 1);
+  const cold = world.climate && (world.climate.name === 'cold' || world.climate.name === 'ridge');
   const stage = c => c < 35 ? 0 : c < 75 ? 1 : c < 100 ? 2 : 3;
   for (const i of town.buildings) {
     if (world.type[i] !== T.FARM || world.crop[i] >= 100) continue;
+    const k = cropKindAt(i);
+    let rate = base * CROP_SEASON[k][sea];
+    if (wk === 'rain' || wk === 'storm') rate *= 1.3; else if (wk === 'drought' || wk === 'drystorm') rate *= k === 1 ? 0.6 : 0.3; else if (wk === 'snow' || wk === 'ashfall') rate *= k === 2 && wk === 'snow' ? 0.5 : 0; // barley shrugs off drought; turnips keep growing under snow
+    if (k === 2 && (cold || world.biome[i] === 1)) rate *= 1.2;
+    if (k === 3) rate *= 0.5; // an orchard takes seasons to establish
+    if (rate <= 0) continue;
     const before = stage(world.crop[i]);
-    world.crop[i] = Math.min(100, world.crop[i] + rate);
+    world.crop[i] = Math.min(k === 3 && sea !== 2 ? 99 : 100, world.crop[i] + rate); // fruit ripens in autumn
     if (stage(world.crop[i]) !== before) dirty.add(i);
   }
 }
@@ -96,7 +105,7 @@ function shortages(town) {
   const out = new Set();
   if (town.res.wood < resCap(town, 'wood') * 0.25 || town.short === 'wood') out.add('wood');
   if (town.res.stone < resCap(town, 'stone') * (town.code && town.code.stone ? 0.5 : 0.2) && (town.wishLogged || town.popLeft >= 60 || town.code)) out.add('stone');
-  if (!town.fed || (town.res.grain + town.res.fish + town.res.game) < Math.ceil(town.popLeft / 30) * 4) out.add('food');
+  if (!town.fed || foodStock(town) < Math.ceil(town.popLeft / 30) * 4) out.add('food');
   if (town.res.water < resCap(town, 'water') * 0.3) out.add('water');
   for (const k of techWants(town)) out.add(k);
   return out;

@@ -226,7 +226,7 @@ Nothing is toned down. Towns get wiped out and rebuilt. The log keeps the last 6
   dozen tiered ones (trees burned, biggest town, years run, dragons slain, criminals caught,
   caravans, trees felled, harvests, buildings raised, lightning strikes, uprisings, bombs
   dropped) that show the highest tier reached and the next mark. Stored in this browser.
-- **Dragons have names** ("Solul the Twilight", "Kazgon Hoardlord"), are rarer, and a dragon
+- **Dragons have names** ("Solul the Twilight", "Kazgon Hoardlord"), are rare (see below), and a dragon
   driven off remembers the town that did it. **Sacks** now burn a third to two thirds of a
   town, wreck its workshops, carry people off, and an evil conqueror puts more to the
   sword. A town left with nothing is razed.
@@ -507,6 +507,61 @@ leaves a crater lake in a ring of rock, burns everything for a long way round, a
 of ash in which the crops barely grow. The crater's ring is worth digging: sky iron, copper,
 sometimes gold, and now and then a trace of something that hums, and an earthquake's ridge
 can expose a seam too. Every town within a walk will want it.
+
+## Stone, crafts, jobs and the larder
+
+- **Dragons are rare.** The odds rise with the valley's riches but level off, so a rich valley
+  sees a dragon about once in five years, never twice inside two, and never in the first year.
+  A driven-off dragon still comes back for the town that wounded it, once the cooldown has passed.
+- **A third tech ladder: hearth and craft.** Alongside arms and civil learning, every town works
+  up through Smoking, Masonry, Milling, Root cellars, Brewing, Cookery, Orchards and Mastery.
+  A food-minded elder's town learns its kitchen first. Each step opens a building or a way of
+  eating, and the town card shows what the recipe is waiting on.
+- **Stone buildings.** With masonry and a quarry a town builds its civic works in stone, raises
+  stone houses by temperament, and refaces timber houses one at a time when the stone is there.
+  Stone ignites at an eighth of timber's odds, throws no embers, warms its neighbours half as much,
+  and takes dragonfire badly but takes it: a dragon's pass over a stone quarter lights two or three
+  roofs instead of a dozen. A stone building that does burn leaves a standing shell that wants only
+  a roof. A town that loses a quarter of its homes in one fire (a lawful town, a sixth) and knows
+  masonry adopts a **building code**: no more thatch, every new wall in stone. London did the same.
+  Quarries scale with population to feed it.
+- **Citizens have jobs.** Every growth cycle a town divides its people among trades by what it has
+  to work with and what it is short of: farmers, fishers, hunters, foragers, water carriers,
+  loggers, quarriers, miners, builders, masons, bakers, smokers, cooks, brewers, smiths, haulers,
+  traders, healers, constables, militia, full-time soldiers, the young and the old, people keeping
+  house, and the idle. The counts are the truth; the walkers you see are a sample of each trade,
+  dressed for the job. Haulers shuttle goods from the works and speed them in; a staffed forge
+  with iron puts better tools in everyone's hands; wagons need a trader to drive them and traders
+  haggle better at market; idle hands above a fifth of the workforce raise unrest and push the
+  town to build a workshop. The town card has a **work** grid and the history plots have
+  *at work* and *idle hands*.
+- **Soldiers.** With steel and a barracks a town keeps up to twelve full-time soldiers per
+  barracks. They drill, they hold the line first and fall first, and they are worth two of the
+  levy. A town with drilled soldiers raids harder too.
+- **More game.** Twice the herds, elk in the highlands, hares everywhere (trapped, not stalked,
+  and they breed like hares). In the first weeks of autumn the herds come down from the hills and
+  the wolves follow them. Deer are fat in winter and lean in spring.
+- **A fresh stream, always,** and on a third of maps a **spring** rises inside the valley: a cell
+  of rock with water in it that never freezes and never runs dry, which the town beside it drinks
+  from. Every autumn the **salmon run** and fishing on the river is half again as good.
+- **Fishing is a trade.** A fisher's hut on the shore puts fishers to work along the water; a town
+  of sixty with timber to spare launches its own boat, whose catch comes home. In winter the
+  fishers walk out onto the ice, cut a hole and sit over it: six tenths of a summer catch, and the
+  only fresh food in a hard winter. Thin ice takes one now and then.
+- **The larder.** Food is seven stocks eaten fresh first: fish, game, hot meals, fruit, bread,
+  grain, and jerky last as the winter reserve. A **smokehouse** turns two fish or game into three
+  jerky for a stick of wood, double shifts in autumn, and keeps the smokehouse cold when the
+  woodpile is empty. A **mill** on the river and a **bakery** turn two grain into three bread (half
+  as much without a mill). A **root cellar** halves spoilage and adds grain storage. A **brewery**
+  turns barley into beer, which is not eaten but calms a town that has an inn, draws a bigger
+  festival crowd, and makes caravans pay more. An **inn** with cooks turns bread and jerky into
+  three hot meals, better with fruit on the table. **Mastery** makes every conversion two-to-four
+  and lays out a feast at the harvest festival, named dish and all. Every workshop's first batch
+  is logged, and the first person to run it gets a name and a story.
+- **Four crops.** Wheat; barley (shrugs off drought, feeds the brewery); turnips (frost-hardy,
+  the only crop that grows in winter, better in cold country, planted after a famine); and
+  orchards (slow to establish, fruit every autumn, and they burn like the trees they are). Fields
+  wear their crop's colours.
 
 ## The log does not repeat itself
 

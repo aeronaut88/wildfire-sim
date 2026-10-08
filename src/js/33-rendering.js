@@ -23,12 +23,20 @@ function spriteKey(i) {
     case T.STATION: return world.mat[i] ? 'station_s' : 'station';
     case T.RUBBLE: return 'rubble';
     case T.SHELL: return 'shell';
+    case T.SPRING: return 'spring';
+    case T.FISHERY: return 'fishery';
+    case T.SMOKEHOUSE: return 'smokehouse';
+    case T.CELLAR: return 'cellar';
+    case T.BAKERY: return world.mat[i] ? 'bakery_s' : 'bakery';
+    case T.INN: return world.mat[i] ? 'inn_s' : 'inn';
+    case T.MILL: return world.mat[i] ? 'mill_s' : 'mill';
+    case T.BREWERY: return world.mat[i] ? 'brewery_s' : 'brewery';
     case T.DIRT: return world.road[i] ? 'road' : 'dirt';
     case T.BIGPINE: return 'bigpine';
     case T.BIRCH: return 'birch';
     case T.SCRUB: return 'scrub';
     case T.SNAG: return 'snag';
-    case T.FARM: return world.crop ? (world.crop[i] < 35 ? 'farm0' : world.crop[i] < 75 ? 'farm1' : 'farm') : 'farm';
+    case T.FARM: { const k = world.cropKind ? world.cropKind[i] : 0, c = world.crop ? world.crop[i] : 100; if (k === 3) return c >= 100 ? 'farm_or' : 'farm_o'; if (c < 35) return 'farm0'; if (c < 75) return 'farm1'; return k === 1 ? 'farm_b' : k === 2 ? 'farm_t' : 'farm'; }
     case T.SITE: return 'site';
     case T.GRANARY: return world.mat[i] ? 'granary_s' : 'granary';
     case T.FELLED: return 'felled';

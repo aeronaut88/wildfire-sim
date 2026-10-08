@@ -18,7 +18,7 @@ function updateTrader() {
     for (let k = 0; k < n && !passable(world.type[ey * n + ex]); k++) { if (ey === 0 || ey === n - 1) ex = (ex + 1) % n; else ey = (ey + 1) % n; }
     const path = findPath(ex, ey, town.cx, town.cy); if (!path) { world.nextTrader = world.tick + 30; return; }
     // Modest loads: a little of this and that. Oil now and then; uranium once in a long while, and only a few units.
-    const pool = ['wood', 'wood', 'stone', 'stone', 'iron', 'iron', 'copper', 'coal', 'coal', 'fish', 'fish', 'oil', 'herbs', 'cattle', 'pigs', 'sheep', 'chickens'];
+    const pool = ['wood', 'wood', 'stone', 'stone', 'iron', 'iron', 'copper', 'coal', 'coal', 'fish', 'fish', 'oil', 'herbs', 'jerky', 'beer', 'grain', 'cattle', 'pigs', 'sheep', 'chickens'];
     const stock = {}; const kinds = 2 + Math.floor(Math.random() * 2);
     for (let k = 0; k < kinds; k++) { const kind = pool[Math.floor(Math.random() * pool.length)]; stock[kind] = (stock[kind] || 0) + (LIVESTOCK.includes(kind) ? (kind === 'chickens' ? 3 : 1) + Math.floor(Math.random() * 3) : 6 + Math.floor(Math.random() * 10)); }
     if (Math.random() < 0.04) stock.uranium = 1 + Math.floor(Math.random() * 3);
@@ -87,7 +87,8 @@ function holdMarket(tr, town) {
     if (town.res[k] < cap * 0.65 || over <= 0) continue;
     const amt = Math.min(over, Math.floor(tr.coin / PRICE[k]));
     if (amt <= 0) continue;
-    town.res[k] -= amt; town.res.coin += amt * PRICE[k]; tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
+    const bonus = 1 + Math.min(0.3, 0.1 * jobCount(town, 'trader')) + ((town.res.beer || 0) > 0 && hasType(town, T.INN) ? 0.15 : 0); // a town with traders haggles better, and a town with an inn is worth the stop
+    town.res[k] -= amt; town.res.coin += Math.round(amt * PRICE[k] * bonus); tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
   stat('ev', 'markets');
   spawnCrowd(town, town.cy * world.n + town.cx, 25, 4 + Math.floor(Math.random() * 4));

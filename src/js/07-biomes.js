@@ -6,13 +6,13 @@ const BIOME_NAMES = ['Mixed forest', 'Pine highland', 'Broadleaf lowland', 'Dry 
 const BIOME_FIRE = [1, 1.1, 0.8, 1.35, 0.55, 1.5, 0.65];
 const BIOME_YIELD = [1, 0.8, 1.25, 0.7, 0.9, 0.5, 1.1];
 const BIOME_TINT = [null, 'rgba(190,205,235,0.09)', 'rgba(110,200,90,0.07)', 'rgba(225,190,90,0.13)', 'rgba(30,90,85,0.15)', 'rgba(240,205,110,0.12)', 'rgba(10,110,40,0.16)'];
-const BIOME_HERDS = [null, ['sheep', 'boar', 'deer'], ['deer', 'boar', 'fowl'], ['deer', 'aurochs', 'fowl'], ['fowl', 'boar', 'deer'], ['sheep', 'fowl', 'aurochs'], ['boar', 'fowl', 'deer']];
+const BIOME_HERDS = [null, ['sheep', 'boar', 'deer', 'elk', 'elk', 'hare'], ['deer', 'boar', 'fowl', 'hare'], ['deer', 'aurochs', 'fowl', 'hare'], ['fowl', 'boar', 'deer', 'elk'], ['sheep', 'fowl', 'aurochs', 'hare'], ['boar', 'fowl', 'deer']];
 // Climates: most valleys are varied; some are one country end to end.
 const CLIMATES = [['temperate', 0, 0, 0.28], ['dry', -0.22, 0, 0.11], ['wet', 0.2, 0, 0.11], ['cold', 0, 0.18, 0.09], ['forest', 0.08, 0, 0.07], ['desert', -0.42, 0, 0.08], ['split', 0, 0, 0.11], ['ridge', 0, 0, 0.07], ['jungle', 0.32, -0.1, 0.08]];
 // 'split' runs a moisture gradient across the map (desert one side, forest the other); 'ridge' runs a cold one (highland on one side).
 function nearWater(i, r) {
   const n = world.n, x = i % n, y = (i - x) / n;
-  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue; if (world.type[yy * n + xx] === T.WATER) return true; }
+  for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= n || yy >= n) continue; if (world.type[yy * n + xx] === T.WATER || world.type[yy * n + xx] === T.SPRING) return true; }
   return false;
 }
 function plantable(i) { // a plot can be farmed unless it is desert with no water to irrigate it
@@ -51,6 +51,12 @@ function generate(n, seed) {
   world.biome = new Uint8Array(N); // 0 mixed forest, 1 pine highland, 2 broadleaf lowland, 3 dry scrubland, 4 marsh
   world.crop = new Uint8Array(N); // how far along each field's crop is, 0 to 100
   world.mat = new Uint8Array(N); // what a building is made of: 0 timber, 1 stone
+  world.cropKind = new Uint8Array(N); // 0 wheat, 1 barley, 2 turnips, 3 orchard
+  world.spring = -1; world.salmonRun = 0;
+  world.cropKind = new Uint8Array(N); // 0 wheat, 1 barley, 2 turnips, 3 orchard
+  world.spring = -1; world.salmonRun = 0;
+  world.cropKind = new Uint8Array(N); // 0 wheat, 1 barley, 2 turnips, 3 orchard
+  world.spring = -1; world.salmonRun = 0;
   world.deep = new Uint8Array(N); world.deepAmt = new Uint16Array(N); world.surveyed = new Uint8Array(N); // what lies under the ground, found only by geologists
   world.trader = null; world.nextTrader = 0; world.traderWary = 0; world.roadProjects = [];
   world.stats = newStats();
@@ -156,13 +162,22 @@ function carveRiver(n, seed) {
   if (!path) return;
   const width = n >= 120 ? 1 : 0;
   layRiver(path, width);
-  // A tributary from a third edge into the main stem, sometimes.
-  if (rand() < 0.5) {
+  // A tributary from a third edge into the main stem: a fresh stream, always.
+  {
     const side = vertical ? (rand() < 0.5 ? 2 : 3) : (rand() < 0.5 ? 0 : 1);
     const tsrc = edgeCells(side).reduce((a, b) => elev[a] >= elev[b] ? a : b);
     const riverSet = new Set(world.river);
     const tpath = valleyPath(tsrc, -1, riverSet);
     if (tpath) layRiver(tpath, 0);
+  }
+  // A spring, on a third of maps: the stream rises from high ground well inside the valley and runs down to the nearest water.
+  if (rand() < 0.35) {
+    let best = -1;
+    for (let k = 0; k < 400; k++) { const x = Math.floor(n / 4 + rand() * n / 2), y = Math.floor(n / 4 + rand() * n / 2); const i = y * n + x; if (type[i] === T.WATER || type[i] === T.ROCK) continue; if (best < 0 || elev[i] > elev[best]) best = i; }
+    if (best >= 0) {
+      const sp = valleyPath(best, -1, new Set(world.river));
+      if (sp && sp.length > 8) { layRiver(sp, 0); type[best] = T.SPRING; world.spring = best; }
+    }
   }
   // Thin out trees along the banks.
   for (const i of world.river) {

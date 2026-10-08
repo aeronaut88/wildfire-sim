@@ -143,7 +143,7 @@ function burnout(i) {
     if (t === T.BRIDGE) log('A bridge burns and falls into the river', 'loss');
     return;
   }
-  if (t === T.FARM) { const tw = world.towns[world.townOf[i]]; if (tw) tw.farmsLost = (tw.farmsLost || 0) + 1; }
+  if (t === T.FARM) { const tw = world.towns[world.townOf[i]]; if (tw) tw.farmsLost = (tw.farmsLost || 0) + 1; if (world.cropKind) world.cropKind[i] = 0; }
   if (t === T.SITE) { const tw = world.towns[world.townOf[i]]; if (tw && tw.sites) delete tw.sites[i]; }
   if (isTree(t)) { world.treeCount--; stat('ev', 'treesBurned'); }
   if (isBuilding(t)) onBuildingDestroyed(i, 'fire');

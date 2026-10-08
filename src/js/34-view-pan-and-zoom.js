@@ -20,6 +20,7 @@ function updateZoomHud() { const el = $('hudZoom'); if (el) el.textContent = vie
 function canvasPoint(clientX, clientY) { const r = canvas.getBoundingClientRect(); return [(clientX - r.left) / r.width * canvas.width, (clientY - r.top) / r.height * canvas.height]; }
 function fillScreen(style) { ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.fillStyle = style; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.restore(); }
 
+const WALKER_SPRITE = { constable: 'constable', fugitive: 'fugitive', convict: 'fugitive', rounds: 'healer', forage: 'forager', log: 'logger', hunt: 'hunter', water: 'carrier', mine: 'miner', quarry: 'miner', tend: 'farmer', farm: 'farmer', harvest: 'farmer', haul: 'hauler', fish: 'fisher', icefish: 'icefisher' };
 function render(now, tickFrac) {
   flushDirty();
   ctx.save();
@@ -92,7 +93,8 @@ function render(now, tickFrac) {
     if (t.workers && !tiny) for (const w of t.workers) {
       const x = (w.px + (w.x - w.px) * tickFrac) * cellPx, y = (w.py + (w.y - w.py) * tickFrac) * cellPx;
       if (!vis(x, y)) continue;
-      ctx.drawImage(w.soldier ? SPR.soldier : w.job === 'constable' ? SPR.constable : w.job === 'fugitive' || w.job === 'convict' || w.convict || w.ousted ? SPR.fugitive : w.job === 'rounds' ? SPR.healer : w.job === 'forage' ? SPR.forager : w.job === 'log' ? SPR.logger : w.job === 'hunt' ? SPR.hunter : w.job === 'water' ? SPR.carrier : w.job === 'mine' || w.job === 'quarry' ? SPR.miner : SPR.worker, x, y);
+      ctx.drawImage(w.soldier ? SPR.soldier : w.convict || w.ousted ? SPR.fugitive : w.mason ? SPR.mason : w.job === 'craft' ? (SPR[w.craft] || SPR.worker) : (SPR[WALKER_SPRITE[w.job]] || SPR.worker), x, y);
+      if (w.ice) { ctx.fillStyle = '#16283a'; ctx.fillRect(x + cellPx * 0.55, y + cellPx * 0.75, cellPx * 0.3, cellPx * 0.15); } // the hole in the ice
       if (w.animal) ctx.drawImage(SPR[LIVESTOCK_SPRITE[w.animal]] || SPR.sheep, x + cellPx * 0.4, y + cellPx * 0.3);
       if (w.carry) { ctx.fillStyle = w.job === 'log' ? '#7a4e22' : w.job === 'quarry' ? '#9a9aa4' : w.job === 'water' ? '#5a97d6' : w.job === 'forage' ? '#4ea955' : w.kind === 'coal' ? '#17171b' : w.kind === 'copper' ? '#2fa37a' : w.kind === 'uranium' ? '#b8ff2e' : '#c2602c'; ctx.fillRect(x + cellPx * 0.1, y + cellPx * 0.15, cellPx * 0.35, cellPx * 0.3); } // the load on their back
     }

@@ -2,8 +2,8 @@
    Everything a town builds is paid for in wood, stone, iron, copper, coal or uranium. Wood is
    cut from the forest by loggers (the trees really go), stone comes from a quarry at a rock face,
    the metals from mines on finite seams. Stockpiles are small, so towns save up, trade, or fight. */
-const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'gold', 'oil', 'grain', 'fish', 'game', 'herbs', 'water', 'coin'];
-const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, grain: 1, herbs: 2, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, gold: 15, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
+const RES_KINDS = ['wood', 'stone', 'iron', 'copper', 'coal', 'uranium', 'gold', 'oil', 'grain', 'fish', 'game', 'bread', 'jerky', 'meals', 'beer', 'fruit', 'herbs', 'water', 'coin'];
+const PRICE = { wood: 1, stone: 1, fish: 1, game: 1, grain: 1, bread: 2, jerky: 2, meals: 3, beer: 2, fruit: 1, herbs: 2, coal: 2, iron: 3, copper: 4, oil: 3, uranium: 12, gold: 15, cattle: 8, pigs: 4, sheep: 3, chickens: 1 };
 const COST = {
   [T.HOUSE]: { wood: 4 }, [T.TENEMENT]: { wood: 6, stone: 8 }, [T.FARM]: { wood: 1 }, [T.STATION]: { wood: 6, stone: 3 },
   [T.TOWNHALL]: { wood: 8, stone: 6 }, [T.BARRACKS]: { wood: 8, stone: 4, iron: 2 }, [T.FORGE]: { stone: 6, iron: 2 },
@@ -13,6 +13,7 @@ const COST = {
   [T.HYDRO]: { stone: 14, iron: 8, copper: 6 }, [T.NUCLEAR]: { stone: 16, iron: 12, copper: 10, uranium: 6 },
   [T.DERRICK]: { stone: 8, iron: 10, copper: 4 }, [T.SHAFT]: { wood: 10, iron: 6, stone: 4 }, [T.PASTURE]: { wood: 6 }, [T.GRANARY]: { wood: 6 }, [T.AIRBASE]: { stone: 12, iron: 10, wood: 8, oil: 4 }, [T.GAOL]: { stone: 8, wood: 4 }, timberWell: { wood: 6 }, [T.CISTERN]: { stone: 6, wood: 2 }, [T.TOWER_W]: { stone: 10, iron: 4, wood: 4 }, [T.HEALER]: { wood: 6, stone: 4 }, [T.HOSPITAL]: { stone: 10, copper: 4, wood: 6 },
   stoneHouse: { wood: 2, stone: 5 }, reface: { stone: 5 }, shell: { wood: 2, stone: 1 },
+  [T.FISHERY]: { wood: 5 }, [T.BAKERY]: { wood: 6, stone: 4 }, [T.SMOKEHOUSE]: { wood: 6 }, [T.INN]: { wood: 8, stone: 4 }, [T.MILL]: { wood: 8, stone: 4 }, [T.BREWERY]: { wood: 8, stone: 4, copper: 1 }, [T.CELLAR]: { stone: 8, wood: 2 },
   engine: { iron: 3, copper: 1 }, wall: { stone: 10 }, bridge: { wood: 6 }, road: { stone: 3 }, tank: { iron: 10, coal: 3 }, gun: { iron: 6 },
   bomber: { iron: 8, copper: 4, oil: 3 }, fighter: { iron: 6, copper: 6, oil: 4 }, nuke: { uranium: 40, iron: 10 }, airbase: { stone: 12, iron: 8, wood: 10, oil: 6 },
 };
@@ -24,15 +25,20 @@ const CRAFT_NEED = [null, { wood: 6 }, { stone: 12 }, { wood: 10, stone: 6 }, { 
 function resCap(t, kind) {
   if (kind === 'coin') return 1e9;
   if (kind === 'water') return 40 + 30 * countType(t, T.WELL) + (t.civ >= 2 ? 40 : 0) + 60 * countType(t, T.CISTERN) + 150 * countType(t, T.TOWER_W); // storage against the dry months
-  if (kind === 'fish' || kind === 'game') return 40 + 20 * countType(t, T.GRANARY); // the smokehouse shares the storehouse
-  if (kind === 'grain') return 60 + 120 * countType(t, T.GRANARY); // a town that outgrows its granaries builds more
+  if (kind === 'fish' || kind === 'game') return 40 + 10 * countType(t, T.GRANARY) + 20 * countType(t, T.SMOKEHOUSE); // fresh food wants a smokehouse
+  if (kind === 'grain') return 60 + 120 * countType(t, T.GRANARY) + 80 * countType(t, T.CELLAR); // a town that outgrows its granaries builds more
+  if (kind === 'bread') return 40 + 30 * countType(t, T.BAKERY);
+  if (kind === 'jerky') return 50 + 40 * countType(t, T.SMOKEHOUSE);
+  if (kind === 'meals') return 20 + 20 * countType(t, T.INN);
+  if (kind === 'beer') return 30 + 30 * countType(t, T.BREWERY);
+  if (kind === 'fruit') return 30 + 20 * countType(t, T.CELLAR);
   if (kind === 'oil') return 30 + 20 * countType(t, T.DERRICK);
   if (kind === 'herbs') return 12 + 12 * countType(t, T.HEALER) + 24 * countType(t, T.HOSPITAL); // the healer's shelves
   if (kind === 'wood') return 40 + 30 * countType(t, T.LUMBERYARD);
   if (kind === 'stone') return 30 + 30 * countType(t, T.QUARRY);
   return 24 + 20 * countType(t, T.MINE);
 }
-const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT, T.CISTERN, T.TOWER_W].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell, COST.stoneHouse, COST.shell]));
+const NEVER_RESERVED = new Set([T.HOUSE, T.FARM, T.GRANARY, T.WELL, T.LUMBERYARD, T.QUARRY, T.MINE, T.PASTURE, T.WHEEL, T.PLANT, T.CISTERN, T.TOWER_W, T.FISHERY, T.SMOKEHOUSE].map(k => COST[k]).concat([COST.road, COST.bridge, COST.timberWell, COST.stoneHouse, COST.shell]));
 // Building in stone: the same works with four more stone on the pile, slower to raise and far harder to burn.
 const STONE_EXTRA = 4;
 const STONE_OK = new Set([T.HOUSE, T.TENEMENT, T.TOWNHALL, T.GRANARY, T.BARRACKS, T.GAOL, T.HOSPITAL, T.HEALER, T.STATION, T.UNIVERSITY, T.FORGE, T.TOWER, T.BAKERY, T.INN, T.BREWERY, T.CELLAR, T.MILL]);
@@ -228,6 +234,15 @@ function buildSites(town) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
     if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens ${hasType(town, T.QUARRY) ? 'another quarry' : 'a quarry'}`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
   }
+  if (town.popLeft >= 20 && countPlanned(town, T.FISHERY) < (town.popLeft >= 150 ? 2 : 1) && canAfford(town, COST[T.FISHERY]) && (town.fisherySought || 0) < world.tick) {
+    const i = placeSite(town, T.FISHERY, town.R + 10, (t, j) => t === T.WATER);
+    if (i >= 0) { pay(town, COST[T.FISHERY]); log(`${town.name} ${hasType(town, T.FISHERY) ? "builds a second fisher's hut" : "builds a fisher's hut on the shore"}`, 'build'); return; }
+    town.fisherySought = world.tick + 600; // no shore in reach: look again later
+  }
+  if ((town.craft || 0) >= 3 && town.popLeft >= 50 && !hasPlanned(town, T.MILL) && canAfford(town, COST[T.MILL])) {
+    const i = placeSite(town, T.MILL, town.R + 8, (t, j) => t === T.WATER && world.flow[j] >= 0);
+    if (i >= 0) { pay(town, COST[T.MILL]); log(`${town.name} builds a mill on the river`, 'build'); return; }
+  }
   if (town.popLeft >= 40 && canAfford(town, COST[T.MINE])) {
     const wants = techWants(town), order = [6, 1, 2, 3, 4]; // gold first: everyone knows what that is
     for (const k of [4, 3, 2, 1]) if (wants.has(ORE_NAMES[k])) { order.splice(order.indexOf(k), 1); order.unshift(k); } // unless a tech is waiting on an ore
@@ -283,6 +298,10 @@ function updateGatherer(town, w) {
   const n = world.n, type = world.type;
   if (w.job === 'hunt') return updateHunter(town, w);
   if (w.job === 'water') return updateCarrier(town, w);
+  if (w.job === 'haul') return updateHauler(town, w);
+  if (w.job === 'fish' || w.job === 'icefish') return updateFisher(town, w);
+  if (w.job === 'tend') return updateTender(town, w);
+  if (w.job === 'craft') return updateCrafter(town, w);
   if (w.job === 'build') return updateBuilder(town, w);
   if (w.job === 'harvest') return updateHarvester(town, w);
   if (w.site >= 0 && type[w.site] !== w.siteType) return false; // the site burned
@@ -306,8 +325,8 @@ function updateGatherer(town, w) {
       if (w.job === 'forage') { w.carry = has(town, 'physician') ? 3 : 2; w.kind = 'herbs'; stat('ev', 'foraged', w.carry); }
       else if (w.job === 'log') {
         const t = type[w.target];
-        if (isTree(t)) { w.carry = WOOD_YIELD[t] || 3; type[w.target] = T.FELLED; world.since[w.target] = world.tick; if (t !== T.SNAG) world.treeCount--; dirty.add(w.target); for (let k = 0; k < 3; k++) dust(w.target); town.felled = (town.felled || 0) + 1; stat('ev', 'felled'); }
-      } else if (w.job === 'quarry') w.carry = 3;
+        if (isTree(t)) { w.carry = Math.round((WOOD_YIELD[t] || 3) * yieldMul(town, 'log')); type[w.target] = T.FELLED; world.since[w.target] = world.tick; if (t !== T.SNAG) world.treeCount--; dirty.add(w.target); for (let k = 0; k < 3; k++) dust(w.target); town.felled = (town.felled || 0) + 1; stat('ev', 'felled'); }
+      } else if (w.job === 'quarry') w.carry = Math.round(3 * yieldMul(town, 'quarry'));
       else {
         const o = w.target, take = Math.min(2, world.ore[o]);
         world.ore[o] -= take; w.carry = take; w.kind = ORE_NAMES[world.oreKind[o]];
@@ -330,7 +349,7 @@ function updateHunter(town, w) {
   const n = world.n;
   if (w.phase === 'out') {
     let herd = w.herd !== undefined ? (world.herds || [])[w.herd] : null;
-    if (!herd || herd.size <= 0) { let best = -1, bd = town.R + 18; (world.herds || []).forEach((h, k) => { if (w.badHerd === k && world.tick < (w.badUntil || 0)) return; const d = Math.hypot(h.x - w.x, h.y - w.y); if (h.size >= 3 && d < bd) { bd = d; best = k; } }); /* small herds are left to recover; a herd across the water is left for a while */ if (best < 0) { w.idle = (w.idle || 0) + 1; return w.idle < 40; } w.herd = best; herd = world.herds[best]; }
+    if (!herd || herd.size <= 0) { let best = -1, bd = town.R + 18; (world.herds || []).forEach((h, k) => { if (w.badHerd === k && world.tick < (w.badUntil || 0)) return; const d = Math.hypot(h.x - w.x, h.y - w.y); if (h.size >= (h.kind === 'hare' ? 3 : 4) && d < bd) { bd = d; best = k; } }); /* small herds are left to recover; a herd across the water is left for a while */ if (best < 0) { w.idle = (w.idle || 0) + 1; return w.idle < 40; } w.herd = best; herd = world.herds[best]; }
     if (Math.hypot(herd.x - w.x, herd.y - w.y) <= 2.5) { w.phase = 'work'; w.work = 0; w.stall = 0; return true; }
     stepToward(w, herd.x, herd.y, 1, false);
     if (w.stall > 4 || ++w.stuck > 120) { w.badHerd = w.herd; w.badUntil = world.tick + 300; w.herd = undefined; w.stuck = 0; w.stall = 0; w.lastCell = -1; }
@@ -339,12 +358,12 @@ function updateHunter(town, w) {
   if (w.phase === 'work') {
     const herd = (world.herds || [])[w.herd];
     if (!herd || herd.size < 3) { w.phase = 'out'; w.herd = undefined; return true; }
-    if (++w.work === 5) {
+    if (++w.work === (herd.kind === 'hare' ? 3 : 5)) { // hares are trapped, not stalked
       const [px, py] = cellCenter(w.y * n + w.x); particles.push({ x: px, y: py, vx: (herd.x - w.x) * 60, vy: (herd.y - w.y) * 60, life: 0, max: 150, color: '#ffe866', size: 2, grav: 0 }); // the shot
       herd.size--; herd.wx = -1; herd.rest = 0;
       const kind = HERD_KINDS.find(k => k[0] === herd.kind);
       if (kind[3] && pastureRoom(town) > 0 && Math.random() < 0.35) { w.animal = kind[3]; w.carry = 0; }
-      else { w.carry = kind[4]; w.animal = null; }
+      else { const sea = season(); w.carry = herd.kind === 'hare' ? 2 + Math.floor(Math.random() * 2) : Math.max(1, kind[4] + ((herd.kind === 'deer' || herd.kind === 'elk') && sea === 3 ? 2 : sea === 0 ? -1 : 0)); w.animal = null; } // fat in winter, lean in spring
       stat('ev', 'hunted');
       w.phase = 'back';
     }
@@ -419,32 +438,40 @@ function spawnGatherers(town) {
   if (world.tick % 7 !== 0 || town.popLeft < 4) return;
   const muster = campPoint(town); if (muster < 0) return;
   const mk = (job, site, siteType, home) => { const hx = home % n, hy = (home - hx) / n; town.workers.push({ x: hx, y: hy, px: hx, py: hy, target: -1, linger: 0, face: 1, job, gather: true, site, siteType, home, phase: 'out', work: 0, carry: 0, stuck: 0 }); };
-  const short = shortages(town), tp = town.temper || { wood: 1, stone: 1, food: 1, build: 1 };
+  if (!town.jobs) allocateJobs(town);
+  const J = k => jobCount(town, k), count = job => town.workers.filter(w => w.job === job).length, short = shortages(town);
+  // The walkers are a sample of each trade: as many as the trade has people, up to what the map can show.
   const siteCount = Object.keys(town.sites || {}).filter(k => type[+k] === T.SITE).length;
-  if (siteCount && town.workers.filter(w => w.job === 'build').length < Math.min(5, Math.round((1 + Math.floor(town.popLeft / 40)) * tp.build) + (siteCount > 3 ? 1 : 0))) { mk('build', -1, 0, muster); return; }
+  if (siteCount && count('build') < Math.min(6, J('builder') + J('mason'))) { mk('build', -1, 0, muster); return; }
   const ripeCount = town.buildings.filter(i => type[i] === T.FARM && world.crop[i] >= 100).length;
-  if (ripeCount && town.workers.filter(w => w.job === 'harvest').length < Math.min(6, 1 + Math.floor(ripeCount / 3) + Math.round(Math.floor(town.popLeft / 60) * tp.food) + (short.has('food') ? 1 : 0))) { mk('harvest', -1, 0, muster); return; }
+  if (ripeCount && count('harvest') < Math.min(6, 1 + Math.floor(ripeCount / 3), Math.max(1, J('farmer')))) { mk('harvest', -1, 0, muster); return; }
+  if (season() !== 3 && J('farmer') >= 4 && count('tend') < Math.min(3, Math.floor(J('farmer') / 4))) { mk('tend', -1, 0, muster); return; }
   const waterNear = waterCellNear(town) >= 0;
-  const wantWater = waterNear && (town.res.water || 0) < resCap(town, 'water') * 0.7 ? Math.min(3, 1 + Math.floor(town.popLeft / 60) + (short.has('water') ? 1 : 0)) : 0;
-  if (town.workers.filter(w => w.job === 'water').length < wantWater) { mk('water', -1, 0, muster); return; }
+  const wantWater = waterNear && (town.res.water || 0) < resCap(town, 'water') * 0.7 ? Math.min(3, J('carrier')) : 0;
+  if (count('water') < wantWater) { mk('water', -1, 0, muster); return; }
   if (hasType(town, T.HEALER) && (season() === 0 || season() === 1) && (town.res.herbs || 0) < resCap(town, 'herbs') * 0.7) {
-    const wantForage = 1 + (hasType(town, T.HOSPITAL) ? 1 : 0) + (has(town, 'physician') ? 1 : 0);
-    if (town.workers.filter(w => w.job === 'forage').length < wantForage) { const h = town.buildings.find(i => type[i] === T.HEALER); mk('forage', -1, 0, h !== undefined ? h : muster); return; }
+    if (count('forage') < Math.min(3, J('forager'))) { const h = town.buildings.find(i => type[i] === T.HEALER); mk('forage', -1, 0, h !== undefined ? h : muster); return; }
   }
   const herdsNear = (world.herds || []).some(h => Math.hypot(h.x - town.cx, h.y - town.cy) <= town.R + 18);
-  const wantHunt = herdsNear && town.popLeft >= 15 && (town.res.game || 0) < resCap(town, 'game') ? Math.min(4, 1 + Math.floor(town.popLeft / 120) + (short.has('food') ? 1 : 0) + (has(town, 'beastlord') ? 1 : 0)) : 0;
-  if (town.workers.filter(w => w.job === 'hunt').length < wantHunt) { mk('hunt', -1, 0, muster); return; }
+  const wantHunt = herdsNear && town.popLeft >= 15 && (town.res.game || 0) < resCap(town, 'game') ? Math.min(4, J('hunter')) : 0;
+  if (count('hunt') < wantHunt) { mk('hunt', -1, 0, muster); return; }
   const yards = town.buildings.filter(i => type[i] === T.LUMBERYARD);
-  const wantLog = Math.min(2 + 2 * yards.length + (short.has('wood') ? 2 : 0), Math.round((1 + Math.floor(town.popLeft / 40)) * tp.wood) + (short.has('wood') ? 1 : 0));
-  const loggers = town.workers.filter(w => w.job === 'log').length;
-  if (loggers < wantLog && town.res.wood < resCap(town, 'wood')) { mk('log', -1, 0, yards.length ? yards[Math.floor(Math.random() * yards.length)] : muster); return; }
+  if (count('log') < Math.min(6, J('logger')) && town.res.wood < resCap(town, 'wood')) { mk('log', -1, 0, yards.length ? yards[Math.floor(Math.random() * yards.length)] : muster); return; }
   const blocked = i => town.unreachable && town.unreachable[i] > world.tick;
-  for (const q of town.buildings.filter(i => type[i] === T.QUARRY && !blocked(i))) {
-    if (town.workers.filter(w => w.job === 'quarry' && w.site === q).length < (short.has('stone') ? 3 : 2) && town.res.stone < resCap(town, 'stone')) { mk('quarry', q, T.QUARRY, muster); return; }
+  const quarries = town.buildings.filter(i => type[i] === T.QUARRY && !blocked(i));
+  for (const q of quarries) {
+    if (town.workers.filter(w => w.job === 'quarry' && w.site === q).length < Math.min(3, Math.ceil(J('quarrier') / quarries.length)) && town.res.stone < resCap(town, 'stone')) { mk('quarry', q, T.QUARRY, muster); return; }
+  }
+  const huts = town.buildings.filter(i => type[i] === T.FISHERY && world.burnLeft[i] <= 0);
+  if (huts.length && (town.res.fish || 0) < resCap(town, 'fish') && count('fish') + count('icefish') < Math.min(4, J('fisher'))) { const h = huts[Math.floor(Math.random() * huts.length)]; mk('fish', h, T.FISHERY, h); return; }
+  if (count('haul') < Math.min(4, J('hauler'))) { const store = town.buildings.find(i => type[i] === T.GRANARY || type[i] === T.TOWNHALL); mk('haul', -1, 0, store !== undefined ? store : muster); return; }
+  for (const b of town.buildings) {
+    const cj = CRAFT_JOBS[type[b]]; if (!cj || J(cj) < 1 || world.burnLeft[b] > 0) continue;
+    if (!town.workers.some(w => w.job === 'craft' && w.site === b)) { mk('craft', b, type[b], muster); town.workers[town.workers.length - 1].craft = cj; return; }
   }
   for (const m of town.buildings.filter(i => type[i] === T.MINE && !town.spent[i] && !blocked(i))) {
     const kind = ORE_NAMES[town.mineKind[m] || 0];
-    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < (short.has(kind) ? 3 : 2) && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
+    if (town.workers.filter(w => w.job === 'mine' && w.site === m).length < Math.min(3, Math.ceil(J('miner') / Math.max(1, town.buildings.filter(i => type[i] === T.MINE && !town.spent[i]).length))) && (!kind || town.res[kind] < resCap(town, kind))) { mk('mine', m, T.MINE, muster); return; }
   }
 }
 // Who wants what somebody else has: a seam of a metal you cannot reach yourself.

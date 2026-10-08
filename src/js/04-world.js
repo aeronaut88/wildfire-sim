@@ -52,6 +52,13 @@ const FUEL = {
   [T.JUNGLE]:     { ignite: 0.3,  burn: [12, 22], after: T.STUMP,  spots: true }, // wet and hard to light; once it goes, it goes big
   [T.SILO]:       { ignite: 0.2,  burn: [6, 10],  after: T.RUBBLE, spots: false },
   [T.TOWNHALL]:   { ignite: 0.5,  burn: [10, 16], after: T.RUBBLE, spots: true },
+  [T.FISHERY]:    { ignite: 0.7,  burn: [5, 8],   after: T.RUBBLE, spots: false },
+  [T.BAKERY]:     { ignite: 0.7,  burn: [8, 12],  after: T.RUBBLE, spots: true }, // ovens and flour dust
+  [T.SMOKEHOUSE]: { ignite: 0.85, burn: [6, 10],  after: T.RUBBLE, spots: true }, // it is already half on fire
+  [T.INN]:        { ignite: 0.6,  burn: [8, 14],  after: T.RUBBLE, spots: true },
+  [T.MILL]:       { ignite: 0.6,  burn: [8, 12],  after: T.RUBBLE, spots: true },
+  [T.BREWERY]:    { ignite: 0.6,  burn: [8, 12],  after: T.RUBBLE, spots: true },
+  [T.CELLAR]:     { ignite: 0.1,  burn: [3, 5],   after: T.RUBBLE, spots: false },
 };
 const isFuel = t => FUEL[t] !== undefined;
 // Material: 0 timber, 1 stone. Stone walls do not burn; the roof and floors inside them do, slowly and rarely.
@@ -60,9 +67,9 @@ const isBuilding = t => t === T.HOUSE || t === T.STATION || (t >= T.TENEMENT && 
 const isHome = t => t === T.HOUSE || t === T.TENEMENT;
 const CAPACITY = { [T.HOUSE]: 6, [T.TENEMENT]: 20 };
 const BUILDING_NAMES = { [T.TENEMENT]: 'Tenement', [T.BARRACKS]: 'Barracks', [T.FORGE]: 'Forge', [T.FACTORY]: 'Factory', [T.UNIVERSITY]: 'University', [T.TOWER]: 'Watchtower', [T.SILO]: 'Missile silo', [T.TOWNHALL]: 'Town hall',
-  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital', [T.GALLOWS]: 'Gallows', [T.GRAVE]: 'Graveyard', [T.MONUMENT]: 'Monument' };
+  [T.LUMBERYARD]: 'Lumberyard', [T.MINE]: 'Mine', [T.QUARRY]: 'Quarry', [T.WELL]: 'Well', [T.WHEEL]: 'Water wheel', [T.PLANT]: 'Coal plant', [T.SOLAR]: 'Solar array', [T.HYDRO]: 'Hydroelectric dam', [T.NUCLEAR]: 'Reactor', [T.DERRICK]: 'Oil derrick', [T.SHAFT]: 'Mine shaft', [T.PASTURE]: 'Pasture', [T.GRANARY]: 'Granary', [T.AIRBASE]: 'Air base', [T.GAOL]: 'Gaol', [T.CISTERN]: 'Cistern', [T.TOWER_W]: 'Water tower', [T.HEALER]: "Healer's house", [T.HOSPITAL]: 'Hospital', [T.GALLOWS]: 'Gallows', [T.GRAVE]: 'Graveyard', [T.MONUMENT]: 'Monument', [T.FISHERY]: "Fisher's hut", [T.BAKERY]: 'Bakery', [T.SMOKEHOUSE]: 'Smokehouse', [T.INN]: 'Inn', [T.MILL]: 'Mill', [T.BREWERY]: 'Brewery', [T.CELLAR]: 'Root cellar' };
 const isTree = t => t === T.PINE || t === T.OAK || t === T.BIGPINE || t === T.BIRCH || t === T.SNAG || t === T.JUNGLE;
-const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM;
+const passable = t => t !== T.WATER && t !== T.ROCK && t !== T.WALL && t !== T.DAM && t !== T.SPRING;
 
 const WEATHER = {
   clear:   { label: 'Clear',   spread: 1.0,  spot: 1.0, regrow: 1.0,  rainOut: 0,    lightning: 0,     tint: null },

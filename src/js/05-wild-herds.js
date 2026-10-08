@@ -1,7 +1,8 @@
 /* ───────────────────────── Wild herds ─────────────────────────
    Deer, boar, wild sheep, grouse and the odd aurochs roam the open ground, flee fire, and breed
    slowly. Hunters take game from them, and sometimes bring a young one home alive to raise. */
-const HERD_KINDS = [['deer', 0.45, 'deer', null, 5], ['boar', 0.2, 'boar', 'pigs', 4], ['sheep', 0.15, 'sheep', 'sheep', 3], ['fowl', 0.15, 'fowl', 'chickens', 2], ['aurochs', 0.05, 'aurochs', 'cattle', 8]];
+const HERD_KINDS = [['deer', 0.35, 'deer', null, 5], ['boar', 0.15, 'boar', 'pigs', 4], ['sheep', 0.12, 'sheep', 'sheep', 3], ['fowl', 0.12, 'fowl', 'chickens', 2], ['aurochs', 0.04, 'aurochs', 'cattle', 8], ['elk', 0.1, 'elk', null, 7], ['hare', 0.12, 'hare', null, 1]];
+const HERD_NAME = { deer: 'deer', boar: 'wild boar', sheep: 'wild sheep', fowl: 'grouse', aurochs: 'aurochs', elk: 'elk', hare: 'hares' };
 const LIVESTOCK = ['cattle', 'pigs', 'sheep', 'chickens'];
 const LIVESTOCK_FOOD = { cattle: 3, pigs: 2, sheep: 1.5, chickens: 0.5 };
 const LIVESTOCK_SPRITE = { cattle: 'cow', pigs: 'pig', sheep: 'sheep', chickens: 'chicken' };
@@ -14,22 +15,25 @@ function clearLine(x0, y0, x1, y1) {
 }
 function herdCell(i) { const t = world.type[i]; return (t === T.GRASS || t === T.SCRUB || t === T.REEDS || t === T.SAND || isTree(t) || t === T.ASH || t === T.MUD || t === T.STUMP) && !world.road[i] && world.townOf[i] < 0 && world.burnLeft[i] <= 0; }
 function seedHerds(n) {
-  const N = n * n, want = Math.max(2, Math.round(N / 2200));
+  const N = n * n, want = Math.max(4, Math.round(N / 1200));
   for (let k = 0; k < want; k++) {
     let i = -1; for (let tries = 0; tries < 200 && i < 0; tries++) { const c = Math.floor(rand() * N); if (herdCell(c)) i = c; }
     if (i < 0) break;
     const kind = herdKindFor(world.biome[i]);
-    world.herds.push({ kind: kind[0], x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: kind[0] === 'fowl' ? 6 + Math.floor(rand() * 6) : 3 + Math.floor(rand() * 5), wx: -1, wy: -1, rest: 0, t0: 0, breedT: 0 });
+    world.herds.push({ kind: kind[0], x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: kind[0] === 'fowl' ? 6 + Math.floor(rand() * 6) : kind[0] === 'hare' ? 6 + Math.floor(rand() * 8) : 3 + Math.floor(rand() * 5), wx: -1, wy: -1, rest: 0, t0: 0, breedT: 0 });
   }
 }
 function updateHerds() {
   if (world.tick % 3 !== 0) return;
   const n = world.n, N = n * n, herds = world.herds || (world.herds = []), keep = [];
-  const maxHerds = Math.max(3, Math.round(N / 1800));
-  if (herds.length < maxHerds && Math.random() < 0.012) { // a new herd wanders in from the edge
+  const maxHerds = Math.max(6, Math.round(N / 1000));
+  const migration = season() === 2 && world.tick % YEAR < YEAR * 0.5 + 200; // the first weeks of autumn: the herds come down from the hills
+  if (migration && world.migrationYear !== Math.floor(world.tick / YEAR)) { world.migrationYear = Math.floor(world.tick / YEAR); log(pick(['The herds come down from the hills', 'Deer on every ridge: the autumn migration is on', 'The hills empty into the valley: deer, elk and boar on the move in the mornings']), 'weather'); stat('ev', 'migrations'); }
+  const scarce = herds.filter(h => h.size > 0).length < maxHerds / 3; // hunted thin: more come in from beyond the edge
+  if (herds.length < maxHerds && Math.random() < (migration ? 0.036 : 0.012) * (scarce ? 3 : 1)) { // a new herd wanders in from the edge
     const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
     if (edge === 0) y = 0; else if (edge === 1) y = n - 1; else if (edge === 2) x = 0; else x = n - 1;
-    if (herdCell(y * n + x)) { const kind = herdKindFor(world.biome[y * n + x]); herds.push({ kind: kind[0], x, y, px: x, py: y, face: 1, size: 2 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, breedT: 0 }); }
+    if (herdCell(y * n + x)) { const kind = herdKindFor(world.biome[y * n + x]); herds.push({ kind: kind[0], x, y, px: x, py: y, face: 1, size: kind[0] === 'hare' ? 5 + Math.floor(Math.random() * 6) : (migration ? 4 : 2) + Math.floor(Math.random() * (migration ? 6 : 4)), wx: -1, wy: -1, rest: 0, t0: world.tick, breedT: 0 }); }
   }
   for (const h of herds) {
     if (h.size <= 0) continue; // hunted out
@@ -50,10 +54,10 @@ function updateHerds() {
       h.rest = 0; h.leaving = false;
     }
     else if (h.wx < 0 || (h.wx === h.x && h.wy === h.y)) {
-      if (h.leaving) { if (Math.random() < 0.3) log(`A herd of ${h.kind === 'fowl' ? 'grouse' : h.kind === 'boar' ? 'boar' : h.kind === 'sheep' ? 'wild sheep' : h.kind} leaves the valley`, 'weather'); continue; } // over the edge and gone
+      if (h.leaving) { if (Math.random() < 0.3) log(`A herd of ${HERD_NAME[h.kind] || h.kind} leaves the valley`, 'weather'); continue; } // over the edge and gone
       if (h.rest > 0) { h.rest--; keep.push(h); continue; }
       const nearEdge = Math.min(h.x, h.y, n - 1 - h.x, n - 1 - h.y) <= 6;
-      if (nearEdge && Math.random() < 0.08) { // wander off the map
+      if (nearEdge && Math.random() < 0.03) { // wander off the map
         h.wx = h.x <= 6 ? 0 : n - 1 - h.x <= 6 ? n - 1 : h.x; h.wy = h.y <= 6 ? 0 : n - 1 - h.y <= 6 ? n - 1 : h.y; h.leaving = true;
       } else {
         for (let k = 0; k < 10; k++) { const x = h.x + Math.floor(Math.random() * 17) - 8, y = h.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x) || !clearLine(h.x, h.y, x, y)) continue; h.wx = x; h.wy = y; break; }
@@ -81,7 +85,7 @@ function updateHerds() {
         if (h.stall > 1) { h.wx = -1; h.leaving = false; h.stall = 0; h.rest = 6; h.last = -1; break; } // blocked: graze a while, then pick somewhere else
       }
     }
-    if (++h.breedT >= 50 && h.size < 12) { h.breedT = 0; if (Math.random() < 0.6) h.size++; } // a new animal every ~250 ticks
+    if (++h.breedT >= (h.kind === 'hare' ? 20 : h.size < 5 ? 35 : 50) && h.size < 16) { h.breedT = 0; if (Math.random() < 0.6) h.size++; } // a small herd recovers a little faster // a new animal every ~250 ticks; hares breed like hares
     keep.push(h);
   }
   world.herds = keep;

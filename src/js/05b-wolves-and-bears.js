@@ -8,7 +8,7 @@ function updatePacks() {
   const n = world.n, N = n * n, packs = world.packs || (world.packs = []), keep = [];
   const cold = (world.snowCover || 0) > 0.3 || season() === 3;
   const maxPacks = Math.max(1, Math.round(N / 14000));
-  if (packs.length < maxPacks && Math.random() < (cold ? 0.004 : 0.0008)) {
+  if (packs.length < maxPacks && Math.random() < (cold ? 0.004 : 0.0008) * (season() === 2 && world.tick % YEAR < YEAR * 0.5 + 300 ? 3 : 1)) { // the packs follow the herds down
     const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
     if (edge === 0) y = 0; else if (edge === 1) y = n - 1; else if (edge === 2) x = 0; else x = n - 1;
     if (herdCell(y * n + x)) { packs.push({ kind: 'wolves', x, y, px: x, py: y, face: 1, size: 3 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, hunger: 0, next: world.tick + 100 }); stat('ev', 'packs'); if (Math.random() < 0.6) log(`Wolves come down ${cold ? 'with the snow' : 'out of the far timber'}: a pack of ${packs[packs.length - 1].size} on the ${edge === 0 ? 'north' : edge === 1 ? 'south' : edge === 2 ? 'west' : 'east'} edge`, 'weather'); }

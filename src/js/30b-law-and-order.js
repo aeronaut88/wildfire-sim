@@ -122,7 +122,7 @@ function updateLaw(town) {
   }
   if (hungry && food >= 3 && r < 0.05) {
     const take = Math.min(food, 2 + Math.floor(Math.random() * 5)); let left = take;
-    for (const k of ['grain', 'fish', 'game']) { const a = Math.min(town.res[k] || 0, left); town.res[k] -= a; left -= a; if (!left) break; }
+    for (const k of THEFT_ORDER) { const a = Math.min(town.res[k] || 0, left); town.res[k] -= a; left -= a; if (!left) break; }
     const who = thiefOf(town, 'took to the granary at night when the children were hungry');
     log(`Someone has been at the granary in ${town.name}: ${take} food gone in the night`, 'arson');
     openCase(town, 'theft', who, town.cy * world.n + town.cx, { loot: take, hungry: true });
@@ -319,12 +319,13 @@ function updateFestival(town) {
   if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > 0.2) return;
   town.festivalYear = year;
   const centre = town.cy * world.n + town.cx;
-  spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40));
+  spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40) + ((town.res.beer || 0) > 0 ? 4 : 0)); // a festival with beer draws a bigger crowd
   town.unrest = Math.max(0, (town.unrest || 0) - 5); stat('ev', 'festivals'); remember(town, 'festival');
   if (town.align.moral > 0 && Math.random() < 0.3) amnesty(town, `Festival mercy at ${town.name}`);
   const [px, py] = cellCenter(centre); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'FESTIVAL', color: '#ffd166', t0: performance.now(), dur: 3000 });
   for (let k = 0; k < 10; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 40, life: 0, max: 600, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.3), grav: -10 });
   log(`${town.name} brings in the harvest and lights a bonfire in the square. ${['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.'][Math.floor(Math.random() * 5)]}`, 'good');
+  if ((town.craft || 0) >= 8) { town.unrest = Math.max(0, (town.unrest || 0) - 2); const cook = person(town, 'cook'), dish = recipeFor(town); log(`${town.name}'s cooks lay out a feast: ${dish}.${cook ? ` ${cook.name} is carried round the square.` : ''}`, 'good'); if (cook) deed(cook, `cooked the ${dish} at the feast of Y${Math.floor(world.tick / YEAR) + 1}`); stat('ev', 'feasts'); }
   if (Math.random() < 0.05) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`The bonfire at ${town.name} gets away from them`, 'alarm'); } }
 }
 // The healer walks house to house while the plague is in town.

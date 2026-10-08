@@ -76,6 +76,11 @@ function grudgeHolders(town) { return (town.people || []).filter(q => q.alive &&
 
 // ── The phrases ──
 const PHRASES = {
+  idleHands: [
+    c => `${c.n} idle hands in ${c.name} and nothing to put them to. ${moodWord(c.town)[0].toUpperCase() + moodWord(c.town).slice(1)}.`,
+    c => `${c.name} has ${c.n} people with no work. They stand about the square ${daypart()} and ${elderOf(c.town)} pretends not to notice.`,
+    c => `No work for ${c.n} in ${c.name}. A workshop would help; so would a war, say the worst of them.`,
+  ],
   alarm: [
     c => `${c.name} sounds the alarm ${daypart()}, ${c.crews} rally${c.chief ? `, Chief ${c.chief} at their head` : ''}`,
     c => `Smoke over ${c.name} ${weatherWord()}. ${c.crews} rally${c.chief ? ` behind Chief ${c.chief}` : ''}`,
