@@ -157,4 +157,4 @@ Each step below ends with a feature-branch commit; main is fast-forwarded and pu
 
 - [x] `window.__wildfire.debugCraft(a, level)`, `debugFreeze()`.
 - [x] README feature list updated.
-- [ ] Full harness green; fast-forward main; push.
+- [x] Full harness green; fast-forward main; push.
