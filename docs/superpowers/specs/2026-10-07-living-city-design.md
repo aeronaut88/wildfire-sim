@@ -1,6 +1,6 @@
 # The Living City: stone, rarer dragons, a deeper larder, and citizens with jobs
 
-Design spec, 2026-10-07. Status: **draft for James's review**. Nothing here is implemented yet.
+Design spec, 2026-10-07. Status: **approved by James 2026-10-07** with one amendment: crafts and food unlock through a slow secondary tech tree (Part 0 below) instead of Masonry being inserted into the civil ladder. Implementation proceeds step by step from this document.
 
 This covers the four things James asked for on 2026-10-07, in the order they should be built:
 
@@ -12,6 +12,53 @@ This covers the four things James asked for on 2026-10-07, in the order they sho
 Jobs come before food because every new food building needs workers, and the jobs framework is what gives them workers. Each part is its own implementation plan and its own soak-tested commit; the valley must stay playable after each one.
 
 The project's standing rules apply throughout: do not tone anything down, make events visible on the map rather than only changing numbers, keep variation per run, keep resources scarce so they pace growth, keep the HUD off the map on phones, and soak-test (boot, 20k-tick soak, save round-trip, stuck check) before anything is pushed.
+
+---
+
+## Part 0: The Hearth and Craft tree
+
+James's amendment: a third research ladder, slow, that unlocks food and craft buildings and capabilities one at a time, so a town's kitchen and workshops grow over generations the way its arms and waterworks do. `town.craft` sits beside `town.mil` and `town.civ`.
+
+```
+CRAFT_TECH = ['Hearth', 'Smoking', 'Masonry', 'Milling', 'Root cellars', 'Brewing', 'Cookery', 'Orchards', 'Mastery']
+CRAFT_COST = [0, 120, 300, 550, 800, 1100, 1500, 2000, 2800]
+CRAFT_NEED = [null, {wood:6}, {stone:12}, {wood:10, stone:6}, {stone:8}, {wood:12, copper:2}, {iron:4, stone:6}, {wood:8}, null]
+```
+
+| Step | Unlocks | Why it is slow |
+|---|---|---|
+| 0 Hearth | hunting, fishing from shore, wheat fields, the granary | the start |
+| 1 Smoking | smokehouse, jerky and smoked fish, the first winter bridge | first thing every town wants |
+| 2 Masonry | stone buildings, refacing, the building code, tenements; also needs a quarry | needs a quarry and stone in hand |
+| 3 Milling | the mill (river or wheel) and bakery, bread; barley fields | needs Masonry for the ovens |
+| 4 Root cellars | turnip fields (frost hardy); the root cellar building: grain cap +80 and fish, game and meals spoil at half the rate | |
+| 5 Brewing | the brewery, beer (needs 2+ barley fields); the inn can be built once beer exists | copper for the vats |
+| 6 Cookery | cooks, hot meals, the inn's kitchen; meals use bread, jerky and fruit | iron for the kitchen |
+| 7 Orchards | orchard fields (perennial; fruit every autumn; burn like trees) | |
+| 8 Mastery | conversions 2-to-4 instead of 2-to-3 in bakery, smokehouse and inn; feast days each harvest festival (unrest -2, a crowd on the square) | needs a bakery, a smokehouse and an inn standing |
+
+**Points.** `updateTech` splits a town's research three ways. The craft share is `clamp(0.22 + 0.18 * (temper.food - 1), 0.15, 0.4)`, so a food-minded town learns its kitchen first; the rest is split between arms and civil by militarism as today. Banking works as it does for the other two tracks: a craft step waiting on stone sends its points to the others and logs "has the recipe for X but needs more Y" once. Mil and civ research slows by roughly a quarter, which is in keeping with the standing rule that tech takes a long time.
+
+**Crops.** `world.cropKind` (Uint8Array) beside `world.crop`: 0 wheat, 1 barley, 2 turnips, 3 orchard.
+
+| Crop | Grows | Yield | Bonus | Unlock |
+|---|---|---|---|---|
+| wheat | spring 0.9, summer 1.0, autumn 1.1, winter 0 | 9 grain | the baseline | Hearth |
+| barley | as wheat | 8 grain | drought factor 0.6 instead of 0.3; counts for brewing | Milling |
+| turnips | spring 0.6, summer 0.9, autumn 1.2, winter 0.3; snow halves rather than stops | 7 grain | the only crop that grows in winter; +20% in cold and forest biomes | Root cellars |
+| orchard | 3 seasons to establish, then fruit at 100 each autumn; perennial; a burnt orchard is a burnt tree (ASH) | 6 fruit | fruit never spoils in a cellar town; meals with fruit give double the morale | Orchards |
+
+A town plants new fields by weighting its unlocked kinds: barley when it has or wants a brewery, turnips in cold climates or after a famine, orchards when fed and stone is not short. Field sprites get a kind-coloured look at each of the three growth stages (barley gold-green, turnips purple-topped, orchard rows of small trees).
+
+**Beer.** `beer` is a resource brewed from 2 grain to 3 beer per batch when the town has 2+ barley fields. It is not eaten. A town with beer in stock and an inn: unrest -0.4 per cycle, caravans pay +15%, festivals draw a bigger crowd, and the phrase engine gets its tavern lines. Beer spoils slowly (above 20, 0.15 per cycle). Dragons burning a brewery produce a blue flame particle burst; the log notes the smell.
+
+**Mastery and cooking.** Mastery changes conversion ratios town-wide and gives the inn's cooks a `recipe` each festival drawn from what is in stock ("venison and barley stew", "smoked trout with turnip", "apple bread"). The named cook gets deeds. This is flavour on top of a real multiplier.
+
+Everything else in Parts 2 to 4 stands, with their tech gates moved onto this tree: smokehouse needs Smoking, bakery and mill need Milling, cellar needs Root cellars, brewery needs Brewing, inn needs Brewing (beer) and gains cooks at Cookery.
+
+**Save and load.** `town.craft` and `town.craftPts` default to 0 on old saves; `cropKind` is packed like `crop` and defaults to wheat.
+
+**Tests.** A 40k-tick soak on the default seed must show at least one town reach Milling and at least one reach Brewing; no town may reach Mastery before tick 20k.
 
 ---
 
@@ -79,13 +126,7 @@ Two stone buildings touching corner to corner also get the wall diagonal rule (`
 
 ### Getting stone: the Masonry step
 
-**Masonry** joins the civil tech ladder as step 2, after Fire brigade and before Waterworks:
-
-`CIV_TECH = ['Buckets', 'Fire brigade', 'Masonry', 'Waterworks', 'Lookout tower', 'Geology', 'Aviation']`, cost 450 points, resource gate `{ stone: 12 }`, and the town must have a quarry. Tenements already carry the comment "masonry (civil tech 1)"; they now actually require Masonry, and are always stone.
-
-Inserting a step shifts every later level by one. There are about 30 `civ >= N` / `civ === N` checks across `15-technology`, `26-resources`, `29-town-growth`, `30-that-one-person`, `16-boats` and `38-town-card`; each one for N >= 2 moves up by one. This is mechanical but every site must be visited; the plan lists them. `CIV_NEED` and `CIV_COST` gain their new entry. Old saves keep their `civ` number, so a saved town at civ 2 (old Waterworks) wakes up at Masonry: a small free step back that costs nothing and breaks nothing.
-
-Why inside the ladder rather than a side flag: James asked for it to be researched, the ladder already has the point income, banking, gate logging and "has the plans but needs more stone" messaging, and the tenement comment shows this was the intent all along.
+Masonry is step 2 of the **Hearth and Craft** tree (Part 0): cost 300 points, gate `{ stone: 12 }`, and the town must have a quarry. Tenements require Masonry and are always stone. The civil ladder is untouched, so none of the ~30 `civ >= N` checks move.
 
 ### Who builds in stone, and when
 
@@ -251,7 +292,7 @@ Three new resources in `RES_KINDS`: `bread`, `jerky`, `meals`. Smoked fish and j
 
 | Building | Cost | Workers | Converts | Needs | Cap it adds |
 |---|---|---|---|---|---|
-| Bakery `T.BAKERY = 61` | `{ wood: 6, stone: 4 }`, needs Masonry (ovens) | 3 bakers | 2 grain to 3 bread per batch, 1 wood per 2 batches | a wheel or bread boiler nearby: +50% | bread 40 + 30 |
+| Bakery `T.BAKERY = 61` | `{ wood: 6, stone: 4 }`, needs Milling | 3 bakers | 2 grain to 3 bread per batch, 1 wood per 2 batches | a wheel or bread boiler nearby: +50% | bread 40 + 30 |
 | Smokehouse `T.SMOKEHOUSE = 62` | `{ wood: 6 }` | 2 smokers | 2 game or 2 fish to 3 jerky, 1 wood per batch | autumn: works double shifts | jerky 50 + 40 |
 | Inn `T.INN = 63` | `{ wood: 8, stone: 4 }` | 2 cooks | 1 bread + 1 jerky to 3 meals | | meals 20 + 20 |
 
@@ -269,8 +310,10 @@ A batch takes 16 ticks per worker. Conversion gains (2 to 3) are the whole point
 
 - Smokehouse: pop >= 30 and (hunters or fishers >= 2). The earliest processing building, needs no tech.
 - Fishery: pop >= 20 and water within reach.
-- Bakery: Masonry and pop >= 60 and a granary.
-- Inn: pop >= 120, a bakery and a smokehouse, and the town is fed.
+- Bakery: Milling and pop >= 60 and a granary. Mill (`T.MILL = 64`, `{ wood: 8, stone: 4 }`) on a river cell or next to a wheel, Milling, pop >= 50; a bakery without a mill works at half speed.
+- Brewery (`T.BREWERY = 65`, `{ wood: 8, stone: 4, copper: 1 }`): Brewing, 2+ barley fields, pop >= 80.
+- Root cellar (`T.CELLAR = 66`, `{ stone: 8, wood: 2 }`): Root cellars, pop >= 50.
+- Inn: Brewing, pop >= 120, beer in stock, and the town is fed. Cooks and meals arrive with Cookery.
 
 All go through `buildCivic`'s wishlist with a shortfall log ("wants a bakery but has no stone").
 
@@ -296,9 +339,9 @@ New resource keys are in `RES_KINDS`, so the load backfill at `41-save-load.js:1
 | Step | Scope | Risk | Depends on |
 |---|---|---|---|
 | 1 | Dragon pacing | tiny | nothing |
-| 2 | Stone: `mat` layer, SHELL, Masonry step, refacing, code event, quarries, sprites | medium (the civ renumbering must be complete) | nothing |
+| 2 | Craft tree skeleton (points, banking, UI) + Stone: `mat` layer, SHELL, Masonry, refacing, code event, quarries, sprites | medium | nothing |
 | 3 | Jobs framework: allocator, per-worker production, visible samples, soldiers, haulers, traders, smiths, town card, history, phrases, notable roles | high (touches every worker spawn) | step 2 only for masons |
-| 4 | Larder: herds, stream and springs, fishery and ice fishing, boats, smokehouse, bakery, inn, new stocks | medium | step 3 (bakers, smokers, cooks, fishers are jobs), step 2 (bakery needs Masonry) |
+| 4 | Larder: herds, stream and springs, fishery and ice fishing, boats, crops, smokehouse, mill, bakery, cellar, brewery, inn, orchards, mastery, new stocks | high | step 3 (bakers, smokers, cooks, fishers are jobs), step 2 (craft tree) |
 
 Each step is a plan, a feature branch, a soak-tested commit, and a push once the harness is green. Steps 3 and 4 are each likely to be a long overnight session.
 
@@ -310,9 +353,9 @@ Each step is a plan, a feature branch, a soak-tested commit, and a push once the
 - New livestock kinds (goats were considered; elk and hare are game only).
 - Separate rivers with names or per-cell fish stocks.
 
-## Open questions for James
+## Decisions from James's review (2026-10-07)
 
-1. Masonry at civil step 2 pushes Aviation to step 6 and every later gate up by one. Fine, or should Masonry be a side flag learned at a quarry instead?
-2. Hot meals and the inn are the one piece that is more flavour than survival. Keep, or stop at bread and jerky for the first cut?
-3. Trained soldiers at 12 per barracks with double battle weight: is that the right scale, or should soldiers be rarer and stronger?
-4. The dragon cooldown of two to four years: too long, or about right for "rare, named, dreaded"?
+1. Masonry and the food crafts live on their own slow tree (Part 0), not in the civil ladder.
+2. Inns, beer, several crops with bonuses and cooking mastery are all in scope. "Do it all."
+3. Soldiers at 12 per barracks, double weight: proceed as specified.
+4. Dragon cooldown of two to four years: proceed as specified.
