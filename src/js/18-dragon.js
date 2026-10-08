@@ -42,13 +42,15 @@ function tintDragonFrames(kind) {
 
 function maybeDragon(force) {
   if (world.dragon) return;
-  if (!force && world.tick < 400) return;
+  if (!force && (world.tick < 2400 || (world.dragonCooldown || 0) > world.tick)) return; // a year of peace to begin with, and never inside the cooldown
   const towns = world.towns.filter(t => t.popLeft > 0 && t.housesLeft > 0);
   if (!towns.length) return;
   let totalPop = 0; for (const t of towns) totalPop += t.popLeft;
-  if (!force && Math.random() > 0.00001 + 0.00005 * (totalPop / 300)) return;
-  // Riches: weight by population squared. A dragon with a grudge comes back for the same town.
-  const grudge = world.dragonGrudge && world.tick - world.dragonGrudge.tick < 4000 ? world.towns[world.dragonGrudge.town] : null;
+  // A dragon with a grudge comes back for the same town, and sooner than a stranger would.
+  const grudge = world.dragonGrudge && world.tick - world.dragonGrudge.tick < 14000 ? world.towns[world.dragonGrudge.town] : null;
+  // Rare: the odds rise with the valley's riches but saturate, a mean of about five years once the valley is rich.
+  if (!force && Math.random() > (0.00001 + 0.00007 * Math.min(1, totalPop / 1500)) * (grudge ? 3 : 1)) return;
+  // Riches: weight by population squared.
   const pickTown = (exclude) => {
     const pool = towns.filter(t => !exclude.includes(t)); if (!pool.length) return null;
     const wgt = t => t.popLeft * t.popLeft * (has(t, 'hoarder') ? 4 : 1) * (1 + (t.res ? (t.res.coin + t.res.gold * 10) / 400 : 0));
@@ -59,7 +61,7 @@ function maybeDragon(force) {
   if (!first) return;
   // Rampage: one to three towns in a single sortie, richest first.
   const targets = [first];
-  const extra = Math.random() < 0.55 ? 1 : 0, extra2 = Math.random() < 0.25 ? 1 : 0;
+  const extra = Math.random() < 0.3 ? 1 : 0, extra2 = Math.random() < 0.1 ? 1 : 0;
   for (let k = 0; k < extra + extra2; k++) { const t = pickTown(targets); if (t) targets.push(t); }
   const n = world.n;
   const edgePoint = () => { const e = Math.floor(Math.random() * 4); const k = Math.random() * n; return e === 0 ? [k, -4] : e === 1 ? [k, n + 4] : e === 2 ? [-4, k] : [n + 4, k]; };
@@ -112,6 +114,7 @@ function flyDragon(dtSec) {
     else if (d.driven) log(`${d.name || 'The dragon'} limps away from ${d.town.name}. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze before the archers found their range${d.stole ? `, ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} gone with it` : ''}.`, 'dragon');
     else say(d.town, 'dragonLeaves', { who: d.name || 'The dragon', lit: d.lit, loot: d.stole || d.stoleGold ? `${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''}` : null }, 'dragon');
     world.dragon = null;
+    world.dragonCooldown = world.tick + 4800 + Math.floor(Math.random() * 4800); // two to four years before the valley sees another
   }
 }
 

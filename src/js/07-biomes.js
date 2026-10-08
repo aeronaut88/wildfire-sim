@@ -64,7 +64,7 @@ function generate(n, seed) {
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.snowFac = null; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.dragonCooldown = 0; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.snowFac = null; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
   const a0 = Math.random() * Math.PI * 2;
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
