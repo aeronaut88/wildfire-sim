@@ -685,8 +685,9 @@ rebuild with what they scavenge from the rubble.
 Every tile and sprite is drawn as 16 by 16 pixel art, but the map keeps it at eight pixels a cell
 or fewer. Zoom in until a cell is fourteen screen pixels or more and the view switches to painting
 the window straight from the full art, sprites included, so the houses have doors and the farmers
-have hats. Zoomed out, the small tiles are averaged down from the art rather than sampled, which
-takes the checkerboard shimmer off big maps.
+have hats. Below eight pixels a cell the tiles are averaged down from the art rather than sampled, which
+takes the checkerboard shimmer off big maps; at eight they keep their crisp half-size look. Zoom
+goes to 40x, and town names hold a readable size on screen at any zoom.
 
 ## Big valleys
 

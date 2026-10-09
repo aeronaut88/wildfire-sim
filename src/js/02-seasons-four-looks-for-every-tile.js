@@ -110,7 +110,7 @@ function shrink16(img, px) {
 function scaleSet(src, px) {
   const out = {};
   for (const k in src) {
-    if (px < 16) { out[k] = shrink16(src[k], px); continue; }
+    if (px < 8) { out[k] = shrink16(src[k], px); continue; } // small cells are averaged; at 8 px every other pixel of the art makes a crisp half-size version, which is the look the map has always had
     const c = document.createElement('canvas');
     c.width = px; c.height = px;
     const x = c.getContext('2d');

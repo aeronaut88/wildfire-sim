@@ -10,7 +10,7 @@ function clampView() {
 function applyView() { ctx.setTransform(view.zoom, 0, 0, view.zoom, -view.x * view.zoom, -view.y * view.zoom); }
 function zoomAt(factor, sx, sy) { // sx, sy in canvas pixels
   const wx = view.x + sx / view.zoom, wy = view.y + sy / view.zoom;
-  view.zoom = Math.max(1, Math.min(12, view.zoom * factor));
+  view.zoom = Math.max(1, Math.min(40, view.zoom * factor)); // close enough to count the shingles
   view.x = wx - sx / view.zoom; view.y = wy - sy / view.zoom;
   clampView(); updateZoomHud();
 }
@@ -70,23 +70,26 @@ function render(now, tickFrac) {
     ctx.drawImage((intensity[i] ? crownFrames : frames)[(fireFrame + i) % 3], x * cellPx, y * cellPx);
   }
 
-  ctx.font = `${Math.max(8, Math.round(cellPx * 1.1))}px Silkscreen, monospace`;
+  // Town labels keep a readable size on screen whatever the zoom: 11 px at 1x, a little larger close in.
   ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-  const nameFont = `${Math.max(8, Math.round(cellPx * 1.1))}px Silkscreen, monospace`;
-  const statFont = `${Math.max(7, Math.round(cellPx * 0.8))}px Silkscreen, monospace`;
+  const eff = view.zoom * ((parseFloat(canvas.style.width) || canvas.width) / canvas.width); // screen px per world px
+  const namePx = (11 + 4 * Math.min(1, Math.log2(Math.max(1, view.zoom)) / Math.log2(40))) / eff, statPx = namePx * 0.8;
+  const nameFont = `${namePx.toFixed(2)}px Silkscreen, monospace`;
+  const statFont = `${statPx.toFixed(2)}px Silkscreen, monospace`;
   for (const t of world.towns) {
     const x = (t.cx + 0.5) * cellPx; let y = (t.cy - t.R - 0.6) * cellPx;
-    if (y - cellPx * 0.9 - Math.max(8, cellPx * 1.1) < 2) y = (t.cy + t.R + 1.6) * cellPx + cellPx * 0.9 + Math.max(8, cellPx * 1.1); // no room above: label below
+    const gap = statPx * 1.15;
+    if (y - gap - namePx < 2) y = (t.cy + t.R + 1.6) * cellPx + gap + namePx; // no room above: label below
     const dead = t.housesLeft === 0 || t.popLeft <= 0;
     ctx.font = nameFont;
-    ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = Math.max(2, cellPx * 0.4); // outlined so names read on snow and ash alike
-    ctx.strokeText(t.name.toUpperCase(), x, y - cellPx * 0.9);
+    ctx.lineJoin = 'round'; ctx.strokeStyle = 'rgba(0,0,0,0.85)'; ctx.lineWidth = Math.max(1.5, namePx * 0.28); // outlined so names read on snow and ash alike
+    ctx.strokeText(t.name.toUpperCase(), x, y - gap);
     ctx.fillStyle = dead ? '#b8a890' : (t.mobilized ? '#ffb627' : '#e9dccb');
-    ctx.fillText(t.name.toUpperCase(), x, y - cellPx * 0.9);
-    if (cellPx >= 4) {
+    ctx.fillText(t.name.toUpperCase(), x, y - gap);
+    if (eff * cellPx >= 2.5) {
       const stat = dead ? (t.popLeft > 0 ? `${t.popLeft} survivors` : 'abandoned') : `pop ${t.popLeft} · ${t.housesLeft} homes${t.hasStation ? ' · ' + t.trucks.filter(q => q.alive).length + ' eng' : ''}`;
       ctx.font = statFont;
-      ctx.lineWidth = Math.max(2, cellPx * 0.3);
+      ctx.lineWidth = Math.max(1.5, statPx * 0.28);
       ctx.strokeText(stat, x, y);
       ctx.fillStyle = dead ? '#b8a890' : 'rgba(233,220,203,0.95)';
       ctx.fillText(stat, x, y);
