@@ -114,7 +114,8 @@
 
   .hud {
     position: absolute; left: 12px; top: 12px; z-index: 2;
-    display: flex; align-items: center; gap: 10px;
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; row-gap: 4px;
+    max-width: calc(100% - 24px); box-sizing: border-box;
     padding: 6px 10px 5px;
     background: rgba(13, 11, 10, 0.82);
     border: 1px solid var(--panel-edge);
@@ -127,7 +128,11 @@
   .hud .w.storm { color: #e6ecff; }
   .hud .w.clear { color: var(--ink); }
   .hud .w.snow { color: #e8f0ff; }
-  .hud .season { font-weight: bold; }
+  .hud .season { font-weight: bold; display: inline-block; min-width: 6.4ch; }
+  .hud .w { display: inline-block; min-width: 8.6ch; }
+  .hud .tk { display: inline-block; }
+  .hud #hudTick { min-width: 44ch; }
+  .hud .br { flex-basis: 100%; height: 0; }
   .hud .season.s0 { color: #8be07a; }
   .hud .season.s1 { color: #ffd166; }
   .hud .season.s2 { color: #ff9f45; }
@@ -476,7 +481,7 @@
         <span class="ws" id="hudWind">0.50</span>
         <span class="sep"></span>
         <span class="tk" id="hudTick">t0</span>
-        <span class="sep"></span>
+        <span class="br"></span>
         <span class="tk" id="hudSeed">#</span>
         <span class="sep"></span>
         <span class="zoom" id="hudZoom">1x</span>
