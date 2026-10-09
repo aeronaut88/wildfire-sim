@@ -98,6 +98,9 @@ function layout() {
   ctx.imageSmoothingEnabled = false;
   tctx.imageSmoothingEnabled = false;
   rescaleSprites(cellPx);
+  // The status bar lives in the margin beside the map when there is one, and over the map's own corner when there is not.
+  const hud = $('hud');
+  if (hud) { const margin = Math.max(0, (rect.width - css) / 2); const aside = margin >= 260; hud.classList.toggle('aside', aside); hud.style.left = (aside ? 12 : margin + 12) + 'px'; hud.style.maxWidth = (aside ? margin - 24 : css - 24) + 'px'; }
   redrawTerrain();
   resetView();
 }

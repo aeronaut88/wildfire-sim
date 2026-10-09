@@ -213,7 +213,10 @@ function updateFactions() {
 function rulerDied(town, p) { for (const id in world.factions || {}) { const f = world.factions[id]; if (f.ruler && f.ruler.town === town.id && f.ruler.name === p.name) { f.ruler = null; succeedRuler(f, p); } } }
 
 // ── Claims and borders ──
-function claimReach(t) { return Math.min(world.n * 0.3, t.R + 3 + 0.08 * t.buildings.length + (hasType(t, T.TOWNHALL) ? 4 : 0) + (t.wallR ? 2 : 0)); }
+// A town's claim is the ground around what it has built: every building, field and work site holds the cells
+// within a few of it, a little more for a town with a hall or a great many buildings. The nearest building
+// wins where claims overlap. A faction's land need not be one piece: an outlying quarry holds its own patch.
+function claimPad(t) { return 2 + (hasType(t, T.TOWNHALL) ? 1 : 0) + Math.min(2, Math.floor(t.buildings.length / 80)); }
 function recomputeClaims() {
   const n = world.n, N = n * n;
   if (!world.claim || world.claim.length !== N) world.claim = new Int16Array(N);
@@ -221,8 +224,12 @@ function recomputeClaims() {
   const best = new Float32Array(N).fill(Infinity);
   for (const t of world.towns) {
     if (!isAlive(t)) continue;
-    const reach = claimReach(t), r = Math.ceil(reach * 1.4);
-    for (let dy = -r; dy <= r; dy++) { const y = t.cy + dy; if (y < 0 || y >= n) continue; for (let dx = -r; dx <= r; dx++) { const x = t.cx + dx; if (x < 0 || x >= n) continue; const d = Math.hypot(dx, dy); if (d > reach * 1.4) continue; const s = d / reach, i = y * n + x; if (s < best[i]) { best[i] = s; world.claim[i] = t.id; } } }
+    const pad = claimPad(t), cells = t.buildings.concat(Object.keys(t.sites || {}).map(Number));
+    for (const bcell of cells) {
+      const bx = bcell % n, by = (bcell - bx) / n; const ty = world.type[bcell];
+      if (!(isBuilding(ty) || ty === T.FARM || ty === T.PASTURE || ty === T.SITE || ty === T.SHELL)) continue;
+      for (let dy = -pad; dy <= pad; dy++) { const y = by + dy; if (y < 0 || y >= n) continue; for (let dx = -pad; dx <= pad; dx++) { const x = bx + dx; if (x < 0 || x >= n) continue; const d = Math.hypot(dx, dy); if (d > pad + 0.5) continue; const i = y * n + x; if (d < best[i]) { best[i] = d; world.claim[i] = t.id; } } }
+    }
   }
   world.claimTick = world.tick; borderDirty = true;
 }

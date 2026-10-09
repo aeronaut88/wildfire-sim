@@ -10,7 +10,7 @@ function maybeActOfGod() {
   if (world.cometWinter && world.tick >= world.cometWinter) { world.cometWinter = null; log('The sky clears at last. The comet year is over, and the first green shows through the ash.', 'weather'); if (params.weatherMode === 'auto') setWeather('clear', false); }
   const r = Math.random();
   if (r < 1 / (YEAR * 30)) earthquake();
-  else if (r < 1 / (YEAR * 30) + 1 / (YEAR * 60)) comet();
+  else if (r < 1 / (YEAR * 30) + 1 / (YEAR * 120) && world.tick > YEAR * 10) comet(); // once in a long lifetime, and never in the valley's first years
 }
 function nearestTown(x, y) { let near = null, nd = Infinity; for (const t of world.towns) { const d = Math.hypot(t.cx - x, t.cy - y); if (d < nd) { nd = d; near = t; } } return [near, nd]; }
 function inAnyTown(x, y, pad) { return world.towns.some(t => isAlive(t) && Math.hypot(t.cx - x, t.cy - y) <= t.R + (pad || 1)); }
@@ -70,7 +70,7 @@ function comet() {
 }
 function cometStrike(i) {
   const n = world.n, cx = i % n, cy = Math.floor(i / n), R = 7 + Math.floor(Math.random() * 3);
-  shake = 4;
+  shake = 9; // the whole valley feels it
   const [near, nd] = nearestTown(cx, cy);
   // Crater: a lake in a ring of rock, ash and fire for a long way beyond.
   for (let dy = -R - 10; dy <= R + 10; dy++) for (let dx = -R - 10; dx <= R + 10; dx++) {
@@ -80,9 +80,24 @@ function cometStrike(i) {
     else if (d <= R) makeRock(j, Math.random() < 0.3);
     else if (d <= R + 10) { const t = world.type[j]; if (isBuilding(t) && d <= R + 6) { onBuildingDestroyed(j, 'blast'); world.type[j] = T.RUBBLE; dirty.add(j); } else if (isFuel(t) && Math.random() < 0.6 * (1 - (d - R) / 10)) { world.wet[j] = 0; ignite(j); world.intensity[j] = isTree(t) ? 1 : 0; } }
   }
-  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - cx, t.cy - cy); if (d > R + 14) continue; const dead = Math.round(t.popLeft * Math.max(0.1, 0.5 * (1 - (d - R) / 14))); applyLosses(t, dead, 'blast'); remember(t, 'comet'); log(`${t.name} is under the fall: ${dead} dead, the town flattened at the edge, the sky black.`, 'loss'); }
+  // The shockwave: everything standing for a long way round comes down, surely near the crater and by chance further out.
+  let flattened = 0, felled = 0; const SW = 28;
+  for (let dy = -R - SW; dy <= R + SW; dy++) for (let dx = -R - SW; dx <= R + SW; dx++) {
+    const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
+    const d = Math.hypot(dx, dy); if (d <= R + 6 || d > R + SW) continue;
+    const j = y * n + x, t = world.type[j];
+    const p = d <= R + 10 ? 0.85 : Math.max(0.05, 0.85 * (1 - (d - R - 10) / (SW - 10)));
+    if (isBuilding(t) || t === T.WALL) { if (Math.random() < p) { if (isBuilding(t)) onBuildingDestroyed(j, 'shock'); if (world.burnLeft[j] > 0) world.burnLeft[j] = 0; world.type[j] = T.RUBBLE; world.mat[j] = 0; const tw = world.towns[world.townOf[j]]; if (tw && tw.sites) delete tw.sites[j]; dirty.add(j); flattened++; } }
+    else if (t === T.SITE) { if (Math.random() < p) { const tw = world.towns[world.townOf[j]]; if (tw && tw.sites) delete tw.sites[j]; world.type[j] = T.RUBBLE; dirty.add(j); } }
+    else if (isTree(t) && d <= R + 16 && Math.random() < p * 0.8) { world.type[j] = d <= R + 14 ? T.FELLED : T.SNAG; world.treeCount--; world.since[j] = world.tick; dirty.add(j); felled++; } // the forest laid flat, pointing away from the crater
+  }
+  explosions.push({ x: cellCenter(i)[0], y: cellCenter(i)[1], t0: performance.now() + 300, dur: 2600, r: (R + SW) * cellPx });
+  explosions.push({ x: cellCenter(i)[0], y: cellCenter(i)[1], t0: performance.now() + 900, dur: 3200, r: (R + SW + 12) * cellPx }); // and a second ring, slower, wider
+  if (flattened) stat('ev', 'flattened', flattened);
+  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - cx, t.cy - cy); if (d > R + SW) continue; const dead = Math.round(t.popLeft * Math.max(0.02, 0.3 * (1 - (d - R) / SW))); applyLosses(t, dead, 'blast'); remember(t, 'comet'); forgetCounts(t); log(d <= R + 14 ? `${t.name} is under the fall: ${dead} dead, the town flattened, the sky black.` : `The shockwave reaches ${t.name}: ${dead} dead, roofs torn off and walls down across the town.`, 'loss'); }
+  if (flattened || felled) log(`The blast lays ${felled ? 'the forest flat for ' + (R + 16) + ' cells around' : 'the ground bare'}${flattened ? ` and brings down ${flattened} buildings` : ''}.`, 'loss');
   stat('ev', 'landChanged', R * R * 3);
-  const [px, py] = cellCenter(i); popups.push({ x: px, y: py, text: 'IMPACT', color: '#fff0b0', t0: performance.now(), dur: 5000 });
+  const [px, py] = cellCenter(i); popups.push({ x: px, y: py, text: 'IMPACT', color: '#fff0b0', t0: performance.now(), dur: 9000 });
   explosions.push({ x: px, y: py, t0: performance.now(), dur: 1800, r: (R + 10) * cellPx });
   { let fe = 0, cu = 0, au = 0, u = 0; for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) { const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; const j = y * n + x; if (world.type[j] !== T.ROCK || Math.hypot(dx, dy) > R) continue; const k = world.oreKind[j]; if (k === 1) fe++; else if (k === 2) cu++; else if (k === 6) au++; else if (k === 4) u++; }
     world.craterSeams = { fe, cu, au, u };

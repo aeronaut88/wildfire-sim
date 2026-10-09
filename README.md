@@ -509,7 +509,9 @@ Acts of god are truly rare and change the map. An earthquake cracks walls, bring
 breaks dams into floods, and throws up a ridge of bare rock or opens a rift that fills with
 water across the land, so the old paths no longer go through. A comet falls as a second sun and
 leaves a crater lake in a ring of rock, burns everything for a long way round, and brings a year
-of ash in which the crops barely grow. The crater's ring is worth digging: sky iron, copper,
+of ash in which the crops barely grow. Its shockwave brings down most buildings near the crater
+and, with falling odds, buildings nearly thirty cells out; the forest is laid flat around it. It
+comes perhaps once in a long lifetime, and never in the valley's first ten years. The crater's ring is worth digging: sky iron, copper,
 sometimes gold, and now and then a trace of something that hums, and an earthquake's ridge
 can expose a seam too. Every town within a walk will want it.
 
@@ -589,8 +591,9 @@ can expose a seam too. Every town within a walk will want it.
   roads to towns up to 95 cells away, and towns of one faction further still. **Through-trade:**
   every so often a long wagon crosses a neighbour's roads to reach a town two or three roads on,
   carrying what the far end is short of and paying a coin in toll to every town it passes through.
-- **Borders.** Every town claims the ground around it, further the more it has built, and two
-  towns' claims meet in the middle. Claims are drawn as thin coloured lines, one colour per
+- **Borders.** Every town claims the ground around what it has built: each building, field and
+  work site holds a few cells about it, a little more for a town with a hall or a great many
+  buildings, so an outlying quarry holds its own patch and a faction's land need not be one piece. Claims are drawn as thin coloured lines, one colour per
   faction, and nobody builds on another faction's ground.
 - **Factions.** Every town starts as its own. A conquered town follows its master into the
   master's faction; two allies with a road between them and no war may unite under the larger.
