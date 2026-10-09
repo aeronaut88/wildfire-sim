@@ -81,21 +81,22 @@ function cometStrike(i) {
     else if (d <= R + 10) { const t = world.type[j]; if (isBuilding(t) && d <= R + 6) { onBuildingDestroyed(j, 'blast'); world.type[j] = T.RUBBLE; dirty.add(j); } else if (isFuel(t) && Math.random() < 0.6 * (1 - (d - R) / 10)) { world.wet[j] = 0; ignite(j); world.intensity[j] = isTree(t) ? 1 : 0; } }
   }
   // The shockwave: everything standing for a long way round comes down, surely near the crater and by chance further out.
-  let flattened = 0, felled = 0; const SW = 28;
+  let flattened = 0, felled = 0; const SW = n; // the wave crosses the whole valley
   for (let dy = -R - SW; dy <= R + SW; dy++) for (let dx = -R - SW; dx <= R + SW; dx++) {
     const x = cx + dx, y = cy + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue;
-    const d = Math.hypot(dx, dy); if (d <= R + 6 || d > R + SW) continue;
+    const d = Math.hypot(dx, dy); if (d <= R + 6) continue; // the crater loop has already done its work inside
     const j = y * n + x, t = world.type[j];
-    const p = d <= R + 10 ? 0.85 : Math.max(0.05, 0.85 * (1 - (d - R - 10) / (SW - 10)));
+    // a direct hit levels everything; half the map away a third of the buildings still come down; the far edge loses a tenth
+    const half = n / 2, p = d <= R + 10 ? 1 : d <= half ? 0.95 - 0.65 * (d - R - 10) / Math.max(1, half - R - 10) : Math.max(0.1, 0.3 - 0.2 * (d - half) / half);
     if (isBuilding(t) || t === T.WALL) { if (Math.random() < p) { if (isBuilding(t)) onBuildingDestroyed(j, 'shock'); if (world.burnLeft[j] > 0) world.burnLeft[j] = 0; world.type[j] = T.RUBBLE; world.mat[j] = 0; const tw = world.towns[world.townOf[j]]; if (tw && tw.sites) delete tw.sites[j]; dirty.add(j); flattened++; } }
     else if (t === T.SITE) { if (Math.random() < p) { const tw = world.towns[world.townOf[j]]; if (tw && tw.sites) delete tw.sites[j]; world.type[j] = T.RUBBLE; dirty.add(j); } }
-    else if (isTree(t) && d <= R + 16 && Math.random() < p * 0.8) { world.type[j] = d <= R + 14 ? T.FELLED : T.SNAG; world.treeCount--; world.since[j] = world.tick; dirty.add(j); felled++; } // the forest laid flat, pointing away from the crater
+    else if (isTree(t) && d <= R + 20 && Math.random() < p * 0.8) { world.type[j] = d <= R + 14 ? T.FELLED : T.SNAG; world.treeCount--; world.since[j] = world.tick; dirty.add(j); felled++; } // the forest laid flat, pointing away from the crater
   }
   explosions.push({ x: cellCenter(i)[0], y: cellCenter(i)[1], t0: performance.now() + 300, dur: 2600, r: (R + SW) * cellPx });
   explosions.push({ x: cellCenter(i)[0], y: cellCenter(i)[1], t0: performance.now() + 900, dur: 3200, r: (R + SW + 12) * cellPx }); // and a second ring, slower, wider
   if (flattened) stat('ev', 'flattened', flattened);
-  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - cx, t.cy - cy); if (d > R + SW) continue; const dead = Math.round(t.popLeft * Math.max(0.02, 0.3 * (1 - (d - R) / SW))); applyLosses(t, dead, 'blast'); remember(t, 'comet'); forgetCounts(t); log(d <= R + 14 ? `${t.name} is under the fall: ${dead} dead, the town flattened, the sky black.` : `The shockwave reaches ${t.name}: ${dead} dead, roofs torn off and walls down across the town.`, 'loss'); }
-  if (flattened || felled) log(`The blast lays ${felled ? 'the forest flat for ' + (R + 16) + ' cells around' : 'the ground bare'}${flattened ? ` and brings down ${flattened} buildings` : ''}.`, 'loss');
+  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - cx, t.cy - cy); const dead = Math.round(t.popLeft * (d <= R + 10 ? 0.9 : Math.max(0.05, 0.6 * (1 - (d - R) / (n / 2))))); applyLosses(t, dead, 'blast'); remember(t, 'comet'); forgetCounts(t); log(d <= R + 10 ? `${t.name} is under the fall. ${dead} dead; there is no town.` : d <= n / 4 ? `The shockwave hits ${t.name}: ${dead} dead, the town flattened, the sky black.` : `The shockwave reaches ${t.name}: ${dead} dead, roofs torn off and walls down across the town.`, 'loss'); }
+  if (flattened || felled) log(`The blast lays ${felled ? 'the forest flat for ' + (R + 20) + ' cells around' : 'the ground bare'}${flattened ? ` and brings down ${flattened} buildings` : ''}.`, 'loss');
   stat('ev', 'landChanged', R * R * 3);
   const [px, py] = cellCenter(i); popups.push({ x: px, y: py, text: 'IMPACT', color: '#fff0b0', t0: performance.now(), dur: 9000 });
   explosions.push({ x: px, y: py, t0: performance.now(), dur: 1800, r: (R + 10) * cellPx });

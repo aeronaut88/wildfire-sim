@@ -509,8 +509,9 @@ Acts of god are truly rare and change the map. An earthquake cracks walls, bring
 breaks dams into floods, and throws up a ridge of bare rock or opens a rift that fills with
 water across the land, so the old paths no longer go through. A comet falls as a second sun and
 leaves a crater lake in a ring of rock, burns everything for a long way round, and brings a year
-of ash in which the crops barely grow. Its shockwave brings down most buildings near the crater
-and, with falling odds, buildings nearly thirty cells out; the forest is laid flat around it. It
+of ash in which the crops barely grow. Its shockwave levels any town under it, brings down a third
+of the buildings half the map away and a tenth at the far edge, and lays the forest flat around the
+crater. It
 comes perhaps once in a long lifetime, and never in the valley's first ten years. The crater's ring is worth digging: sky iron, copper,
 sometimes gold, and now and then a trace of something that hums, and an earthquake's ridge
 can expose a seam too. Every town within a walk will want it.
