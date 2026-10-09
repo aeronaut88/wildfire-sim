@@ -1462,9 +1462,24 @@ for (const k of ['dragon0', 'dragon1', 'plane']) {
 }
 
 let SPR = {}, SPRS = [], SNOW = [], SNOWED = [];
+// Shrinking the 16 px art: halve it step by step with smoothing on, so every small pixel is the average of the
+// art under it rather than one pixel picked out of it. Picking gave the zoomed-out map a checkerboard shimmer.
+function shrink16(img, px) {
+  let cur = img, size = 16;
+  while (size / 2 >= px) {
+    const c = document.createElement('canvas'); c.width = c.height = size / 2;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, size / 2, size / 2);
+    cur = c; size /= 2;
+  }
+  if (size === px) return cur;
+  const c = document.createElement('canvas'); c.width = c.height = px;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, px, px);
+  return c;
+}
 function scaleSet(src, px) {
   const out = {};
   for (const k in src) {
+    if (px < 16) { out[k] = shrink16(src[k], px); continue; }
     const c = document.createElement('canvas');
     c.width = px; c.height = px;
     const x = c.getContext('2d');
@@ -1480,7 +1495,14 @@ function rescaleSprites(px) {
   SPR = SPRS[1];
   SNOW = SNOW16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
   SNOWED = SNOWED16.map(set => scaleSet(set, px));
+  SPRS_BASE = SPRS; SNOW_BASE = SNOW; SNOWED_BASE = SNOWED;
 }
+// The 16 px art itself, for drawing at full detail when the view is close enough to show it. Each canvas is
+// flagged so the main context sizes a plain draw of it to one cell.
+let SPRS_BASE = [], SNOW_BASE = [], SNOWED_BASE = [];
+const flag16 = v => { if (!v) return; if (v instanceof HTMLCanvasElement) v.__s16 = true; else if (Array.isArray(v)) v.forEach(flag16); else if (typeof v === 'object') for (const k in v) flag16(v[k]); };
+flag16(SPR16); flag16(SPR16S); flag16(SNOW16); flag16(SNOWED16);
+const SPR16X = Object.assign({}, SPR16, SPR16S[1]);
 
 /* ───────────────────────── Noise & RNG ───────────────────────── */
 
@@ -8556,6 +8578,14 @@ function renderLog() {
 
 const canvas = document.getElementById('map');
 const ctx = canvas.getContext('2d');
+{ // At full detail the sprites are the 16 px art: a plain three-argument draw of one is sized to a cell.
+  const native = CanvasRenderingContext2D.prototype.drawImage;
+  ctx.drawImage = function (img, x, y, w, h, a, b, c, d) {
+    if (arguments.length === 3) return img && img.__s16 ? native.call(this, img, x, y, cellPx, cellPx) : native.call(this, img, x, y);
+    if (arguments.length === 5) return native.call(this, img, x, y, w, h);
+    return native.call(this, img, x, y, w, h, a, b, c, d);
+  };
+}
 const viewport = document.getElementById('viewport');
 let cellPx = 8;
 const terrain = document.createElement('canvas');
@@ -8660,25 +8690,33 @@ function layout() {
 }
 
 // Hillshade: high ground a touch paler, hollows a touch darker, so the lie of the land reads.
-function blitCell(i) {
+function blitCell(i, c) {
+  c = c || tctx;
   const n = world.n, x = i % n, y = (i - x) / n;
   const t = world.type[i];
   const lv = world.snowLv ? world.snowLv[i] : 0;
   if (t === T.WATER) {
     const frozen = world.snow && world.snow[i] >= ICE_AT;
-    tctx.drawImage(frozen ? SPR.ice : spriteFor(i), x * cellPx, y * cellPx);
-    if (frozen && lv > 4) tctx.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx); // drifts on the ice
+    c.drawImage(frozen ? SPR.ice : spriteFor(i), x * cellPx, y * cellPx, cellPx, cellPx);
+    if (frozen && lv > 4) c.drawImage(SNOW[lv - 5][(x ^ y) & 1], x * cellPx, y * cellPx, cellPx, cellPx); // drifts on the ice
     return;
   }
   // Snow is drawn as the tile itself: caps at a dusting, patchy ground, mostly white, all white.
-  tctx.drawImage(lv ? SNOWED[Math.min(3, lv - 1)][spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx);
-  if (world.biome && world.biome[i] && lv < 4) { tctx.fillStyle = BIOME_TINT[world.biome[i]]; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); } // the region's cast
-  if (world.surveyed && world.surveyed[i] && world.deep[i] && !isBuilding(t)) tctx.drawImage(SPR.survey, x * cellPx, y * cellPx);
+  c.drawImage(lv ? SNOWED[Math.min(3, lv - 1)][spriteKey(i)] : spriteFor(i), x * cellPx, y * cellPx, cellPx, cellPx);
+  if (world.biome && world.biome[i] && lv < 4) { c.fillStyle = BIOME_TINT[world.biome[i]]; c.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); } // the region's cast
+  if (world.surveyed && world.surveyed[i] && world.deep[i] && !isBuilding(t)) c.drawImage(SPR.survey, x * cellPx, y * cellPx, cellPx, cellPx);
   if (world.elev) {
     const e = world.elev[i];
-    if (e > 0.52) { tctx.fillStyle = `rgba(255,250,235,${Math.min(0.28, (e - 0.52) * 0.7)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
-    else if (e < 0.4) { tctx.fillStyle = `rgba(0,10,20,${Math.min(0.22, (0.4 - e) * 0.9)})`; tctx.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
+    if (e > 0.52) { c.fillStyle = `rgba(255,250,235,${Math.min(0.28, (e - 0.52) * 0.7)})`; c.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
+    else if (e < 0.4) { c.fillStyle = `rgba(0,10,20,${Math.min(0.22, (0.4 - e) * 0.9)})`; c.fillRect(x * cellPx, y * cellPx, cellPx, cellPx); }
   }
+}
+// Full detail: paint the cells in the window straight from the 16 px art.
+function paintWindow() {
+  const n = world.n, span = canvas.width / view.zoom;
+  const x0 = Math.max(0, Math.floor(view.x / cellPx) - 1), y0 = Math.max(0, Math.floor(view.y / cellPx) - 1);
+  const x1 = Math.min(n - 1, Math.ceil((view.x + span) / cellPx) + 1), y1 = Math.min(n - 1, Math.ceil((view.y + span) / cellPx) + 1);
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) blitCell(y * n + x, ctx);
 }
 function redrawTerrain() {
   const n = world.n;
@@ -8736,7 +8774,10 @@ function render(now, tickFrac) {
     const a = shake * 3;
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
-  ctx.drawImage(terrain, 0, 0);
+  // Close enough to see the art: paint the window from the 16 px sprites and draw everything else from them too.
+  const detail = cellPx * view.zoom * ((parseFloat(canvas.style.width) || canvas.width) / canvas.width) >= 14;
+  if (detail) { SPR = SPR16X; SPRS = SPR16S; SNOW = SNOW16; SNOWED = SNOWED16; paintWindow(); }
+  else ctx.drawImage(terrain, 0, 0);
   drawBorders(ctx);
   const n = world.n;
   // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
@@ -9071,6 +9112,7 @@ function render(now, tickFrac) {
       ctx.setLineDash([]);
     }
   }
+  if (detail) { SPRS = SPRS_BASE; SPR = SPRS[1]; SNOW = SNOW_BASE; SNOWED = SNOWED_BASE; }
   ctx.restore();
 }
 

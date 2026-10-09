@@ -93,9 +93,24 @@ for (const k of ['dragon0', 'dragon1', 'plane']) {
 }
 
 let SPR = {}, SPRS = [], SNOW = [], SNOWED = [];
+// Shrinking the 16 px art: halve it step by step with smoothing on, so every small pixel is the average of the
+// art under it rather than one pixel picked out of it. Picking gave the zoomed-out map a checkerboard shimmer.
+function shrink16(img, px) {
+  let cur = img, size = 16;
+  while (size / 2 >= px) {
+    const c = document.createElement('canvas'); c.width = c.height = size / 2;
+    const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, size / 2, size / 2);
+    cur = c; size /= 2;
+  }
+  if (size === px) return cur;
+  const c = document.createElement('canvas'); c.width = c.height = px;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high'; x.drawImage(cur, 0, 0, px, px);
+  return c;
+}
 function scaleSet(src, px) {
   const out = {};
   for (const k in src) {
+    if (px < 16) { out[k] = shrink16(src[k], px); continue; }
     const c = document.createElement('canvas');
     c.width = px; c.height = px;
     const x = c.getContext('2d');
@@ -111,5 +126,12 @@ function rescaleSprites(px) {
   SPR = SPRS[1];
   SNOW = SNOW16.map(pair => pair.map(c16 => scaleSet({ c: c16 }, px).c));
   SNOWED = SNOWED16.map(set => scaleSet(set, px));
+  SPRS_BASE = SPRS; SNOW_BASE = SNOW; SNOWED_BASE = SNOWED;
 }
+// The 16 px art itself, for drawing at full detail when the view is close enough to show it. Each canvas is
+// flagged so the main context sizes a plain draw of it to one cell.
+let SPRS_BASE = [], SNOW_BASE = [], SNOWED_BASE = [];
+const flag16 = v => { if (!v) return; if (v instanceof HTMLCanvasElement) v.__s16 = true; else if (Array.isArray(v)) v.forEach(flag16); else if (typeof v === 'object') for (const k in v) flag16(v[k]); };
+flag16(SPR16); flag16(SPR16S); flag16(SNOW16); flag16(SNOWED16);
+const SPR16X = Object.assign({}, SPR16, SPR16S[1]);
 

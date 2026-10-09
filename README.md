@@ -680,6 +680,14 @@ A town that loses everything is never stuck: its people muster at the ruins or a
 two of them cut wood even without a lumberyard, and if there is no timber at all they slowly
 rebuild with what they scavenge from the rubble.
 
+## Looking closer, properly
+
+Every tile and sprite is drawn as 16 by 16 pixel art, but the map keeps it at eight pixels a cell
+or fewer. Zoom in until a cell is fourteen screen pixels or more and the view switches to painting
+the window straight from the full art, sprites included, so the houses have doors and the farmers
+have hats. Zoomed out, the small tiles are averaged down from the art rather than sampled, which
+takes the checkerboard shimmer off big maps.
+
 ## Big valleys
 
 The size slider goes to 500 wide, a quarter of a million cells. A big valley starts with more towns

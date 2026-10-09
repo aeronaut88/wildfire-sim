@@ -29,7 +29,10 @@ function render(now, tickFrac) {
     const a = shake * 3;
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
-  ctx.drawImage(terrain, 0, 0);
+  // Close enough to see the art: paint the window from the 16 px sprites and draw everything else from them too.
+  const detail = cellPx * view.zoom * ((parseFloat(canvas.style.width) || canvas.width) / canvas.width) >= 14;
+  if (detail) { SPR = SPR16X; SPRS = SPR16S; SNOW = SNOW16; SNOWED = SNOWED16; paintWindow(); }
+  else ctx.drawImage(terrain, 0, 0);
   drawBorders(ctx);
   const n = world.n;
   // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
@@ -364,6 +367,7 @@ function render(now, tickFrac) {
       ctx.setLineDash([]);
     }
   }
+  if (detail) { SPRS = SPRS_BASE; SPR = SPRS[1]; SNOW = SNOW_BASE; SNOWED = SNOWED_BASE; }
   ctx.restore();
 }
 
