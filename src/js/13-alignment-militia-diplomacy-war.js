@@ -66,6 +66,7 @@ function makePeace(a, b, why) {
 function militiaRate(t) {
   let r = 0.10 + 0.05 * t.align.order + 0.02 * (t.align.moral < 0 ? 1 : 0) + 0.015 * (t.mil || 0);
   r += 0.06 * countType(t, T.BARRACKS);
+  if (govOf(t) === 'dominion') r += 0.03; // the dictator's levy
   return Math.max(0.05, r);
 }
 

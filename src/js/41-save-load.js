@@ -21,7 +21,7 @@ function snapshot() {
     },
     river: world.river, flooded: world.flooded, floodOrig: [...world.floodOrig], floodUntil: world.floodUntil,
     beavers: world.beavers ? { ...world.beavers, pond: [...world.beavers.pond] } : null,
-    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, climate: world.climate || null, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
+    factions: world.factions || {}, tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, climate: world.climate || null, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
     falloutList: world.falloutList,
     burning: world.burning, glowing: world.glowing, wetList: world.wetList,
     totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
@@ -57,9 +57,10 @@ function validateSave(d) {
     if (!t || typeof t !== 'object') throw new Error('bad town');
     t.name = cleanStr(t.name, 60) || 'Nameless';
     t.chronicle = (Array.isArray(t.chronicle) ? t.chronicle : []).slice(0, 40).map(e => ({ tick: Number.isFinite(e && e.tick) ? e.tick : 0, text: cleanStr(e && e.text, 300) }));
-    t.people = (Array.isArray(t.people) ? t.people : []).slice(0, 20).map(p => ({ ...p, name: cleanStr(p && p.name, 60), story: cleanStr(p && p.story, 200), cause: cleanStr(p && p.cause, 60), role: cleanStr(p && p.role, 20), trait: p && TRAITS[p.trait] ? p.trait : undefined, deeds: (Array.isArray(p && p.deeds) ? p.deeds : []).slice(0, 6).map(dd => ({ tick: Number.isFinite(dd && dd.tick) ? dd.tick : 0, text: cleanStr(dd && dd.text, 200) })) }));
+    t.people = (Array.isArray(t.people) ? t.people : []).slice(0, 20).map(p => ({ ...p, name: cleanStr(p && p.name, 60), story: cleanStr(p && p.story, 200), cause: cleanStr(p && p.cause, 60), role: cleanStr(p && p.role, 20), title: cleanStr(p && p.title, 24) || undefined, trait: p && TRAITS[p.trait] ? p.trait : undefined, deeds: (Array.isArray(p && p.deeds) ? p.deeds : []).slice(0, 6).map(dd => ({ tick: Number.isFinite(dd && dd.tick) ? dd.tick : 0, text: cleanStr(dd && dd.text, 200) })) }));
     if (t.res && typeof t.res === 'object') for (const k of Object.keys(t.res)) if (!RES_KINDS.includes(k)) delete t.res[k];
   }
+  if (d.factions && typeof d.factions === 'object') for (const id in d.factions) { const f = d.factions[id]; if (!f || typeof f !== 'object' || !Array.isArray(f.towns)) { delete d.factions[id]; continue; } f.name = cleanStr(f.name, 60) || 'Nameless'; f.gov = GOVS[f.gov] ? f.gov : 'elder'; if (f.ruler) f.ruler.name = cleanStr(f.ruler.name, 60); f.color = /^hsl\([\d., %]+\)$/.test(f.color || '') ? f.color : townColor(+id); }
   if (d.trader && d.trader.stock) d.trader.stock = cleanKeys(d.trader.stock, 20);
   if (d.dragon) d.dragon.name = cleanStr(d.dragon.name, 60);
   if (d.dragonGrudge) d.dragonGrudge.name = cleanStr(d.dragonGrudge.name, 60);
@@ -97,7 +98,7 @@ function restore(d) {
   world.flow = d.arrays.flow ? unpackArr(d.arrays.flow, Int32Array) : new Int32Array(N).fill(-1);
   world.river = (d.river || []).slice(); world.flooded = (d.flooded || []).slice(); world.floodOrig = new Map(d.floodOrig || []); world.floodUntil = d.floodUntil || 0;
   world.beavers = d.beavers ? { ...d.beavers, pond: new Set(d.beavers.pond || []) } : null;
-  world.tradeRoads = d.tradeRoads || {}; world.wagons = (d.wagons || []).slice(); world.lastSeason = d.lastSeason;
+  world.factions = d.factions || {}; world.claim = null; world.claimTick = -1000; borderDirty = true; world.tradeRoads = d.tradeRoads || {}; world.wagons = (d.wagons || []).slice(); world.lastSeason = d.lastSeason;
   world.snow = d.arrays.snow ? unpackArr(d.arrays.snow, Uint8Array) : new Uint8Array(N);
   world.oreKind = d.arrays.oreKind ? unpackArr(d.arrays.oreKind, Uint8Array) : new Uint8Array(N);
   world.ore = d.arrays.ore ? unpackArr(d.arrays.ore, Uint16Array) : new Uint16Array(N);

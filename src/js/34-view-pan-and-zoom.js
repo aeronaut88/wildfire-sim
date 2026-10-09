@@ -30,6 +30,7 @@ function render(now, tickFrac) {
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
   ctx.drawImage(terrain, 0, 0);
+  drawBorders(ctx);
   const n = world.n;
   // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
   const cull = view.zoom > 1.05, vx0 = view.x - cellPx * 3, vy0 = view.y - cellPx * 3, vx1 = view.x + canvas.width / view.zoom + cellPx * 3, vy1 = view.y + canvas.height / view.zoom + cellPx * 3;

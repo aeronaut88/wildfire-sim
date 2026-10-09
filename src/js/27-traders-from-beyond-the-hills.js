@@ -87,7 +87,7 @@ function holdMarket(tr, town) {
     if (town.res[k] < cap * 0.65 || over <= 0) continue;
     const amt = Math.min(over, Math.floor(tr.coin / PRICE[k]));
     if (amt <= 0) continue;
-    const bonus = 1 + Math.min(0.3, 0.1 * jobCount(town, 'trader')) + (town.drank ? 0.15 : 0); // a town with traders haggles better, and a town with an inn is worth the stop
+    const bonus = 1 + Math.min(0.3, 0.1 * jobCount(town, 'trader')) + (town.drank ? 0.15 : 0) + (govOf(town) === 'merchant' ? 0.1 : 0); // a town with traders haggles better, and a town with an inn is worth the stop
     town.res[k] -= amt; town.res.coin += Math.round(amt * PRICE[k] * bonus); tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
   stat('ev', 'markets');

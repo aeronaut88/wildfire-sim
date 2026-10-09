@@ -27,7 +27,7 @@ function updateBattles() {
   for (const bt of world.battles) {
     const from = world.towns[bt.from], to = world.towns[bt.to];
     bt.ticks++;
-    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns) * (1 + 0.04 * Math.min(12, from.soldiers || 0)); // a town with drilled soldiers raids harder too
+    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns) * (1 + 0.04 * Math.min(12, from.soldiers || 0)) * (govOf(from) === 'horde' ? 1.15 : 1); // a town with drilled soldiers raids harder too, and a horde harder still
     const defPow = (0.7 + Math.random() * 0.6) * (1 + 0.3 * to.mil) * (to.wallR ? 1.5 : 1) * (to.align.order > 0 ? 1.2 : 1) * soldierPower(to);
     // Soldiers hold the line and fall first.
     if ((to.soldiers || 0) > 0 && Math.random() < 0.12) { to.soldiers--; applyLosses(to, 1, 'battle'); }
@@ -143,7 +143,8 @@ function annex(from, to) {
   to.relations = {}; to.wars = {};
   for (const o of world.towns) { if (o !== to) { delete o.wars[to.id]; o.relations[to.id] = o === from ? 100 : rel(o, from); to.relations[o.id] = o === from ? 100 : rel(o, from); } }
   to.name = `${to.name.replace(/\s*\(.*\)$/, '')} (${from.name.replace(/\s*\(.*\)$/, '')})`; // a town taken twice shows only its newest master
-  to.master = from.id; // and pays tribute from its stockpiles
+  to.master = from.id;
+  joinFaction(to, factionOf(from), 'by conquest'); // and pays tribute from its stockpiles
   to.mil = Math.max(to.mil, from.mil - 1); to.civ = Math.max(to.civ, from.civ - 1);
   log(`${from.name} annexes ${to.name}. Its people now answer to new masters.`, 'war');
 }

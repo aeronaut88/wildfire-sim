@@ -35,6 +35,8 @@ function roadPath(src, dst) {
   return path.reverse();
 }
 
+// How far a town will build a road: further with traders to drive the wagons and a hall to plan it.
+function roadReach(a, b) { return Math.min(world.n * 0.8, 55 + 20 * Math.min(2, jobCount(a, 'trader') + jobCount(b, 'trader')) + (hasType(a, T.TOWNHALL) || hasType(b, T.TOWNHALL) ? 20 : 0) + (sameFaction(a, b) ? 15 : 0)); }
 function maybeTradeRoad() {
   if (world.tick % 60 !== 0) return;
   const towns = world.towns.filter(isAlive);
@@ -44,7 +46,7 @@ function maybeTradeRoad() {
     world.tradeRoads = world.tradeRoads || {};
     if (world.tradeRoads[key]) continue;
     if (has(a, 'hermit') || has(b, 'hermit')) continue; // wants nothing from the neighbours
-    if (rel(a, b) < (has(a, 'merchant') || has(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > 55 || Math.random() > 0.25) continue;
+    if (rel(a, b) < (has(a, 'merchant') || has(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > roadReach(a, b) || Math.random() > 0.25) continue;
     const n = world.n;
     const path = roadPath(a.cy * n + a.cx, b.cy * n + b.cx);
     if (!path) continue;
@@ -117,7 +119,7 @@ function updateWagons() {
     if (!isAlive(a) || !isAlive(b)) continue;
     if (atWar(a, b) || (a.plagueUntil || 0) > world.tick || (b.plagueUntil || 0) > world.tick) continue; // no wagons through a shut gate
     const traders = jobCount(a, 'trader') + jobCount(b, 'trader');
-    r.wagonT += traders >= 2 ? 0.4 : traders >= 1 ? 0 : -0.6; // no traders: wagons come slowly; two or more: faster
+    r.wagonT += (traders >= 2 ? 0.4 : traders >= 1 ? 0 : -0.6) + (govOf(a) === 'merchant' || govOf(b) === 'merchant' ? 0.3 : 0); // no traders: wagons come slowly; two or more: faster; a merchant republic faster still
     if (++r.wagonT >= 160 && !world.wagons.some(w => w.key === key)) {
       r.wagonT = 0;
       const fwd = Math.random() < 0.5;
@@ -147,7 +149,8 @@ function updateWagons() {
         for (const k of RES_KINDS) { if (k === 'water' || k === 'coin' || k === 'meals') continue; const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
         if (best) { const amt = Math.min(10, Math.floor(bestAmt)), price = (PRICE[best] || 1) * amt, paid = Math.min(price, Math.max(0, Math.floor(to.res.coin || 0))); from.res[best] -= amt; addRes(to, best, amt); to.res.coin -= paid; from.res.coin += paid; stat('ev', 'tradeCoin', paid); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}${paid ? ` for ${paid} coin` : ', on credit'}`, 'build'); }
       }
-      if (Math.random() < 0.25 && to && from) log(`A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
+      if (w.via && to && to.res) for (const id of w.via) { const v = world.towns[id]; if (v && v.res && to.res.coin >= 1) { to.res.coin--; v.res.coin++; } } // tolls on the way through
+      if (Math.random() < 0.25 && to && from) log(w.long ? `A long wagon from ${from.name} unloads at ${to.name} after a journey of ${w.path.length} cells` : `A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
       // Plague rides along.
       if (from && to && from.plagueUntil && from.plagueUntil > world.tick && Math.random() < 0.5 && !to.plagueUntil) { to.plagueUntil = world.tick + 300; const dead = Math.round(healMul(to) * to.popLeft * (0.04 + Math.random() * 0.08)); applyLosses(to, dead); log(`Plague comes to ${to.name} on the ${from.name} road: ${dead} dead`, 'loss'); }
     }

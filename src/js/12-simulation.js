@@ -142,6 +142,8 @@ function step() {
   checkAchievementStats();
   updateDiplomacy();
   updateCouncil();
+  updateFactions();
+  updateThroughTrade();
   updateWarbands();
   updateFallout();
   updateBoats();

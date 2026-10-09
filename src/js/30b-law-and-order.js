@@ -316,7 +316,7 @@ function raiseMonument(town, text) {
 function updateFestival(town) {
   const year = Math.floor(world.tick / YEAR), inYear = world.tick % YEAR;
   if (town.festivalYear === year || inYear < YEAR * 0.7 || inYear > YEAR * 0.75 || town.mobilized || town.famine || !town.fed || town.popLeft < 25) return;
-  if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > 0.2) return;
+  if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > (govOf(town) === 'theocracy' ? 0.4 : 0.2)) return; // a theocracy keeps its feast days
   town.festivalYear = year;
   const centre = town.cy * world.n + town.cx;
   spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40) + ((town.res.beer || 0) > 0 ? 4 : 0)); // a festival with beer draws a bigger crowd

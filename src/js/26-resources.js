@@ -48,7 +48,7 @@ function stoneCostOf(type) { return type === T.HOUSE ? COST.stoneHouse : { ...CO
 // Whether a placement goes up in stone: never without masonry; always under the code; civic works when the stone is there; houses by temperament.
 function wantsStone(t, type) {
   if (!knowsMasonry(t) || !STONE_OK.has(type) || !COST[type] || !canAfford(t, stoneCostOf(type))) return false;
-  if (type === T.TENEMENT || (t.code && t.code.stone)) return true;
+  if (type === T.TENEMENT || (t.code && t.code.stone) || govOf(t) === 'kingdom') return true; // a kingdom builds to last
   if (isHome(type)) return Math.random() < (t.temper ? t.temper.stone : 1) * 0.5;
   return true;
 }

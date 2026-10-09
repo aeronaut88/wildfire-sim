@@ -197,7 +197,7 @@ function buildField(town, fieldType) {
     const d = Math.hypot(dx, dy);
     if (d > R) continue;
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
-    if (foreign) continue;
+    if (foreign || claimedByOther(town, i)) continue; // not on another faction's ground
     let touch = false, farmNear = false;
     for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (world.road[j] || isBuilding(type[j])) touch = true; if (type[j] === T.FARM || type[j] === T.PASTURE) farmNear = true; }
     if (!touch && !farmNear) continue;
@@ -363,7 +363,7 @@ function buildHouse(town, quiet) {
     if (world.burnLeft[i] > 0) continue;
     let foreign = false;
     for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 2) { foreign = true; break; }
-    if (foreign) continue;
+    if (foreign || claimedByOther(town, i)) continue; // not on another faction's ground
     let touch = false;
     for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (isBuilding(type[j]) || world.road[j] || type[j] === T.RUBBLE || type[j] === T.SHELL) { touch = true; break; } }
     if (!touch) continue;

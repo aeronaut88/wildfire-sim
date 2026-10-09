@@ -161,6 +161,8 @@
   .card .dim { color: var(--ink-dim); }
   .card .d { color: #ff8a73; }
   .card .g { color: #a7e36f; }
+  .sw { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; vertical-align: middle; }
+  .row.fac { border-left: 2px solid #555; opacity: .95; }
   .card .lead { color: #d9c48a; }
   .card .folk div { margin: 3px 0; }
   .card .folk .dead { opacity: 0.5; font-style: italic; }
@@ -1302,6 +1304,7 @@ SPRITES.cook = SPRITES.worker.map(r => r.replace(/u/g, 'x').replace(/m/g, 'd'));
 SPRITES.brewer = SPRITES.worker.map(r => r.replace(/u/g, '6').replace(/m/g, 'V')); // tan, a leather cap
 SPRITES.smith = SPRITES.worker.map(r => r.replace(/u/g, 'a').replace(/m/g, 'k')); // leather apron
 SPRITES.hauler = SPRITES.worker.map(r => r.replace(/u/g, 'V').replace(/t/g, 'z')); // a pack frame
+SPRITES.border = ['EEEEEEEEEEEEEEEE', ...Array(14).fill('E..............E'), 'EEEEEEEEEEEEEEEE'];
 SPRITES.drunk = SPRITES.worker.map(r => r.replace(/u/g, '9').replace(/t/g, 'y').replace(/s/g, 'y')); // red in the face, a cup
 // The larder's buildings, beasts and fields.
 SPRITES.smokehouse = SPRITES.granary.map(r => r.replace(/D/g, 'b').replace(/d/g, 'B').replace(/6/g, 'a').replace(/V/g, 'k')); // a dark shed
@@ -1344,7 +1347,7 @@ SPRITES.shell = [ // a burnt-out stone house: walls standing, roof gone, black i
   'grkkbkkkkkbkkkrg','gRkkkkkkkkkkkkRg','grkkkkkkkbkkkkrg','gRkkkkkkkkkkkkRg',
   'gRrrRrRRrRrRRrRg','grrrrrrrrrrrrrrg','ZZZZZZZZZZZZZZZZ','gggggggggggggggg',
 ];
-for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear', 'shell', 'farmer', 'fisher', 'icefisher', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'drunk', 'smokehouse', 'bakery', 'inn', 'mill', 'brewery', 'cellar', 'fishery', 'spring', 'elk', 'hare', 'farm_b', 'farm_t', 'farm_o', 'farm_or', 'farm_x', ...STONE_KEYS.map(k => k + '_s')]) SPR16[k] = buildSprite16(SPRITES[k]);
+for (const k of ['raider', 'tank', 'cannon', 'bomber', 'lumberyard', 'mine', 'quarry', 'well', 'wheel', 'plant', 'solar', 'oreIron', 'oreCopper', 'oreCoal', 'oreUranium', 'oreGold', 'logger', 'miner', 'hydro', 'nuclear', 'derrick', 'shaft', 'survey', 'trader', 'pasture', 'deer', 'boar', 'sheep', 'cow', 'pig', 'chicken', 'fowl', 'aurochs', 'hunter', 'carrier', 'reeds', 'sand', 'jungle', 'cactus', 'site', 'farm0', 'farm1', 'granary', 'felled', 'airbase', 'fighter', 'gaol', 'constable', 'fugitive', 'cistern', 'watertower', 'healer', 'hospital', 'forager', 'gallows', 'grave', 'monument', 'wolf', 'bear', 'shell', 'farmer', 'fisher', 'icefisher', 'mason', 'baker', 'smoker', 'cook', 'brewer', 'smith', 'hauler', 'drunk', 'border', 'smokehouse', 'bakery', 'inn', 'mill', 'brewery', 'cellar', 'fishery', 'spring', 'elk', 'hare', 'farm_b', 'farm_t', 'farm_o', 'farm_or', 'farm_x', ...STONE_KEYS.map(k => k + '_s')]) SPR16[k] = buildSprite16(SPRITES[k]);
 /* ───────────────────────── Seasons: four looks for every tile ─────────────────────────
    The same pixel art, re-coloured per season: fresh greens in spring, the base art in summer,
    gold grass and flame-coloured oaks in autumn, dead grass and bare twiggy hardwoods in winter.
@@ -1956,7 +1959,7 @@ function generate(n, seed) {
   world.tick = 0; world.burnedCount = 0;
   world.towns = []; world.air = null;
   world.buildingsTotal = world.buildingsLeft = world.popTotal = world.popLeft = 0;
-  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.dragonCooldown = 0; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.snowFac = null; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
+  world.buildingsLost = 0; world.deaths = 0; world.sweepPos = 0; world.settlers = null; world.dragon = null; world.dragonCooldown = 0; world.factions = {}; world.claim = null; world.claimTick = -1000; world.warbands = []; world.battles = []; world.bombers = []; world.fighters = []; world.firebugs = []; world.travellers = []; world.packs = []; world.boats = []; world.snowFac = null; world.diploTimer = 60; world.tradeRoads = {}; world.wagons = []; world.lastSeason = undefined;
   world.weather = { kind: 'clear', left: 100 + Math.floor(Math.random() * 120) };
   const a0 = Math.random() * Math.PI * 2;
   world.wind = { angle: a0, strength: 0.2 + Math.random() * 0.3, targetAngle: a0, targetStrength: 0.3, retarget: 0 };
@@ -2283,7 +2286,7 @@ function placeTowns(n) {
 const FIRST_NAMES = ['Agnes', 'Mattias', 'Rook', 'Ida', 'Tobias', 'Wren', 'Hollis', 'Marta', 'Ezra', 'Pim', 'Sunniva', 'Cormac', 'Dagny', 'Lucan', 'Bea', 'Otto', 'Freya', 'Silas', 'Nell', 'Ansel', 'Greta', 'Jory', 'Thea', 'Ambrose', 'Petra', 'Roan', 'Elspeth', 'Hugo', 'Maren', 'Caspar', 'Liv', 'Barnaby', 'Signe', 'Teodor', 'Hazel', 'Emrys', 'Rosalind', 'Finn', 'Ingrid', 'Oskar', 'Winnie', 'Lorcan', 'Astrid', 'Benedikt', 'Tamsin', 'Soren', 'Clem', 'Juniper', 'Rufus', 'Odile'];
 const LAST_NAMES = ['Thorne', 'Ashby', 'Fairweather', 'Coalbrook', 'Hollins', 'Marsh', 'Quill', 'Stannard', 'Greaves', 'Pike', 'Wexley', 'Oakes', 'Brandt', 'Fenwick', 'Larkspur', 'Dunmore', 'Haskell', 'Birchwood', 'Kettle', 'Ravel', 'Tolliver', 'Moss', 'Sedge', 'Hartigan', 'Bramble', 'Underhill', 'Crane', 'Fallow', 'Wick', 'Northey', 'Tully', 'Varga', 'Ellery', 'Blackwood', 'Hale', 'Pennyworth', 'Rourke', 'Stirling', 'Ashgrove', 'Lindqvist'];
 const BACKSTORIES = ['came over the pass with the first wagons', 'was born in a hard winter and has never minded the cold', 'once walked to the far side of the valley and back in a day', 'keeps bees and talks to them', 'has never trusted the river', 'lost a childhood home to fire and still smells smoke in dreams', 'can name every tree within a mile', 'swears a dragon once looked them in the eye', 'won the pie contest nine years running', 'reads the weather in the way the pines move', 'was found as a baby on the north road', 'has buried two spouses and outlived them both cheerfully', 'carves animals out of birch and gives them away', 'taught half the town to swim', 'owes money in every town in the valley', 'claims to have seen the lights under the lake', 'fought in a war nobody else remembers', 'sings when the fire bell rings', 'has a scar from a boar and a story to match', 'planted the oak outside the hall', 'never sleeps on the night of the first snow', 'grew up in a wagon and still cannot sit still', 'keeps the only clock in town', 'has argued with the elder for thirty years', 'knows where the old mine shaft goes and will not say', 'brews something in the cellar that the chief pretends not to know about', 'walked away from a town that burned and never speaks its name', 'counts the geese every autumn and writes it down', 'was struck by lightning once and says it improved them', 'sleeps with a bucket of water by the bed'];
-const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk', captain: 'militia captain', spy: 'townsfolk', healer: 'healer', child: 'child', ousted: 'ousted elder', baker: 'baker', smoker: 'smokehouse keeper', cook: 'cook', brewer: 'brewer', smith: 'blacksmith', fisher: 'fisher', miller: 'miller', mason: 'master mason', trader: 'trader', sot: 'town drunk' };
+const ROLE_LABEL = { elder: 'elder', chief: 'fire chief', hunter: 'hunter', firebug: 'townsfolk', slayer: 'dragonslayer', geologist: 'geologist', constable: 'constable', thief: 'townsfolk', convict: 'convict', soldier: 'soldier', townsfolk: 'townsfolk', captain: 'militia captain', spy: 'townsfolk', healer: 'healer', child: 'child', ousted: 'ousted elder', baker: 'baker', smoker: 'smokehouse keeper', cook: 'cook', brewer: 'brewer', smith: 'blacksmith', fisher: 'fisher', miller: 'miller', mason: 'master mason', trader: 'trader', sot: 'town drunk', ruler: 'ruler' };
 /* Leaders. Every elder has a trait, and the trait steers the town's choices, right or wrong:
    who it fights, what it builds, what it hoards, what draws the dragons. The people have a say
    too: famine, war, thirst and tyranny raise unrest, and an elder who lets it climb is thrown out. */
@@ -2327,7 +2330,7 @@ function seedPeople(town, rng) {
 }
 function person(town, role) { return town.people ? town.people.find(p => p.alive && p.role === role) : null; }
 function personAge(p) { return Math.max(0, Math.floor((world.tick - p.born) / YEAR)); }
-function roleLabel(p) { return (p.role === 'firebug' || p.role === 'thief' || p.role === 'spy') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : p.role === 'spy' ? 'spy' : ROLE_LABEL[p.role] || p.role; }
+function roleLabel(p) { if (p.title && p.alive) return p.title; return (p.role === 'firebug' || p.role === 'thief' || p.role === 'spy') && !p.revealed ? 'townsfolk' : p.role === 'firebug' ? 'firebug' : p.role === 'thief' ? 'thief' : p.role === 'spy' ? 'spy' : ROLE_LABEL[p.role] || p.role; }
 function deed(p, text) { if (!p) return; p.deeds.push({ tick: world.tick, text }); if (p.deeds.length > 6) p.deeds.shift(); }
 function elect(town, role, quiet, avoidTrait) {
   if (role === 'firebug') { const g = grudgeHolders(town).find(q => q.role === 'townsfolk' || q.role === 'thief'); if (g && Math.random() < 0.6) { g.role = 'firebug'; g.revealed = false; g.arsons = 0; g.story = `never forgave ${g.grudge.why}`; return g; } }
@@ -2410,8 +2413,10 @@ function killNotable(town, cause) {
   const living = (town.people || []).filter(p => p.alive); if (!living.length) return;
   const p = living[Math.floor(Math.random() * living.length)];
   if (p.role === 'child' && cause !== 'famine' && cause !== 'plague' && cause !== 'fire' && Math.random() < 0.6) return; // children are kept back from most of it
+  const wasLabel = roleLabel(p);
   p.alive = false; p.died = world.tick; p.cause = cause; stat('ev', 'notableDeaths');
-  log(`${p.name}, ${roleLabel(p)} of ${town.name}, ${DEATH_VERB[cause] || 'dies'} at ${personAge(p)}`, 'loss');
+  log(`${p.name}, ${wasLabel} of ${town.name}, ${DEATH_VERB[cause] || 'dies'} at ${personAge(p)}`, 'loss');
+  rulerDied(town, p);
   funeral(town, p, false);
   if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role);
   else if (p.role === 'firebug') elect(town, 'firebug', true);
@@ -2419,8 +2424,10 @@ function killNotable(town, cause) {
 function agePeople(town) {
   if (world.tick % 600 !== 0 || !town.people) return;
   for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < (0.08 + (personAge(p) - 72) * 0.02) * (hasType(town, T.HEALER) ? 0.6 : 1)) {
+    const wasLabel = roleLabel(p);
     p.alive = false; p.died = world.tick; p.cause = 'old age'; stat('ev', 'notableDeaths');
-    log(`${p.name}, ${roleLabel(p)} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+    log(`${p.name}, ${wasLabel} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+    rulerDied(town, p);
     funeral(town, p, false);
     if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role); else if (p.role === 'firebug') elect(town, 'firebug', true);
   }
@@ -3047,6 +3054,8 @@ function step() {
   checkAchievementStats();
   updateDiplomacy();
   updateCouncil();
+  updateFactions();
+  updateThroughTrade();
   updateWarbands();
   updateFallout();
   updateBoats();
@@ -3131,6 +3140,7 @@ function makePeace(a, b, why) {
 function militiaRate(t) {
   let r = 0.10 + 0.05 * t.align.order + 0.02 * (t.align.moral < 0 ? 1 : 0) + 0.015 * (t.mil || 0);
   r += 0.06 * countType(t, T.BARRACKS);
+  if (govOf(t) === 'dominion') r += 0.03; // the dictator's levy
   return Math.max(0.05, r);
 }
 
@@ -3292,6 +3302,293 @@ function updateWarbands() {
   updateBattles();
 }
 
+/* ───────────────────────── Factions ─────────────────────────
+   Every town is born its own faction. Towns join by conquest (a subject follows its master) or by
+   union (allies with a road between them). A faction of two or more towns takes a government from
+   its capital's temperament, raises a ruler above the town elders, and holds its towns together:
+   they never fight each other and they go to war together. Borders are drawn from each town's
+   claim, which grows with its buildings. Rulers age, die, are elected, deposed or succeeded, and
+   towns that cannot bear a dictator break away. */
+const GOVS = {
+  elder: { name: n => n, title: () => 'elder' },
+  kingdom: { name: n => `the Kingdom of ${n}`, title: p => (p && p.name && /a$|e$|y$/.test(p.name.split(' ')[0]) ? 'Queen' : 'King') },
+  dominion: { name: n => `the ${n} Dominion`, title: () => 'Dictator' },
+  republic: { name: n => `the ${n} Republic`, title: () => 'President' },
+  horde: { name: n => `the ${n} Horde`, title: () => 'Supreme Leader' },
+  theocracy: { name: n => `the Holy ${n}`, title: () => 'High Priest' },
+  merchant: { name: n => `the Merchant Republic of ${n}`, title: () => 'Doge' },
+};
+function factionOf(t) { if (!t) return null; if (!world.factions) world.factions = {}; if (t.faction === undefined || t.faction === null || !world.factions[t.faction]) ensureFaction(t); return world.factions[t.faction]; }
+function ensureFaction(t) {
+  world.factions = world.factions || {};
+  if (t.faction !== undefined && t.faction !== null && world.factions[t.faction] && world.factions[t.faction].towns.includes(t.id)) return world.factions[t.faction];
+  let id = t.id; while (world.factions[id] && !world.factions[id].towns.includes(t.id)) id += 1000; // never overwrite someone else's banner
+  const f = { id, name: stripName(t.name), color: townColor(t.id), capital: t.id, towns: [t.id], gov: 'elder', ruler: null, founded: world.tick, nextElection: 0, dynasty: null };
+  world.factions[id] = f; t.faction = id;
+  return f;
+}
+function factionColor(t) { const f = factionOf(t); return f ? f.color : townColor(t.id); }
+function factionName(f) { return GOVS[f.gov].name(f.name); }
+function govOf(t) { const f = factionOf(t); return f && f.towns.length > 1 ? f.gov : null; }
+function sameFaction(a, b) { return a && b && factionOf(a) === factionOf(b); }
+function rulerOf(f) { if (!f.ruler) return null; const t = world.towns[f.ruler.town]; return t && t.people ? t.people.find(p => p.alive && p.name === f.ruler.name) : null; }
+function rulerTitle(f) { return GOVS[f.gov].title(rulerOf(f)); }
+function factionTowns(f) { return f.towns.map(id => world.towns[id]).filter(t => t && isAlive(t)); }
+function factionPop(f) { let p = 0; for (const t of factionTowns(f)) p += t.popLeft; return p; }
+function stripName(name) { return name.replace(/\s*\(.*\)$/, ''); }
+
+// A town joins a faction: its old faction empties (or shrinks), and the new one may need a government.
+function joinFaction(t, f, why) {
+  const old = factionOf(t);
+  if (old === f) return;
+  if (old) { old.towns = old.towns.filter(id => id !== t.id); if (!old.towns.length) delete world.factions[old.id]; else { if (old.capital === t.id) old.capital = old.towns[0]; if (old.towns.length === 1) { old.gov = 'elder'; old.ruler = null; } } }
+  f.towns.push(t.id); t.faction = f.id;
+  for (const o of factionTowns(f)) if (o !== t) { delete o.wars[t.id]; delete t.wars[o.id]; setRel(o, t, 100); }
+  if (f.towns.length === 2 && f.gov === 'elder') foundGovernment(f, why);
+  else if (f.towns.length > 2) log(`${t.name} joins ${factionName(f)}${why ? ', ' + why : ''}`, 'diplo');
+}
+function leaveFaction(t, why) {
+  const old = factionOf(t); if (!old || old.towns.length < 2) return;
+  old.towns = old.towns.filter(id => id !== t.id); if (old.capital === t.id) old.capital = old.towns[0];
+  t.faction = undefined; const f = ensureFaction(t); t.master = -1; t.name = stripName(t.name);
+  log(`${t.name} breaks away from ${factionName(old)}${why ? ': ' + why : ''}`, 'war');
+  stat('ev', 'secessions');
+  if (old.towns.length === 1) { const cap = world.towns[old.capital]; log(`${factionName(old)} is no more; ${cap.name} stands alone again`, 'diplo'); old.gov = 'elder'; old.ruler = null; }
+  return f;
+}
+// The government a faction takes when it first holds two towns, from the capital's elder and alignment.
+function chooseGov(cap) {
+  const l = leader(cap), tr = l && l.trait;
+  if (tr === 'prophet') return 'theocracy';
+  if (tr === 'merchant') return 'merchant';
+  if (cap.align.order > 0) return cap.align.moral > 0 ? 'kingdom' : 'dominion';
+  return cap.align.moral < 0 ? 'horde' : 'republic';
+}
+function foundGovernment(f, why) {
+  const cap = world.towns[f.capital]; if (!cap) return;
+  f.gov = chooseGov(cap); f.founded = world.tick; stat('ev', 'factions');
+  const names = factionTowns(f).map(t => t.name);
+  if (f.gov === 'republic' || f.gov === 'merchant') { holdElection(f, true); }
+  else crownRuler(f, null, 'first');
+  const r = rulerOf(f);
+  log(`${names.join(' and ')} are now ${factionName(f)}${why ? ', ' + why : ''}. ${r ? `${rulerTitle(f)} ${r.name} ${f.gov === 'kingdom' ? 'is crowned' : f.gov === 'horde' ? 'is acclaimed by the warbands' : f.gov === 'theocracy' ? 'reads the omens and finds them favourable' : f.gov === 'dominion' ? 'takes the hall with the militia at the door' : 'takes the oath'} in ${cap.name}.` : ''}`, 'diplo');
+  const [px, py] = cellCenter(cap.cy * world.n + cap.cx); popups.push({ x: px, y: py - cap.R * cellPx - 14, text: f.gov.toUpperCase(), color: f.color, t0: performance.now(), dur: 3500 });
+  for (const o of world.towns) if (isAlive(o) && !f.towns.includes(o.id) && f.gov === 'horde') setRel(cap, o, rel(cap, o) - 10); // a horde on the border is nobody's friend
+  recomputeClaims();
+}
+// A new ruler in the capital. For a kingdom the first ruler is the elder's own house; after that the crown passes to kin.
+function crownRuler(f, heir, how) {
+  const cap = world.towns[f.capital]; if (!cap || !cap.people) return null;
+  let p = heir;
+  if (!p) {
+    const el = leader(cap);
+    p = makePersonIn(cap, 'ruler', 30 + Math.random() * 25, f.gov === 'kingdom' && el ? el : null);
+    cap.people.push(p); if (cap.people.length > 16) cap.people = cap.people.filter(q => q.alive).slice(-12).concat(cap.people.filter(q => !q.alive).slice(-4));
+  }
+  p.role = 'ruler'; p.title = GOVS[f.gov].title(p);
+  p.story = { kingdom: 'wears the crown as if born to it, which is more or less the case', dominion: 'keeps a list, and the list keeps growing', horde: 'is spoken of in the other towns in a whisper', theocracy: 'hears the will of heaven mostly at mealtimes', republic: 'won the vote and has not stopped mentioning it', merchant: 'counts the coin before the votes' }[f.gov] || p.story;
+  f.ruler = { town: cap.id, name: p.name }; if (f.gov === 'kingdom') f.dynasty = p.name.split(' ').slice(-1)[0];
+  deed(p, how === 'first' ? `became the first ${p.title} of ${factionName(f)}` : `became ${p.title} of ${factionName(f)}`);
+  return p;
+}
+// Elections: every member town votes for its own elder, weighted by its people and their spirits (or its coin, in a
+// merchant republic); the incumbent carries a fifth of every town. A tyrant or a madman in the capital may steal it.
+function holdElection(f, first) {
+  const towns = factionTowns(f); if (!towns.length) return;
+  const cap = world.towns[f.capital];
+  const weight = t => f.gov === 'merchant' ? 10 + (t.res.coin || 0) : t.popLeft * (cheerOf(t) / 50);
+  const inc = rulerOf(f);
+  const tally = towns.map(t => { const el = leader(t); let v = weight(t) * (0.6 + Math.random() * 0.8); if (inc && inc.name === (el && el.name)) v *= 1.2; return { t, el, v }; }).filter(c => c.el);
+  if (!tally.length) return;
+  tally.sort((a, b) => b.v - a.v);
+  let win = tally[0], stolen = false;
+  const capEl = leader(cap);
+  if (!first && inc && capEl && (capEl.trait === 'tyrant' || capEl.trait === 'madman') && win.el !== inc && Math.random() < 0.5) { stolen = true; win = tally.find(c => c.el === inc) || win; }
+  // the winner's elder becomes ruler and stays elder of their town
+  if (inc && inc !== win.el) { inc.title = undefined; if (inc.role === 'ruler') inc.role = 'townsfolk'; }
+  win.el.title = GOVS[f.gov].title(win.el); f.ruler = { town: win.t.id, name: win.el.name }; f.nextElection = world.tick + 2 * YEAR;
+  const total = tally.reduce((a, c) => a + c.v, 0), share = Math.round(100 * win.v / Math.max(1, total));
+  stat('ev', 'elections');
+  if (first) { deed(win.el, `was elected the first ${win.el.title} of ${factionName(f)}`); return; }
+  deed(win.el, stolen ? `held on as ${win.el.title} in a vote nobody believed` : `was elected ${win.el.title} with ${share}% of the vote`);
+  if (stolen) { log(`${factionName(f)} goes to the polls and ${win.el.name} of ${win.t.name} is declared the winner. Nobody believes it; ${tally[0].el.name} of ${tally[0].t.name} had the towns behind them. ${moodWord(tally[0].t)[0].toUpperCase() + moodWord(tally[0].t).slice(1)}.`, 'war'); for (const t of towns) { t.cheer = Math.max(0, cheerOf(t) - 5); t.unrest = Math.min(100, (t.unrest || 0) + 8); } stat('ev', 'stolenElections'); }
+  else { log(`${factionName(f)} goes to the polls: ${win.el.name} of ${win.t.name} takes it with ${share}% over ${tally[1] ? tally[1].el.name + ' of ' + tally[1].t.name : 'nobody'}. ${pick(['There is dancing in the capital.', 'The losers concede with reasonable grace.', 'The count takes three days and a fistfight.', 'Beer is poured in every member town.'])}`, 'diplo'); for (const t of towns) t.cheer = Math.min(100, cheerOf(t) + 3); }
+}
+// Succession when a ruler dies, by government.
+function succeedRuler(f, dead) {
+  const cap = world.towns[f.capital]; if (!cap || !cap.people) return;
+  const name = dead ? dead.name : 'the ruler', title = GOVS[f.gov].title(dead);
+  if (f.gov === 'republic' || f.gov === 'merchant') { log(`${title} ${name} of ${factionName(f)} is dead. The towns will vote.`, 'diplo'); f.nextElection = world.tick + 100; f.ruler = null; return; }
+  if (f.gov === 'kingdom') {
+    const sur = f.dynasty || (dead ? dead.name.split(' ').slice(-1)[0] : null);
+    const heir = cap.people.filter(p => p.alive && p.role !== 'ruler' && personAge(p) >= 16 && (p.name.split(' ').slice(-1)[0] === sur || p.kin === name || p.parent === name)).sort((a, b) => a.born - b.born)[0];
+    if (heir) { const h = crownRuler(f, heir, 'heir'); log(`${title} ${name} is dead. ${h.title} ${h.name}, ${pick(['the eldest', 'the only one left', 'a cousin nobody had thought of', 'still a child by the look of them'])}, takes the throne of ${factionName(f)} in ${cap.name}.`, 'diplo'); return; }
+    // No heir: a crisis. Towns go their own way, or a new house takes the crown.
+    stat('ev', 'successionCrises');
+    const others = factionTowns(f).filter(t => t.id !== f.capital);
+    const gone = others.filter(() => Math.random() < 0.5);
+    log(`${title} ${name} dies without an heir. ${gone.length ? `${gone.map(t => t.name).join(' and ')} will not kneel to a stranger. ` : ''}${factionName(f)} ${gone.length === others.length && others.length ? 'is broken up' : 'finds a new house for the crown'}.`, 'war');
+    for (const t of gone) leaveFaction(t, 'the succession');
+    if (world.factions[f.id] && f.towns.length > 1) { f.dynasty = null; const p = crownRuler(f, null, 'crisis'); if (p) log(`${p.title} ${p.name} of a new house is crowned in ${cap.name}`, 'diplo'); }
+    return;
+  }
+  if (f.gov === 'horde') {
+    const strong = factionTowns(f).sort((a, b) => (b.militia + (b.soldiers || 0)) - (a.militia + (a.soldiers || 0)))[0];
+    const p = crownRuler(f, null, 'seized'); if (!p) return; p.story = `came out of ${strong.name} with the warbands at ${pick(['his', 'her', 'their'])} back`;
+    log(`${title} ${name} is dead and the warbands of ${strong.name} ride into ${cap.name} before the body is cold. ${p.name} is Supreme Leader now. ${pick(['Nobody argues.', 'Those who argued are not seen again.', 'The old guard is sent to the mines.'])}`, 'war');
+    return;
+  }
+  if (f.gov === 'theocracy') { const p = crownRuler(f, null, 'omen'); if (p) log(`${title} ${name} goes to the gods. The omens name ${p.name} ${p.title} of ${factionName(f)}: ${pick(['a crow on the hall roof', 'a fish with two tails', 'a dream three people had on the same night', 'the way the smoke went'])}.`, 'diplo'); return; }
+  // dominion: the captain of the militia takes it
+  const p = crownRuler(f, null, 'seized'); if (p) log(`${title} ${name} is dead. ${p.name} of the militia takes the hall in ${cap.name} and does not call it a coup.`, 'war');
+}
+function depose(f, how) {
+  const cap = world.towns[f.capital], old = rulerOf(f);
+  const angry = factionTowns(f).sort((a, b) => (b.unrest || 0) - (a.unrest || 0))[0];
+  if (old) { old.role = 'ousted'; old.title = undefined; if (how === 'coup' && Math.random() < 0.6) { old.alive = false; old.cause = 'shot in the coup'; } else if (how === 'assassin') { old.alive = false; old.cause = 'assassinated'; } }
+  const p = crownRuler(f, null, how); if (!p) return;
+  if (how === 'coup') { p.story = `led the coup from ${angry.name} and trusts nobody from there`; log(`COUP in ${cap.name}: the militia of ${angry.name} march on the hall. ${old ? `${GOVS[f.gov].title(old)} ${old.name} ${old.alive ? 'is put over the wall in a nightshirt' : 'is shot on the steps'}.` : ''} ${p.name} is ${p.title} of ${factionName(f)} by nightfall.`, 'war'); for (const t of factionTowns(f)) t.unrest = Math.max(0, (t.unrest || 0) - 20); stat('ev', 'coups'); }
+  else { log(`${GOVS[f.gov].title(old)} ${old ? old.name : ''} of ${factionName(f)} is found dead ${daypart()}. ${pick(['A knife.', 'Poison, says the healer.', 'A fall from a window that does not open.'])} ${p.name} takes the hall before anyone asks questions.`, 'war'); stat('ev', 'assassinations'); }
+}
+// Purges: a horde calms its towns by thinning them.
+function purge(f) {
+  const cap = world.towns[f.capital], r = rulerOf(f); let dead = 0;
+  for (const t of factionTowns(f)) { const k = Math.max(1, Math.round(t.popLeft * 0.01)); applyLosses(t, k, 'purged'); dead += k; t.unrest = Math.max(0, (t.unrest || 0) - 15); t.cheer = Math.max(0, cheerOf(t) - 4); }
+  stat('ev', 'purges', dead); if (r) deed(r, `purged ${dead} across the horde`);
+  log(`${r ? 'Supreme Leader ' + r.name : 'The horde'} purges the towns of ${factionName(f)}: ${dead} taken ${daypart()} and not seen again. ${pick(['The streets are quiet after.', 'Nobody speaks of it.', 'The lists were long this year.'])}`, 'war');
+}
+// Unions: two allied towns with a road between them and no war unite under the bigger.
+function maybeUnions() {
+  const towns = world.towns.filter(isAlive);
+  for (let i = 0; i < towns.length; i++) for (let j = i + 1; j < towns.length; j++) {
+    const a = towns[i], b = towns[j];
+    if (sameFaction(a, b) || rel(a, b) < 80 || atWar(a, b) || a.popLeft < 30 || b.popLeft < 30) continue;
+    if (has(a, 'hermit') || has(b, 'hermit')) continue;
+    const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id, road = world.tradeRoads && world.tradeRoads[key];
+    if (!road || road.building) continue;
+    if (world.towns.some(o => o !== a && o !== b && (atWar(o, a) !== atWar(o, b)) && isAlive(o)) && Math.random() < 0.7) continue; // one is at war and the other is not: not yet
+    if (Math.random() > 0.015) continue;
+    const fa = factionOf(a), fb = factionOf(b);
+    const [big, small] = factionPop(fa) >= factionPop(fb) ? [fa, fb] : [fb, fa];
+    const ea = leader(a), eb = leader(b);
+    const members = factionTowns(small);
+    log(`${a.name} and ${b.name} unite under one banner${ea && eb ? `; ${ea.name} and ${eb.name} shake on it at the ${Math.random() < 0.5 ? 'ford' : 'market'}` : ''}`, 'diplo');
+    stat('ev', 'unions');
+    for (const t of members) joinFaction(t, big, 'by the union');
+    recomputeClaims();
+    return;
+  }
+}
+function updateFactions() {
+  if (world.tick % 50 !== 17) return;
+  world.factions = world.factions || {};
+  for (const t of world.towns) ensureFaction(t);
+  // dead capitals: the faction falls apart
+  for (const id in world.factions) {
+    const f = world.factions[id]; if (f.towns.length < 2) continue;
+    const cap = world.towns[f.capital];
+    if (!cap || !isAlive(cap)) { log(`${factionName(f)} falls with ${cap ? cap.name : 'its capital'}. Its towns go their own ways.`, 'war'); for (const t of factionTowns(f)) if (t.id !== f.capital) leaveFaction(t, null); continue; }
+    const towns = factionTowns(f);
+    // the family holds together: no wars inside, friends inside, wars shared
+    for (const a of towns) for (const b of towns) if (a !== b) { if (atWar(a, b)) { delete a.wars[b.id]; delete b.wars[a.id]; } if (rel(a, b) < 100) setRel(a, b, 100); if (a.master >= 0 && b.id === a.master && f.capital !== b.id) {} }
+    for (const a of towns) for (const o of world.towns) if (isAlive(o) && !f.towns.includes(o.id) && atWar(a, o)) for (const b of towns) if (b !== a && !atWar(b, o) && !has(b, 'peacemaker')) declareWar(b, o, `with ${factionName(f)}`);
+    // the ruler
+    const r = rulerOf(f);
+    if (!r && f.ruler) { f.ruler = null; succeedRuler(f, { name: 'the ruler' }); }
+    else if (!r && !f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) holdElection(f, false);
+    if (f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) holdElection(f, false);
+    if (r && (f.gov === 'dominion' || f.gov === 'horde')) {
+      const unrest = towns.reduce((a, t) => a + (t.unrest || 0), 0) / towns.length;
+      if (f.gov === 'dominion' && unrest > 60 && Math.random() < 0.03) depose(f, 'coup');
+      else if (Math.random() < 0.0008) depose(f, 'assassin');
+      if (f.gov === 'horde' && world.tick - (f.lastPurge || f.founded) > 3 * YEAR && Math.random() < 0.05) { f.lastPurge = world.tick; purge(f); }
+    }
+    // towns that cannot bear it break away
+    if (f.gov === 'dominion' || f.gov === 'horde') for (const t of towns) if (t.id !== f.capital && (t.unrest || 0) >= 80 && Math.random() < 0.03) { const nf = leaveFaction(t, 'the people have had enough'); if (nf) { declareWar(cap, t, 'to bring it back'); break; } }
+    // government flavour
+    for (const t of towns) {
+      if (f.gov === 'dominion') t.unrest = Math.min(100, (t.unrest || 0) + 0.15);
+    }
+  }
+  maybeUnions();
+  if (world.tick - (world.claimTick || -1000) >= 200) recomputeClaims();
+}
+// Deaths that reach a ruler: killNotable and agePeople take anyone; the next check notices the empty seat.
+function rulerDied(town, p) { for (const id in world.factions || {}) { const f = world.factions[id]; if (f.ruler && f.ruler.town === town.id && f.ruler.name === p.name) { f.ruler = null; succeedRuler(f, p); } } }
+
+// ── Claims and borders ──
+function claimReach(t) { return Math.min(world.n * 0.3, t.R + 3 + 0.08 * t.buildings.length + (hasType(t, T.TOWNHALL) ? 4 : 0) + (t.wallR ? 2 : 0)); }
+function recomputeClaims() {
+  const n = world.n, N = n * n;
+  if (!world.claim || world.claim.length !== N) world.claim = new Int16Array(N);
+  world.claim.fill(-1);
+  const best = new Float32Array(N).fill(Infinity);
+  for (const t of world.towns) {
+    if (!isAlive(t)) continue;
+    const reach = claimReach(t), r = Math.ceil(reach * 1.4);
+    for (let dy = -r; dy <= r; dy++) { const y = t.cy + dy; if (y < 0 || y >= n) continue; for (let dx = -r; dx <= r; dx++) { const x = t.cx + dx; if (x < 0 || x >= n) continue; const d = Math.hypot(dx, dy); if (d > reach * 1.4) continue; const s = d / reach, i = y * n + x; if (s < best[i]) { best[i] = s; world.claim[i] = t.id; } } }
+  }
+  world.claimTick = world.tick; borderDirty = true;
+}
+function claimedByOther(town, i) { if (!world.claim) return false; const c = world.claim[i]; if (c < 0 || c === town.id) return false; const o = world.towns[c]; return o && isAlive(o) && !sameFaction(o, town); }
+let borderCanvas = null, borderDirty = true, borderPx = 0;
+function drawBorders(ctx) {
+  if (!world.claim) return;
+  const n = world.n, size = n * cellPx;
+  if (!borderCanvas) borderCanvas = document.createElement('canvas');
+  if (borderDirty || borderPx !== cellPx || borderCanvas.width !== size) {
+    borderPx = cellPx; borderCanvas.width = size; borderCanvas.height = size; borderDirty = false;
+    const b = borderCanvas.getContext('2d'); b.clearRect(0, 0, size, size);
+    b.lineWidth = Math.max(1.5, cellPx * 0.3); b.globalAlpha = 0.9; b.lineCap = 'square';
+    const claim = world.claim, colorOf = {}, facOf = {};
+    for (const t of world.towns) { facOf[t.id] = factionOf(t) ? factionOf(t).id : t.id; colorOf[t.id] = factionColor(t); }
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const i = y * n + x, c = claim[i]; if (c < 0) continue;
+      const fc = facOf[c];
+      const px = x * cellPx, py = y * cellPx;
+      b.strokeStyle = colorOf[c]; b.beginPath();
+      if (x === n - 1 || claim[i + 1] < 0 || facOf[claim[i + 1]] !== fc) { b.moveTo(px + cellPx, py); b.lineTo(px + cellPx, py + cellPx); }
+      if (x === 0 || claim[i - 1] < 0 || facOf[claim[i - 1]] !== fc) { b.moveTo(px, py); b.lineTo(px, py + cellPx); }
+      if (y === n - 1 || claim[i + n] < 0 || facOf[claim[i + n]] !== fc) { b.moveTo(px, py + cellPx); b.lineTo(px + cellPx, py + cellPx); }
+      if (y === 0 || claim[i - n] < 0 || facOf[claim[i - n]] !== fc) { b.moveTo(px, py); b.lineTo(px + cellPx, py); }
+      b.stroke();
+    }
+  }
+  ctx.drawImage(borderCanvas, 0, 0);
+}
+
+// ── Through-trade: wagons that cross a neighbour's roads to reach a town further on. ──
+function updateThroughTrade() {
+  if (world.tick % 400 !== 123 || !world.tradeRoads) return;
+  const adj = {}; const roads = [];
+  for (const k in world.tradeRoads) { const r = world.tradeRoads[k]; if (r.building) continue; (adj[r.a] = adj[r.a] || []).push({ to: r.b, path: r.path }); (adj[r.b] = adj[r.b] || []).push({ to: r.a, path: r.path.slice().reverse() }); roads.push(r); }
+  const towns = world.towns.filter(t => isAlive(t) && adj[t.id]);
+  let sent = 0;
+  for (const a of towns) {
+    if (sent >= 2) break;
+    // breadth-first over the road graph from a, remembering the way
+    const seen = { [a.id]: null }, queue = [a.id], via = { [a.id]: [] };
+    while (queue.length) { const id = queue.shift(); for (const e of adj[id] || []) if (seen[e.to] === undefined) { seen[e.to] = id; via[e.to] = via[id].concat(id); queue.push(e.to); } }
+    for (const idStr in seen) {
+      const id = +idStr, b = world.towns[id]; if (b === a || !b || !isAlive(b)) continue;
+      const hops = via[id].length; if (hops < 2) continue; // a direct road has its own wagons
+      const key = 'long-' + Math.min(a.id, b.id) + '-' + Math.max(a.id, b.id);
+      if (world.wagons.some(w => w.key === key) || atWar(a, b) || (a.plagueUntil || 0) > world.tick || (b.plagueUntil || 0) > world.tick) continue;
+      if (jobCount(a, 'trader') < 1 && jobCount(b, 'trader') < 1) continue; // somebody has to drive it
+      // anything worth carrying?
+      let worth = false; for (const k of RES_KINDS) { if (k === 'water' || k === 'coin' || k === 'meals') continue; if (resCap(b, k) - (b.res[k] || 0) > 6 && (a.res[k] || 0) - resCap(a, k) * 0.4 > 6) { worth = true; break; } }
+      if (!worth) continue;
+      // join the road paths
+      const chain = via[id].concat(id); let path = [];
+      for (let k = 0; k + 1 < chain.length; k++) { const e = adj[chain[k]].find(q => q.to === chain[k + 1]); path = path.concat(k ? e.path.slice(1) : e.path); }
+      if (path.length > 240) continue;
+      world.wagons.push({ key, path, pi: 0, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, from: a.id, to: b.id, via: chain.slice(1, -1), long: true });
+      stat('ev', 'longWagons'); sent++;
+      if (Math.random() < 0.5) log(`A wagon sets out from ${a.name} for ${b.name} by way of ${chain.slice(1, -1).map(i => world.towns[i].name).join(' and ')}`, 'build');
+      break;
+    }
+  }
+}
 /* ───────────────────────── Battles you can watch ───────────────────────── */
 
 // Attackers form up where the warband arrived; defenders line up between them and the town (on the wall if there is one).
@@ -3321,7 +3618,7 @@ function updateBattles() {
   for (const bt of world.battles) {
     const from = world.towns[bt.from], to = world.towns[bt.to];
     bt.ticks++;
-    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns) * (1 + 0.04 * Math.min(12, from.soldiers || 0)); // a town with drilled soldiers raids harder too
+    const attPow = (0.7 + Math.random() * 0.6) * (1 + 0.35 * from.mil) * (1 + 0.25 * bt.armour + 0.12 * bt.guns) * (1 + 0.04 * Math.min(12, from.soldiers || 0)) * (govOf(from) === 'horde' ? 1.15 : 1); // a town with drilled soldiers raids harder too, and a horde harder still
     const defPow = (0.7 + Math.random() * 0.6) * (1 + 0.3 * to.mil) * (to.wallR ? 1.5 : 1) * (to.align.order > 0 ? 1.2 : 1) * soldierPower(to);
     // Soldiers hold the line and fall first.
     if ((to.soldiers || 0) > 0 && Math.random() < 0.12) { to.soldiers--; applyLosses(to, 1, 'battle'); }
@@ -3437,7 +3734,8 @@ function annex(from, to) {
   to.relations = {}; to.wars = {};
   for (const o of world.towns) { if (o !== to) { delete o.wars[to.id]; o.relations[to.id] = o === from ? 100 : rel(o, from); to.relations[o.id] = o === from ? 100 : rel(o, from); } }
   to.name = `${to.name.replace(/\s*\(.*\)$/, '')} (${from.name.replace(/\s*\(.*\)$/, '')})`; // a town taken twice shows only its newest master
-  to.master = from.id; // and pays tribute from its stockpiles
+  to.master = from.id;
+  joinFaction(to, factionOf(from), 'by conquest'); // and pays tribute from its stockpiles
   to.mil = Math.max(to.mil, from.mil - 1); to.civ = Math.max(to.civ, from.civ - 1);
   log(`${from.name} annexes ${to.name}. Its people now answer to new masters.`, 'war');
 }
@@ -3896,6 +4194,8 @@ function roadPath(src, dst) {
   return path.reverse();
 }
 
+// How far a town will build a road: further with traders to drive the wagons and a hall to plan it.
+function roadReach(a, b) { return Math.min(world.n * 0.8, 55 + 20 * Math.min(2, jobCount(a, 'trader') + jobCount(b, 'trader')) + (hasType(a, T.TOWNHALL) || hasType(b, T.TOWNHALL) ? 20 : 0) + (sameFaction(a, b) ? 15 : 0)); }
 function maybeTradeRoad() {
   if (world.tick % 60 !== 0) return;
   const towns = world.towns.filter(isAlive);
@@ -3905,7 +4205,7 @@ function maybeTradeRoad() {
     world.tradeRoads = world.tradeRoads || {};
     if (world.tradeRoads[key]) continue;
     if (has(a, 'hermit') || has(b, 'hermit')) continue; // wants nothing from the neighbours
-    if (rel(a, b) < (has(a, 'merchant') || has(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > 55 || Math.random() > 0.25) continue;
+    if (rel(a, b) < (has(a, 'merchant') || has(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > roadReach(a, b) || Math.random() > 0.25) continue;
     const n = world.n;
     const path = roadPath(a.cy * n + a.cx, b.cy * n + b.cx);
     if (!path) continue;
@@ -3978,7 +4278,7 @@ function updateWagons() {
     if (!isAlive(a) || !isAlive(b)) continue;
     if (atWar(a, b) || (a.plagueUntil || 0) > world.tick || (b.plagueUntil || 0) > world.tick) continue; // no wagons through a shut gate
     const traders = jobCount(a, 'trader') + jobCount(b, 'trader');
-    r.wagonT += traders >= 2 ? 0.4 : traders >= 1 ? 0 : -0.6; // no traders: wagons come slowly; two or more: faster
+    r.wagonT += (traders >= 2 ? 0.4 : traders >= 1 ? 0 : -0.6) + (govOf(a) === 'merchant' || govOf(b) === 'merchant' ? 0.3 : 0); // no traders: wagons come slowly; two or more: faster; a merchant republic faster still
     if (++r.wagonT >= 160 && !world.wagons.some(w => w.key === key)) {
       r.wagonT = 0;
       const fwd = Math.random() < 0.5;
@@ -4008,7 +4308,8 @@ function updateWagons() {
         for (const k of RES_KINDS) { if (k === 'water' || k === 'coin' || k === 'meals') continue; const need = resCap(to, k) - (to.res[k] || 0), spare = (from.res[k] || 0) - resCap(from, k) * 0.4; const amt = Math.min(need, spare); if (need > 4 && spare > 4 && amt > bestAmt) { bestAmt = amt; best = k; } }
         if (best) { const amt = Math.min(10, Math.floor(bestAmt)), price = (PRICE[best] || 1) * amt, paid = Math.min(price, Math.max(0, Math.floor(to.res.coin || 0))); from.res[best] -= amt; addRes(to, best, amt); to.res.coin -= paid; from.res.coin += paid; stat('ev', 'tradeCoin', paid); if (Math.random() < 0.5) log(`Wagons from ${from.name} bring ${amt} ${best} to ${to.name}${paid ? ` for ${paid} coin` : ', on credit'}`, 'build'); }
       }
-      if (Math.random() < 0.25 && to && from) log(`A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
+      if (w.via && to && to.res) for (const id of w.via) { const v = world.towns[id]; if (v && v.res && to.res.coin >= 1) { to.res.coin--; v.res.coin++; } } // tolls on the way through
+      if (Math.random() < 0.25 && to && from) log(w.long ? `A long wagon from ${from.name} unloads at ${to.name} after a journey of ${w.path.length} cells` : `A wagon from ${from.name} unloads at ${to.name}'s market`, 'build');
       // Plague rides along.
       if (from && to && from.plagueUntil && from.plagueUntil > world.tick && Math.random() < 0.5 && !to.plagueUntil) { to.plagueUntil = world.tick + 300; const dead = Math.round(healMul(to) * to.popLeft * (0.04 + Math.random() * 0.08)); applyLosses(to, dead); log(`Plague comes to ${to.name} on the ${from.name} road: ${dead} dead`, 'loss'); }
     }
@@ -5142,7 +5443,7 @@ function stoneCostOf(type) { return type === T.HOUSE ? COST.stoneHouse : { ...CO
 // Whether a placement goes up in stone: never without masonry; always under the code; civic works when the stone is there; houses by temperament.
 function wantsStone(t, type) {
   if (!knowsMasonry(t) || !STONE_OK.has(type) || !COST[type] || !canAfford(t, stoneCostOf(type))) return false;
-  if (type === T.TENEMENT || (t.code && t.code.stone)) return true;
+  if (type === T.TENEMENT || (t.code && t.code.stone) || govOf(t) === 'kingdom') return true; // a kingdom builds to last
   if (isHome(type)) return Math.random() < (t.temper ? t.temper.stone : 1) * 0.5;
   return true;
 }
@@ -6113,7 +6414,7 @@ function holdMarket(tr, town) {
     if (town.res[k] < cap * 0.65 || over <= 0) continue;
     const amt = Math.min(over, Math.floor(tr.coin / PRICE[k]));
     if (amt <= 0) continue;
-    const bonus = 1 + Math.min(0.3, 0.1 * jobCount(town, 'trader')) + (town.drank ? 0.15 : 0); // a town with traders haggles better, and a town with an inn is worth the stop
+    const bonus = 1 + Math.min(0.3, 0.1 * jobCount(town, 'trader')) + (town.drank ? 0.15 : 0) + (govOf(town) === 'merchant' ? 0.1 : 0); // a town with traders haggles better, and a town with an inn is worth the stop
     town.res[k] -= amt; town.res.coin += Math.round(amt * PRICE[k] * bonus); tr.coin -= amt * PRICE[k]; tr.stock[k] = (tr.stock[k] || 0) + amt; sold.push(`${amt} ${k}`);
   }
   stat('ev', 'markets');
@@ -6439,7 +6740,7 @@ function buildField(town, fieldType) {
     const d = Math.hypot(dx, dy);
     if (d > R) continue;
     let foreign = false; for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 3) { foreign = true; break; }
-    if (foreign) continue;
+    if (foreign || claimedByOther(town, i)) continue; // not on another faction's ground
     let touch = false, farmNear = false;
     for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (world.road[j] || isBuilding(type[j])) touch = true; if (type[j] === T.FARM || type[j] === T.PASTURE) farmNear = true; }
     if (!touch && !farmNear) continue;
@@ -6605,7 +6906,7 @@ function buildHouse(town, quiet) {
     if (world.burnLeft[i] > 0) continue;
     let foreign = false;
     for (const o of world.towns) if (o !== town && Math.hypot(o.cx - x, o.cy - y) <= o.R + 2) { foreign = true; break; }
-    if (foreign) continue;
+    if (foreign || claimedByOther(town, i)) continue; // not on another faction's ground
     let touch = false;
     for (const [ox, oy] of OFFS8) { const j = (y + oy) * n + x + ox; if (isBuilding(type[j]) || world.road[j] || type[j] === T.RUBBLE || type[j] === T.SHELL) { touch = true; break; } }
     if (!touch) continue;
@@ -7487,7 +7788,7 @@ function raiseMonument(town, text) {
 function updateFestival(town) {
   const year = Math.floor(world.tick / YEAR), inYear = world.tick % YEAR;
   if (town.festivalYear === year || inYear < YEAR * 0.7 || inYear > YEAR * 0.75 || town.mobilized || town.famine || !town.fed || town.popLeft < 25) return;
-  if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > 0.2) return;
+  if (world.towns.some(o => o !== town && atWar(town, o)) || Math.random() > (govOf(town) === 'theocracy' ? 0.4 : 0.2)) return; // a theocracy keeps its feast days
   town.festivalYear = year;
   const centre = town.cy * world.n + town.cx;
   spawnCrowd(town, centre, 70, 6 + Math.floor(town.popLeft / 40) + ((town.res.beer || 0) > 0 ? 4 : 0)); // a festival with beer draws a bigger crowd
@@ -8388,6 +8689,7 @@ function render(now, tickFrac) {
     ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a);
   }
   ctx.drawImage(terrain, 0, 0);
+  drawBorders(ctx);
   const n = world.n;
   // When zoomed in, sprites outside the window are skipped; at 1x everything is in view.
   const cull = view.zoom > 1.05, vx0 = view.x - cellPx * 3, vy0 = view.y - cellPx * 3, vx1 = view.x + canvas.width / view.zoom + cellPx * 3, vy1 = view.y + canvas.height / view.zoom + cellPx * 3;
@@ -9161,7 +9463,11 @@ const townsEl = $('towns');
 let lastTownsKey = '';
 function updateTownsPanel() {
   if (!world.towns.length) { if (lastTownsKey !== 'none') { lastTownsKey = 'none'; townsEl.innerHTML = '<div class="empty">no towns in this wilderness</div>'; } return; }
-  const rows = world.towns.map(t => {
+  const order = world.towns.slice().sort((a, b) => (factionOf(a).id - factionOf(b).id) || (b.popLeft - a.popLeft)); let lastFac = -1;
+  const rows = order.map(t => {
+    const f = factionOf(t); let head = '';
+    if (f.towns.length > 1 && f.id !== lastFac) { const r = rulerOf(f); head = `<div class="row fac"><span class="dot" style="background:${f.color}"></span><span class="name"><b>${factionName(f)}</b></span><span class="st">${r ? rulerTitle(f) + ' ' + r.name : 'between rulers'}</span><span class="sub">${f.towns.length} towns · ${factionPop(f)} people · capital ${world.towns[f.capital] ? world.towns[f.capital].name : '?'}</span></div>`; }
+    lastFac = f.id;
     const dead = t.housesLeft === 0 || t.popLeft <= 0;
     const eng = t.trucks.filter(q => q.alive).length;
     const burningHere = t.mobilized && t.fireDist < t.R + 1.5;
@@ -9175,7 +9481,7 @@ function updateTownsPanel() {
     const relLine = (wars.length ? ` · <span class="d">war: ${wars.join(', ')}</span>` : '') + (allies.length ? ` · allies: ${allies.join(', ')}` : '') + (foes.length ? ` · feuding: ${foes.join(', ')}` : '');
     const folk = world.openChron === t.id && t.people ? `<div class="folk">${t.people.slice().sort((a, b) => (b.alive - a.alive) || a.born - b.born).map(p => `<div class="${p.alive ? '' : 'dead'}"><b>${p.name}</b> · ${roleLabel(p)}${p.trait ? ', ' + TRAITS[p.trait].label : ''}${p.alive ? `, ${personAge(p)}` : ` † ${p.cause || ''}`} · ${p.story}${p.deeds.length ? ` · <span class="deed">${p.deeds[p.deeds.length - 1].text}</span>` : ''}</div>`).join('')}</div>` : '';
     const chron = world.openChron === t.id && t.chronicle ? folk + `<div class="chron">${t.chronicle.map(e => `<div><span class="t">t${e.tick}</span><span>${e.text}</span></div>`).join('')}</div>` : '';
-    return `<div class="row ${cls}" data-town="${t.id}"><span class="dot"></span><span class="name">${t.name}<span class="al ${alCls}">${al}</span></span><span class="st">${status}</span>` +
+    return head + `<div class="row ${cls}" data-town="${t.id}"><span class="dot"></span><span class="name"><span class="sw" style="background:${f.color}"></span>${t.name}<span class="al ${alCls}">${al}</span></span><span class="st">${status}</span>` +
       `<span class="sub">pop <b>${t.popLeft}</b> · homes <b>${t.housesLeft}</b> · r${t.R}` + (t.hasStation ? ` · <b>${eng}</b> eng` : '') + ` · food <b>${foodSupply(t)}</b>` + (t.famine ? ' <span class="d">famine</span>' : t.fed === false ? ' <span class="d">hungry</span>' : '') + (leader(t) ? ` · elder <b>${leader(t).name}</b>, ${traitLabel(leader(t))}` : '') + (t.unrest >= 70 ? ' · <span class="d">unrest ' + Math.round(t.unrest) + '%</span>' : t.unrest >= 40 ? ` · unrest ${Math.round(t.unrest)}%` : '') + ` · militia <b>${t.militia}</b>` + (t.soldiers ? ` · soldiers <b>${t.soldiers}</b>` : '') + (t.jobs ? ` · working <b>${workingPop(t) - jobCount(t, 'idle')}</b>` + (jobCount(t, 'idle') ? ` · <span class="${idleShare(t) > 0.15 ? 'd' : ''}">idle ${jobCount(t, 'idle')}</span>` : '') : '') + (cheerOf(t) >= 70 ? ' · <span class="g">high spirits</span>' : cheerOf(t) < 30 ? ' · <span class="d">low spirits</span>' : '') + (t.wallR ? ' · walled' : '') + (t.R > Math.max(params.townCap, t.R0) ? ' · <span class="d">sprawling</span>' : '') + air + relLine + `<br><span class="tech">${MIL_TECH[t.mil]}${t.nukes ? ' (' + t.nukes + ' bomb' + (t.nukes > 1 ? 's' : '') + ')' : ''} · ${CIV_TECH[t.civ]} · ${CRAFT_TECH[t.craft || 0]}${civicSummary(t)}</span>` +
       (t.deaths || t.homesLost ? ` · <span class="d">${t.deaths} dead, ${t.homesLost} homes lost</span>` : '') + (t.fires ? ` · ${t.fires} fire${t.fires === 1 ? '' : 's'}` : '') + (t.dragons ? ` · <span class="d">dragon x${t.dragons}</span>` : '') + `</span>` +
       (t.res ? `<span class="sub">` + RES_KINDS.filter(k => t.res[k] > 0).map(k => `${k} <b>${t.res[k]}</b>`).join(' · ') + (RES_KINDS.every(k => !t.res[k]) ? 'empty stores' : '') + (t.powerNeed ? ` · power <b>${t.power}</b>/${t.powerNeed}` : '') + (t.water === false ? ' · <span class="d">no water</span>' : '') + (t.covets && world.towns[t.covets.town] ? ` · <span class="d">covets ${world.towns[t.covets.town].name}'s ${t.covets.res}</span>` : '') + (t.master >= 0 && world.towns[t.master] ? ` · tribute to ${world.towns[t.master].name}` : '') + (t.livestock && LIVESTOCK.some(k => t.livestock[k]) ? ' · ' + LIVESTOCK.filter(k => t.livestock[k]).map(k => `${k} <b>${t.livestock[k]}</b>`).join(' · ') : '') + `</span>` : '') + `${chron}</div>`;
@@ -9388,7 +9694,7 @@ function cardHtml(t) {
   const folk = (t.people || []).slice().sort((a, b) => (b.alive - a.alive) || (a.role === 'elder' ? -1 : b.role === 'elder' ? 1 : a.born - b.born)).map(p => `<div class="${p.alive ? '' : 'dead'}"><b>${p.name}</b>, ${roleLabel(p)}${p.trait ? ' (' + TRAITS[p.trait].label + ')' : ''}${kinLabel(t, p) ? ', ' + kinLabel(t, p) : ''}${p.alive ? (p.role === 'child' ? `, aged ${personAge(p)}` : `, ${personAge(p)}`) : ` † ${p.cause || ''}`}.${p.alive && p.grudge ? ' <span class="d">Holds a grudge.</span>' : ''} ${p.story[0].toUpperCase() + p.story.slice(1)}.${p.deeds.length ? ` <span class="deed">Last: ${p.deeds[p.deeds.length - 1].text}.</span>` : ''}</div>`).join('');
   const chron = (t.chronicle || []).slice(0, 8).map(e => `<div class="${e.at >= 0 ? 'go' : ''}" data-at="${e.at >= 0 ? e.at : ''}"><span class="t">t${e.tick}</span><span>${e.text}</span></div>`).join('');
   return `<button class="x" data-act="close">close</button><h3>${t.name}</h3>` +
-    `<div class="dim">${alignName(t.align)} · ${BIOME_NAMES[biomeAt(t.cx, t.cy)]} · founded Y${Math.floor(t.founded / YEAR) + 1} · ${dead ? '<span class="d">in ruins</span>' : t.mobilized ? '<span class="d">fighting a fire</span>' : t.famine ? '<span class="d">famine</span>' : 'calm'}</div>` +
+    `<div class="dim">${(f => f && f.towns.length > 1 ? `<span style="color:${f.color}">${factionName(f)}</span>${rulerOf(f) ? ', ' + rulerTitle(f) + ' ' + rulerOf(f).name : ''}${f.capital === t.id ? ' (the capital)' : t.master >= 0 ? ' (by conquest)' : ''} · ` : '')(factionOf(t))}${alignName(t.align)} · ${BIOME_NAMES[biomeAt(t.cx, t.cy)]} · founded Y${Math.floor(t.founded / YEAR) + 1} · ${dead ? '<span class="d">in ruins</span>' : t.mobilized ? '<span class="d">fighting a fire</span>' : t.famine ? '<span class="d">famine</span>' : 'calm'}</div>` +
     (l ? `<div class="lead">Elder ${l.name}, ${TRAITS[l.trait] ? TRAITS[l.trait].label : 'elder'}, ${personAge(l)}: ${TRAITS[l.trait] ? TRAITS[l.trait].blurb : ''}.</div>` : '') +
     `<h4>people</h4><div class="grid">` + row('alive', t.popLeft) + row('ever lived here', t.popTotal) + row('dead', t.deaths, t.deaths ? 'd' : '') + row('of the valley', `${Math.round(t.popLeft / Math.max(1, world.popLeft) * 100)}%`) +
     row('homes', `${t.housesLeft} <span class="dim">(${t.homesLost} lost)</span>`) + row('housing for', housingCapacity(t)) + (stoneHomes(t) || (t.code && t.code.stone) ? row('in stone', `${stoneHomes(t)} homes${t.code && t.code.stone ? ' <span class="dim">· the stone code</span>' : ''}`) : '') + row('militia', t.militia) + (t.soldiers ? row('soldiers', `${t.soldiers} <span class="dim">of ${12 * countType(t, T.BARRACKS)} places</span>`) : '') + row('unrest', `${Math.round(t.unrest || 0)}%`, (t.unrest || 0) >= 70 ? 'd' : '') + row('spirits', `${Math.round(cheerOf(t))}% <span class="dim">${t.drank ? '· beer at the inn' : hasType(t, T.INN) ? '· the inn is dry' : ''}${t.smoked ? ' · pipe smoke' : ''}</span>`, cheerOf(t) >= 70 ? 'g' : cheerOf(t) < 30 ? 'd' : '') + `</div>` +
@@ -9664,7 +9970,7 @@ window.addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer
     ['rock', 'rock'], ['fire1', 'burning'], ['crown1', 'crown fire'], ['ash', 'ash'], ['stump', 'burnt tree'],
     ['house0', 'house'], ['station', 'fire station'], ['rubble', 'rubble'], ['dirt', 'firebreak / road'],
     ['crew', 'fire crew'], ['truck', 'engine'], ['hangar', 'airbase'], ['plane', 'air tanker'],
-    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'], ['house0_s', 'stone house'], ['shell', 'burnt-out shell'], ['fishery', "fisher's hut"], ['smokehouse', 'smokehouse'], ['bakery', 'bakery'], ['mill', 'mill'], ['brewery', 'brewery'], ['inn', 'inn'], ['cellar', 'root cellar'], ['spring', 'spring'], ['farm_b', 'barley'], ['farm_t', 'turnips'], ['farm_or', 'orchard'], ['farm_x', 'tobacco'], ['elk', 'elk'], ['hare', 'hares'], ['fisher', 'fisher'], ['icefisher', 'ice fishing'],
+    ['bigpine', 'big pine'], ['road', 'road'], ['wagon', 'settlers'], ['worker', 'townsfolk'], ['soldier', 'militia'], ['wall', 'stone wall'], ['house0_s', 'stone house'], ['shell', 'burnt-out shell'], ['border', 'faction border'], ['fishery', "fisher's hut"], ['smokehouse', 'smokehouse'], ['bakery', 'bakery'], ['mill', 'mill'], ['brewery', 'brewery'], ['inn', 'inn'], ['cellar', 'root cellar'], ['spring', 'spring'], ['farm_b', 'barley'], ['farm_t', 'turnips'], ['farm_or', 'orchard'], ['farm_x', 'tobacco'], ['elk', 'elk'], ['hare', 'hares'], ['fisher', 'fisher'], ['icefisher', 'ice fishing'],
     ['raider', 'raiders'], ['tank', 'tank'], ['cannon', 'field gun'], ['bomber', 'bomber'], ['boat', 'fishing boat'], ['fireboat', 'fireboat'],
     ['oreIron', 'iron seam'], ['oreCopper', 'copper seam'], ['oreCoal', 'coal seam'], ['oreUranium', 'uranium seam'], ['oreGold', 'gold seam'], ['lumberyard', 'lumberyard'], ['quarry', 'quarry'], ['mine', 'mine'], ['well', 'well'], ['wheel', 'water wheel'], ['plant', 'coal plant'], ['solar', 'solar array'], ['hydro', 'hydro dam'], ['nuclear', 'reactor'], ['derrick', 'oil derrick'], ['shaft', 'mine shaft'], ['survey', 'surveyed deposit'], ['trader', 'trade caravan'], ['logger', 'logger'], ['miner', 'miner'], ['hunter', 'hunter'], ['carrier', 'water carrier'], ['deer', 'deer'], ['boar', 'wild boar'], ['sheep', 'sheep'], ['cow', 'cattle'], ['pig', 'pig'], ['chicken', 'chicken'], ['pasture', 'pasture'], ['reeds', 'marsh reeds'], ['sand', 'desert sand'], ['cactus', 'cactus'], ['jungle', 'jungle tree'], ['site', 'building site'], ['farm1', 'growing field'], ['granary', 'granary'], ['felled', 'fresh stump'],
     ['birch', 'birch'], ['scrub', 'dry scrub'], ['snag', 'dead snag'], ['farm', 'farm'], ['bridge', 'bridge'], ['dam', 'beaver dam'], ['mud', 'mud flat'], ['beaver', 'beavers'], ['tenement', 'tenement'], ['barracks', 'barracks'], ['forge', 'forge'], ['factory', 'factory'], ['university', 'university'], ['tower', 'watchtower'], ['silo', 'silo'], ['townhall', 'town hall'], ['dragon0', '...'],
@@ -9703,7 +10009,7 @@ function snapshot() {
     },
     river: world.river, flooded: world.flooded, floodOrig: [...world.floodOrig], floodUntil: world.floodUntil,
     beavers: world.beavers ? { ...world.beavers, pond: [...world.beavers.pond] } : null,
-    tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, climate: world.climate || null, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
+    factions: world.factions || {}, tradeRoads: world.tradeRoads || {}, wagons: world.wagons || [], lastSeason: world.lastSeason, climate: world.climate || null, trader: world.trader || null, nextTrader: world.nextTrader || 0, traderWary: world.traderWary || 0, roadProjects: world.roadProjects || [], stats: world.stats || newStats(), herds: world.herds || [], history: world.history || { ticks: [], towns: {} },
     falloutList: world.falloutList,
     burning: world.burning, glowing: world.glowing, wetList: world.wetList,
     totalFuel: world.totalFuel, burnedCount: world.burnedCount, treeCount: world.treeCount,
@@ -9739,9 +10045,10 @@ function validateSave(d) {
     if (!t || typeof t !== 'object') throw new Error('bad town');
     t.name = cleanStr(t.name, 60) || 'Nameless';
     t.chronicle = (Array.isArray(t.chronicle) ? t.chronicle : []).slice(0, 40).map(e => ({ tick: Number.isFinite(e && e.tick) ? e.tick : 0, text: cleanStr(e && e.text, 300) }));
-    t.people = (Array.isArray(t.people) ? t.people : []).slice(0, 20).map(p => ({ ...p, name: cleanStr(p && p.name, 60), story: cleanStr(p && p.story, 200), cause: cleanStr(p && p.cause, 60), role: cleanStr(p && p.role, 20), trait: p && TRAITS[p.trait] ? p.trait : undefined, deeds: (Array.isArray(p && p.deeds) ? p.deeds : []).slice(0, 6).map(dd => ({ tick: Number.isFinite(dd && dd.tick) ? dd.tick : 0, text: cleanStr(dd && dd.text, 200) })) }));
+    t.people = (Array.isArray(t.people) ? t.people : []).slice(0, 20).map(p => ({ ...p, name: cleanStr(p && p.name, 60), story: cleanStr(p && p.story, 200), cause: cleanStr(p && p.cause, 60), role: cleanStr(p && p.role, 20), title: cleanStr(p && p.title, 24) || undefined, trait: p && TRAITS[p.trait] ? p.trait : undefined, deeds: (Array.isArray(p && p.deeds) ? p.deeds : []).slice(0, 6).map(dd => ({ tick: Number.isFinite(dd && dd.tick) ? dd.tick : 0, text: cleanStr(dd && dd.text, 200) })) }));
     if (t.res && typeof t.res === 'object') for (const k of Object.keys(t.res)) if (!RES_KINDS.includes(k)) delete t.res[k];
   }
+  if (d.factions && typeof d.factions === 'object') for (const id in d.factions) { const f = d.factions[id]; if (!f || typeof f !== 'object' || !Array.isArray(f.towns)) { delete d.factions[id]; continue; } f.name = cleanStr(f.name, 60) || 'Nameless'; f.gov = GOVS[f.gov] ? f.gov : 'elder'; if (f.ruler) f.ruler.name = cleanStr(f.ruler.name, 60); f.color = /^hsl\([\d., %]+\)$/.test(f.color || '') ? f.color : townColor(+id); }
   if (d.trader && d.trader.stock) d.trader.stock = cleanKeys(d.trader.stock, 20);
   if (d.dragon) d.dragon.name = cleanStr(d.dragon.name, 60);
   if (d.dragonGrudge) d.dragonGrudge.name = cleanStr(d.dragonGrudge.name, 60);
@@ -9779,7 +10086,7 @@ function restore(d) {
   world.flow = d.arrays.flow ? unpackArr(d.arrays.flow, Int32Array) : new Int32Array(N).fill(-1);
   world.river = (d.river || []).slice(); world.flooded = (d.flooded || []).slice(); world.floodOrig = new Map(d.floodOrig || []); world.floodUntil = d.floodUntil || 0;
   world.beavers = d.beavers ? { ...d.beavers, pond: new Set(d.beavers.pond || []) } : null;
-  world.tradeRoads = d.tradeRoads || {}; world.wagons = (d.wagons || []).slice(); world.lastSeason = d.lastSeason;
+  world.factions = d.factions || {}; world.claim = null; world.claimTick = -1000; borderDirty = true; world.tradeRoads = d.tradeRoads || {}; world.wagons = (d.wagons || []).slice(); world.lastSeason = d.lastSeason;
   world.snow = d.arrays.snow ? unpackArr(d.arrays.snow, Uint8Array) : new Uint8Array(N);
   world.oreKind = d.arrays.oreKind ? unpackArr(d.arrays.oreKind, Uint8Array) : new Uint8Array(N);
   world.ore = d.arrays.ore ? unpackArr(d.arrays.ore, Uint16Array) : new Uint16Array(N);

@@ -583,6 +583,37 @@ can expose a seam too. Every town within a walk will want it.
 - **Tobacco.** A little never hurt anyone, they say. A pipe after work lifts spirits and caravans
   pay well for the leaf; the healer's ledger shows the cough, which a healer's house halves.
 
+## Trade reach, borders and factions
+
+- **Roads reach further.** A town with traders to drive the wagons and a hall to plan it builds
+  roads to towns up to 95 cells away, and towns of one faction further still. **Through-trade:**
+  every so often a long wagon crosses a neighbour's roads to reach a town two or three roads on,
+  carrying what the far end is short of and paying a coin in toll to every town it passes through.
+- **Borders.** Every town claims the ground around it, further the more it has built, and two
+  towns' claims meet in the middle. Claims are drawn as thin coloured lines, one colour per
+  faction, and nobody builds on another faction's ground.
+- **Factions.** Every town starts as its own. A conquered town follows its master into the
+  master's faction; two allies with a road between them and no war may unite under the larger.
+  Towns of one faction never fight each other, hold each other close, go to war together, and are
+  listed together in the settlements panel under their banner, ruler and government.
+- **Governments.** When a faction first holds two towns its capital's elder and alignment decide
+  what it becomes, and the town elders stay as they are beneath the new ruler:
+  - a lawful good capital makes a **Kingdom** under a King or Queen; the crown passes to kin, and a
+    ruler who dies without an heir leaves a succession crisis in which towns may walk away;
+  - a lawful capital that is not good makes a **Dominion** under a Dictator, who rules until a coup
+    (when the faction's unrest runs high) or an assassin removes them, and raises the levy;
+  - a good capital that is not lawful makes a **Republic** under a President, elected every two
+    years by the member towns, each vote weighed by its people and their spirits; a tyrant in the
+    capital may steal the count, and everyone knows;
+  - a capital that is neither makes a **Horde** under a Supreme Leader, for life and revered, who
+    purges the towns every few years and raids harder; on their death the strongest town's
+    captain seizes the seat;
+  - a prophet elder makes a **Theocracy** under a High Priest chosen by omen, with twice the feast
+    days; a merchant elder makes a **Merchant Republic** under a Doge elected by coin, with faster
+    wagons and better prices.
+- Towns that cannot bear a dictator or a supreme leader break away, and the capital goes to war
+  to bring them back. A faction whose capital falls dissolves.
+
 ## The log does not repeat itself
 
 The common events (alarms, stand-downs, famine, plague, growth, markets, caravans, arson, wars,
