@@ -680,6 +680,15 @@ A town that loses everything is never stuck: its people muster at the ruins or a
 two of them cut wood even without a lumberyard, and if there is no timber at all they slowly
 rebuild with what they scavenge from the rubble.
 
+## The hand of god
+
+Press the backtick key, type `god`, or run `__wildfire.debug()` in the browser console to open a
+small panel over the map with every disaster on a button: comet (random, or dropped on a chosen
+town), earthquake, meteor, dragon, flood, wolves, beavers, a hard freeze, ashfall, drought and dry
+storm skies, settlers, and for a chosen town: every craft, rifles and aviation, full stores, war
+on another town, a bomber, a bomb, or a fire at its edge. The same key hides it again, and it
+remembers whether it was open.
+
 ## Controls
 
 | Action              | Mouse / button      | Key     |
