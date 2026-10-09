@@ -1,7 +1,7 @@
 /* ───────────────────────── Towns ───────────────────────── */
 
 function placeTowns(n) {
-  let count = 1 + (rand() < 0.55 ? 1 : 0) + (rand() < 0.3 ? 1 : 0) + (n >= 160 && rand() < 0.6 ? 1 : 0) + (n >= 240 && rand() < 0.6 ? 1 : 0);
+  let count = 1 + (rand() < 0.55 ? 1 : 0) + (rand() < 0.3 ? 1 : 0) + (n >= 160 && rand() < 0.6 ? 1 : 0) + (n >= 240 && rand() < 0.6 ? 1 : 0) + (n >= 320 ? 1 + (rand() < 0.6 ? 1 : 0) : 0) + (n >= 420 ? 1 + (rand() < 0.6 ? 1 : 0) : 0); // a big valley starts with more hearths
   if (n < 50) count = 1;
   world.names = [];
   for (let t = 0; t < count; t++) {

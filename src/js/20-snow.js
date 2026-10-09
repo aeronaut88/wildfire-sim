@@ -28,17 +28,20 @@ function snowFac(i) {
 function updateSnow() {
   const snowing = world.weather.kind === 'snow';
   if (!snowing && !world.snowCells) return;
+  // A big valley takes the snow on alternate ticks, twice as hard, so the cost stays the same per cell-tick.
+  const stride = world.n * world.n > 90000 ? 2 : 1;
+  if (stride > 1 && world.tick % stride) return;
   const snow = world.snow, lv = world.snowLv, N = world.n * world.n, type = world.type, tick = world.tick, burnLeft = world.burnLeft, elev = world.elev;
   const sea = season(), wk = world.weather.kind;
   // expected depth lost per tick when it is not snowing
-  const melt = sea === 3 ? (wk === 'rain' || wk === 'storm' ? 1.0 : 0.03) : sea === 0 ? (wk === 'rain' || wk === 'storm' ? 3 : wk === 'drought' ? 2 : 1.2) : 4;
+  const melt = (sea === 3 ? (wk === 'rain' || wk === 'storm' ? 1.0 : 0.03) : sea === 0 ? (wk === 'rain' || wk === 'storm' ? 3 : wk === 'drought' ? 2 : 1.2) : 4) * stride;
   let cells = 0;
   for (let i = 0; i < N; i++) {
     let d = snow[i];
     if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
     else if (snowing) {
       if (d >= 255) { cells++; continue; }
-      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5) + Math.round(latCold(i) * 4)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground, and the north catches more than the south
+      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5) + Math.round(latCold(i) * 4)) d = Math.min(255, d + stride); else { if (d) cells++; continue; } // hollows catch more than exposed ground, and the north catches more than the south
     } else {
       if (!d) continue;
       const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8) * (1 - latCold(i) * 0.8); // hollows hold their snow longest, and the north holds it longer than the south: the melt comes in patches, not as one front

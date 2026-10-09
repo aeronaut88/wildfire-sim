@@ -44,7 +44,7 @@ function cleanKeys(obj, max) { const out = {}; if (obj && typeof obj === 'object
 function validateSave(d) {
   if (!d || typeof d !== 'object' || d.v !== SAVE_VERSION || !d.arrays || typeof d.arrays !== 'object') throw new Error('not a Wildfire save');
   const n = d.n;
-  if (!Number.isInteger(n) || n < 30 || n > 300) throw new Error('bad map size');
+  if (!Number.isInteger(n) || n < 30 || n > 600) throw new Error('bad map size');
   if (!Array.isArray(d.towns) || d.towns.length > 200) throw new Error('bad town list');
   if (!Number.isFinite(d.tick) || d.tick < 0) throw new Error('bad tick');
   for (const [k, bytes] of [['type', 1], ['variant', 1], ['burnLeft', 2], ['glow', 1], ['wet', 2], ['wetKind', 1], ['townOf', 1], ['road', 1], ['fert', 1], ['since', 4], ['intensity', 1]]) {

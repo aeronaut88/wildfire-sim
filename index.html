@@ -178,6 +178,7 @@
   .debug .dgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
   .debug .dgrid button { font: inherit; font-size: 9px; letter-spacing: 0.04em; text-transform: uppercase; background: #1a1512; color: var(--ink); border: 1px solid var(--panel-edge); padding: 5px 4px; cursor: pointer; text-align: left; }
   .debug .dgrid button:hover { background: #3a1a0e; border-color: #8a4a1a; }
+  .control .hint { color: var(--ink-dim); font-size: 11px; margin-top: 4px; line-height: 1.35; }
   .sw { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 2px; vertical-align: middle; }
   .row.fac { border-left: 2px solid #555; opacity: .95; }
   .card .lead { color: #d9c48a; }
@@ -667,7 +668,8 @@
       <div class="title">Terrain</div>
       <div class="control">
         <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
-        <input type="range" id="size" min="30" max="300" step="10" value="200">
+        <input type="range" id="size" min="30" max="500" step="10" value="200">
+        <div class="hint">Up to 500 wide. A big valley holds more towns and takes a moment to make; above 300 it runs slower at the highest speeds.</div>
       </div>
       <div class="control">
         <label for="density">Tree density</label><output id="densityOut">0.65</output>
@@ -2282,7 +2284,7 @@ function updateBeavers() {
 /* ───────────────────────── Towns ───────────────────────── */
 
 function placeTowns(n) {
-  let count = 1 + (rand() < 0.55 ? 1 : 0) + (rand() < 0.3 ? 1 : 0) + (n >= 160 && rand() < 0.6 ? 1 : 0) + (n >= 240 && rand() < 0.6 ? 1 : 0);
+  let count = 1 + (rand() < 0.55 ? 1 : 0) + (rand() < 0.3 ? 1 : 0) + (n >= 160 && rand() < 0.6 ? 1 : 0) + (n >= 240 && rand() < 0.6 ? 1 : 0) + (n >= 320 ? 1 + (rand() < 0.6 ? 1 : 0) : 0) + (n >= 420 ? 1 + (rand() < 0.6 ? 1 : 0) : 0); // a big valley starts with more hearths
   if (n < 50) count = 1;
   world.names = [];
   for (let t = 0; t < count; t++) {
@@ -4644,17 +4646,20 @@ function snowFac(i) {
 function updateSnow() {
   const snowing = world.weather.kind === 'snow';
   if (!snowing && !world.snowCells) return;
+  // A big valley takes the snow on alternate ticks, twice as hard, so the cost stays the same per cell-tick.
+  const stride = world.n * world.n > 90000 ? 2 : 1;
+  if (stride > 1 && world.tick % stride) return;
   const snow = world.snow, lv = world.snowLv, N = world.n * world.n, type = world.type, tick = world.tick, burnLeft = world.burnLeft, elev = world.elev;
   const sea = season(), wk = world.weather.kind;
   // expected depth lost per tick when it is not snowing
-  const melt = sea === 3 ? (wk === 'rain' || wk === 'storm' ? 1.0 : 0.03) : sea === 0 ? (wk === 'rain' || wk === 'storm' ? 3 : wk === 'drought' ? 2 : 1.2) : 4;
+  const melt = (sea === 3 ? (wk === 'rain' || wk === 'storm' ? 1.0 : 0.03) : sea === 0 ? (wk === 'rain' || wk === 'storm' ? 3 : wk === 'drought' ? 2 : 1.2) : 4) * stride;
   let cells = 0;
   for (let i = 0; i < N; i++) {
     let d = snow[i];
     if (burnLeft[i] > 0) { if (!d) continue; d = 0; }
     else if (snowing) {
       if (d >= 255) { cells++; continue; }
-      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5) + Math.round(latCold(i) * 4)) d++; else { if (d) cells++; continue; } // hollows catch more than exposed ground, and the north catches more than the south
+      if ((snowHash(i, tick) >>> 8) % 16 < 9 + Math.floor(snowFac(i) * 5) + Math.round(latCold(i) * 4)) d = Math.min(255, d + stride); else { if (d) cells++; continue; } // hollows catch more than exposed ground, and the north catches more than the south
     } else {
       if (!d) continue;
       const m = melt * (elev && elev[i] > 0.55 ? 0.6 : 1) * (1.4 - snowFac(i) * 0.8) * (1 - latCold(i) * 0.8); // hollows hold their snow longest, and the north holds it longer than the south: the melt comes in patches, not as one front
@@ -4952,7 +4957,7 @@ function updateSettlers(force) {
   if (!s) {
     const dead = world.towns.filter(t => t.housesLeft === 0 || t.popLeft <= 0);
     const living = world.towns.filter(t => !(t.housesLeft === 0 || t.popLeft <= 0));
-    const maxAlive = params.maxTowns + (n >= 160 ? 1 : 0) + (n >= 240 ? 1 : 0);
+    const maxAlive = params.maxTowns + (n >= 160 ? 1 : 0) + (n >= 240 ? 1 : 0) + (n >= 320 ? 3 : 0) + (n >= 420 ? 4 : 0); // room for more on a big map
     // Wagons come often while there is room for a town, less once the valley is full.
     const rate = living.length < maxAlive ? 0.004 : (dead.length ? 0.002 : 0.0006);
     if (!force && (world.tick < 60 || Math.random() > rate)) return;
@@ -10075,7 +10080,7 @@ function cleanKeys(obj, max) { const out = {}; if (obj && typeof obj === 'object
 function validateSave(d) {
   if (!d || typeof d !== 'object' || d.v !== SAVE_VERSION || !d.arrays || typeof d.arrays !== 'object') throw new Error('not a Wildfire save');
   const n = d.n;
-  if (!Number.isInteger(n) || n < 30 || n > 300) throw new Error('bad map size');
+  if (!Number.isInteger(n) || n < 30 || n > 600) throw new Error('bad map size');
   if (!Array.isArray(d.towns) || d.towns.length > 200) throw new Error('bad town list');
   if (!Number.isFinite(d.tick) || d.tick < 0) throw new Error('bad tick');
   for (const [k, bytes] of [['type', 1], ['variant', 1], ['burnLeft', 2], ['glow', 1], ['wet', 2], ['wetKind', 1], ['townOf', 1], ['road', 1], ['fert', 1], ['since', 4], ['intensity', 1]]) {

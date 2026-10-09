@@ -680,6 +680,14 @@ A town that loses everything is never stuck: its people muster at the ruins or a
 two of them cut wood even without a lumberyard, and if there is no timber at all they slowly
 rebuild with what they scavenge from the rubble.
 
+## Big valleys
+
+The size slider goes to 500 wide, a quarter of a million cells. A big valley starts with more towns
+and makes room for more settlers, generates in about a second, and costs roughly 6 to 12
+milliseconds a tick on an ordinary laptop (snow and fire crews are the expensive parts), so it is
+smooth at normal speeds and slower than the slider promises at the very top. Memory stays small:
+the whole world is a few dozen megabytes.
+
 ## The hand of god
 
 Press the backtick key, type `god`, or run `__wildfire.debug()` in the browser console to open a

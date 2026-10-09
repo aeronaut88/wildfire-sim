@@ -6,7 +6,7 @@ function updateSettlers(force) {
   if (!s) {
     const dead = world.towns.filter(t => t.housesLeft === 0 || t.popLeft <= 0);
     const living = world.towns.filter(t => !(t.housesLeft === 0 || t.popLeft <= 0));
-    const maxAlive = params.maxTowns + (n >= 160 ? 1 : 0) + (n >= 240 ? 1 : 0);
+    const maxAlive = params.maxTowns + (n >= 160 ? 1 : 0) + (n >= 240 ? 1 : 0) + (n >= 320 ? 3 : 0) + (n >= 420 ? 4 : 0); // room for more on a big map
     // Wagons come often while there is room for a town, less once the valley is full.
     const rate = living.length < maxAlive ? 0.004 : (dead.length ? 0.002 : 0.0006);
     if (!force && (world.tick < 60 || Math.random() > rate)) return;
