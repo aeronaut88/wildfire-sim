@@ -27,7 +27,8 @@ function factionColor(t) { const f = factionOf(t); return f ? f.color : townColo
 function factionName(f) { return GOVS[f.gov].name(f.name); }
 function govOf(t) { const f = factionOf(t); return f && f.towns.length > 1 ? f.gov : null; }
 function sameFaction(a, b) { return a && b && factionOf(a) === factionOf(b); }
-function rulerOf(f) { if (!f.ruler) return null; const t = world.towns[f.ruler.town]; return t && t.people ? t.people.find(p => p.alive && p.name === f.ruler.name) : null; }
+// The ruler is found by name in the capital; the one holding the title wins when two people share a name.
+function rulerOf(f) { if (!f.ruler) return null; const t = world.towns[f.ruler.town]; if (!t || !t.people) return null; return t.people.find(p => p.alive && p.name === f.ruler.name && (p.role === 'ruler' || p.title)) || t.people.find(p => p.alive && p.name === f.ruler.name) || null; }
 function rulerTitle(f) { return GOVS[f.gov].title(rulerOf(f)); }
 function factionTowns(f) { return f.towns.map(id => world.towns[id]).filter(t => t && isAlive(t)); }
 function factionPop(f) { let p = 0; for (const t of factionTowns(f)) p += t.popLeft; return p; }
@@ -205,7 +206,7 @@ function updateFactions() {
     // the ruler
     const r = rulerOf(f);
     if (!r && f.ruler) { f.ruler = null; succeedRuler(f, { name: 'the ruler' }); }
-    else if (!r && !f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) holdElection(f, false);
+    else if (!r && !f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) { holdElection(f, false); townElections(f); }
     if (f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) { holdElection(f, false); townElections(f); }
     if (r && (f.gov === 'dominion' || f.gov === 'horde')) {
       const unrest = towns.reduce((a, t) => a + (t.unrest || 0), 0) / towns.length;

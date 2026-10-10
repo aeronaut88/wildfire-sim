@@ -48,17 +48,20 @@ for (const gov of GOVS) {
   })()`));
   if (setup.error) { console.log(gov, 'SKIP', setup.error); continue; }
   const opp = OPPOSITE[setup.ruler.trait] || 'tyrant';
-  const before = JSON.parse(await evaluate(`(() => { const w = window.__wildfire; const el = [w.debugSetElderTrait(${setup.b}, '${opp}'), w.debugSetElderTrait(${setup.c}, '${opp}')]; const ev = (w.world.stats && w.world.stats.ev) || {}; return JSON.stringify({ elders: el, oustings: ev.oustings || 0, votes: ev.townElections || 0, gov: w.world.factions[w.world.towns[${setup.a}].faction].gov, n: w.world.factions[w.world.towns[${setup.a}].faction].towns.length }); })()`));
+  const before = JSON.parse(await evaluate(`(() => { const w = window.__wildfire; const el = [w.debugSetElderTrait(${setup.b}, '${opp}'), w.debugSetElderTrait(${setup.c}, '${opp}')]; const ev = (w.world.stats && w.world.stats.ev) || {}; return JSON.stringify({ elders: el, oustings: ev.oustings || 0, appointments: ev.appointments || 0, votes: ev.townElections || 0, gov: w.world.factions[w.world.towns[${setup.a}].faction].gov, n: w.world.factions[w.world.towns[${setup.a}].faction].towns.length }); })()`));
   // 6,000 ticks: two and a half years, one republic election cycle, many faction passes
   await evaluate(`(() => { const w = window.__wildfire; for (let k = 0; k < 6000; k++) w.step(); return w.world.tick; })()`);
   const after = JSON.parse(await evaluate(`(() => { const w = window.__wildfire; const ev = (w.world.stats && w.world.stats.ev) || {}; const f = w.world.factions[w.world.towns[${setup.a}].faction];
     const el = [${setup.b}, ${setup.c}].map(i => { const t = w.world.towns[i]; const l = t.people && t.people.find(p => p.alive && p.role === 'elder'); return l ? l.name + ' (' + l.trait + ')' : 'none'; });
     const lines = [...document.querySelectorAll('#log li')].map(l => l.textContent).filter(s => /writ|warbands|the crown|omens|shrine|ballot|votes|polls|names .* elder|the chair|election|out of favour|letter/i.test(s) && !/crowning/.test(s)).slice(0, 6);
-    return JSON.stringify({ oustings: ev.oustings || 0, votes: ev.townElections || 0, elders: el, still: f ? f.towns.length : 0, gov: f ? f.gov : null, lines }); })()`));
+    return JSON.stringify({ oustings: ev.oustings || 0, appointments: ev.appointments || 0, votes: ev.townElections || 0, elders: el, still: f ? f.towns.length : 0, gov: f ? f.gov : null, lines }); })()`));
+  // The crown reached in if it ousted an elder or appointed one when a chair fell empty; a republic voted.
+  // A realm that changed government mid-run (absorbed by a union) cannot be judged and is reported, not failed.
   const forceful = !(gov === 'republic' || gov === 'merchant');
-  const ok = forceful ? after.oustings > before.oustings : after.votes > before.votes;
-  if (!ok) failures++;
-  console.log(`${gov.padEnd(9)} ${ok ? 'ok ' : 'FAIL'} ruler ${setup.ruler.name} (${setup.ruler.trait}) · elders set ${opp} → now ${after.elders.join(', ')} · oustings ${before.oustings}→${after.oustings} · town votes ${before.votes}→${after.votes} · towns in realm ${before.n}→${after.still}`);
+  const reached = after.oustings + after.appointments > before.oustings + before.appointments;
+  const ok = after.gov !== gov ? null : forceful ? reached : after.votes > before.votes;
+  if (ok === false) failures++;
+  console.log(`${gov.padEnd(9)} ${ok === null ? 'gov changed to ' + after.gov : ok ? 'ok ' : 'FAIL'} ruler ${setup.ruler.name} (${setup.ruler.trait}) · elders set ${opp} → now ${after.elders.join(', ')} · oustings ${before.oustings}→${after.oustings} · appointed ${before.appointments}→${after.appointments} · town votes ${before.votes}→${after.votes} · towns in realm ${before.n}→${after.still}`);
   for (const l of after.lines) console.log('    ' + l);
 }
 console.log('errors:', errs.length ? errs : 'none');

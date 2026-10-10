@@ -72,7 +72,7 @@ function elect(town, role, quiet, avoidTrait) {
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   if (!quiet) {
     const kin = kinLabel(town, p) || null;
-    if (role === 'elder' && crown) { deed(p, `was named elder of ${town.name} by ${GOVS[crown.f.gov].title(crown.r)} ${crown.r.name}`); say(town, 'appointed', { heir: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, ruler: crown.r.name, title: GOVS[crown.f.gov].title(crown.r), faction: factionName(crown.f), capital: world.towns[crown.f.capital].name, gov: crown.f.gov }, 'build'); }
+    if (role === 'elder' && crown) { stat('ev', 'appointments'); deed(p, `was named elder of ${town.name} by ${GOVS[crown.f.gov].title(crown.r)} ${crown.r.name}`); say(town, 'appointed', { heir: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, ruler: crown.r.name, title: GOVS[crown.f.gov].title(crown.r), faction: factionName(crown.f), capital: world.towns[crown.f.capital].name, gov: crown.f.gov }, 'build'); }
     else if (role === 'elder') say(town, 'electElder', { who: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, kin }, 'build');
     else if (role === 'chief') say(town, 'electChief', { who: p.name, story: p.story, kin }, 'build');
     else say(town, 'electRole', { who: p.name, role: ROLE_LABEL[role], story: p.story, kin }, 'build');
