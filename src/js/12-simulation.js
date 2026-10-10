@@ -40,7 +40,7 @@ function maybeCrown(i, x, y, hasWind, W) {
       world.lastCrownLog = world.tick;
       let near = null, nd = Infinity;
       for (const t of world.towns) { const dd = Math.hypot(t.cx - x, t.cy - y); if (dd < nd) { nd = dd; near = t; } }
-      log(near && nd < near.R + 20 ? `Fire is crowning in the timber near ${near.name}` : 'Fire is crowning in the timber', 'alarm');
+      say(near && nd < near.R + 20 ? near : null, 'crowning', {}, 'alarm');
     }
   }
 }

@@ -620,15 +620,30 @@ can expose a seam too. Every town within a walk will want it.
 
 ## The log does not repeat itself
 
-The common events (alarms, stand-downs, famine, plague, growth, markets, caravans, arson, wars,
-battles, dragons, lightning, settlers) are said one of several ways, never the same way twice
-running, and coloured by the hour, the weather, the season, the elder in charge and the town's
-mood. Towns remember what defined them lately (a hanging, a famine, a dragon, a great fire, a
-war, a plague, a festival, a wedding, a sack, a revolt) and the log calls back to it: "It is two
-seasons since the hanging of Wren Fenwick." People come in families: a new notable is often kin
-of someone already in town, a constable's child tends to follow in the job, and a family
-remembers a hanging or a banishment. Kin who hold a grudge push unrest up, and the next thief or
-fire-setter is often one of them, until a revolt settles the score.
+The log is the game, and it is written to be read for an hour without seeing the same kind of
+line twice. Nearly every event goes through a bag of six to twelve phrasings that differ in
+shape and point of view, not just in words, chosen never the same way twice running and
+coloured by the hour, the weather, the season, the elder in charge, the town's temperament and
+mood, named townsfolk and what the town remembers. The bags live in `src/js/11b-phrases.js`
+and the four `11d` to `11g` files beside it.
+
+Just as important is how often a thing is said. The first of a kind is news (the first field,
+the first granary, the first stone house); the tenth gets a line only when it means something
+to someone, at most once a year per town. One cause makes one line, not one per target: a town
+"covets every seam its neighbours dig" instead of a line per neighbour, allied crews arriving
+at a fire are one line naming every helper, a fire's dead are counted once when it is out. Wars
+that flap between truce and re-declaration are logged once. Measured with
+`tests/logdump.mjs` and `tests/analyze_log.py` over 32,000 ticks: 14,585 lines and 1,465
+distinct templates before, 6,998 lines and 2,097 templates after, and the worst back-to-back
+repeat fell from 364 to 7.
+
+Towns remember what defined them lately (a hanging, a famine, a dragon, a great fire, a war, a
+plague, a festival, a wedding, a sack, a revolt, an elder removed by the crown) and the log
+calls back to it, at most once a season: "It is two seasons since the hanging of Wren Fenwick."
+People come in families: a new notable is often kin of someone already in town, a constable's
+child tends to follow in the job, and a family remembers a hanging or a banishment. Kin who hold
+a grudge push unrest up, and the next thief or fire-setter is often one of them, until a revolt
+settles the score.
 
 ## Everything has a body
 

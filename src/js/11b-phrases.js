@@ -44,9 +44,13 @@ function agoWord(ticks) {
   if (seasons <= 0) return 'only days'; if (seasons === 1) return 'a season'; if (seasons < 4) return `${['', '', 'two', 'three'][seasons]} seasons`;
   const y = Math.round(ticks / YEAR); return y <= 1 ? 'a year' : y === 2 ? 'two years' : y === 3 ? 'three years' : `${y} years`;
 }
+// A town's memory is called back at most once a season: a burst of lines about one town (a raid: the dead,
+// the funeral, the new chief) must not echo the same memory three times.
 function recall(town, aboutKey) {
+  if (!town || world.tick - (town.recallTick || -1e9) < YEAR / 4) return null;
   const m = (town.memory || []).find(e => world.tick - e.tick < YEAR * 3 && world.tick - e.tick > YEAR / 4 && !(aboutKey || '').startsWith(e.kind));
   if (!m) return null;
+  town.recallTick = world.tick;
   const S = m.short[0].toUpperCase() + m.short.slice(1);
   return pick([`It is ${agoWord(world.tick - m.tick)} since ${m.short}.`, `${S} is still talked about.`, `Nobody has forgotten ${m.short}.`, `The old people say it was like this before ${m.short}.`, `${S} was ${agoWord(world.tick - m.tick)} ago, and it feels like yesterday.`]);
 }
@@ -139,11 +143,6 @@ const PHRASES = {
     c => `New roofs in ${c.name}: ${c.homes} homes`,
     c => `${c.name} is ${c.homes} homes now`,
     c => `Hammers in ${c.name} ${daypart()}. ${c.homes} homes`,
-  ],
-  rebuilding: [
-    c => `${c.name} is rebuilding (${c.homes} homes)`,
-    c => `${c.name} clears the ash and builds again, ${c.homes} homes standing`,
-    c => `New timber over old foundations at ${c.name}: ${c.homes} homes`,
   ],
   market: [
     c => `Market day at ${c.name}: ${c.deal}. ${c.coin} coin in the chest.`,
@@ -247,6 +246,13 @@ const PHRASES = {
     c => `Lightning strikes just outside ${c.name}`,
     c => `A bolt comes down ${daypart()} within sight of ${c.name}`,
     c => `Thunder over ${c.name}, and a strike in the timber close by`,
+  ],
+  crowning: [
+    c => c.name ? `Fire is crowning in the timber near ${c.name}` : 'Fire is crowning in the timber',
+    c => c.name ? `The fire is crowning in the timber above ${c.name}; whole trees go up at once` : 'Fire is crowning in the timber, tree to tree, faster than a man can run',
+    c => c.name ? `Crowning in the timber within sight of ${c.name} ${daypart()}: the tops are burning before the trunks` : `A crown run ${daypart()}: fire is crowning in the timber and the smoke stands up like a wall`,
+    c => c.name ? `${c.name} watches it crowning in the timber ${weatherWord()}, a roar you feel in the ground` : 'Fire is crowning in the timber, and the embers go out ahead of it',
+    c => c.name ? `Crowning in the timber near ${c.name}, the ${seasonWord()} canopy catching like paper` : 'The fire has got into the crowns. Crowning in the timber, and nothing stops a crown run but weather',
   ],
   lightningWild: [
     () => 'Lightning strike in the forest',

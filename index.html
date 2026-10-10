@@ -2703,9 +2703,13 @@ function agoWord(ticks) {
   if (seasons <= 0) return 'only days'; if (seasons === 1) return 'a season'; if (seasons < 4) return `${['', '', 'two', 'three'][seasons]} seasons`;
   const y = Math.round(ticks / YEAR); return y <= 1 ? 'a year' : y === 2 ? 'two years' : y === 3 ? 'three years' : `${y} years`;
 }
+// A town's memory is called back at most once a season: a burst of lines about one town (a raid: the dead,
+// the funeral, the new chief) must not echo the same memory three times.
 function recall(town, aboutKey) {
+  if (!town || world.tick - (town.recallTick || -1e9) < YEAR / 4) return null;
   const m = (town.memory || []).find(e => world.tick - e.tick < YEAR * 3 && world.tick - e.tick > YEAR / 4 && !(aboutKey || '').startsWith(e.kind));
   if (!m) return null;
+  town.recallTick = world.tick;
   const S = m.short[0].toUpperCase() + m.short.slice(1);
   return pick([`It is ${agoWord(world.tick - m.tick)} since ${m.short}.`, `${S} is still talked about.`, `Nobody has forgotten ${m.short}.`, `The old people say it was like this before ${m.short}.`, `${S} was ${agoWord(world.tick - m.tick)} ago, and it feels like yesterday.`]);
 }
@@ -2798,11 +2802,6 @@ const PHRASES = {
     c => `New roofs in ${c.name}: ${c.homes} homes`,
     c => `${c.name} is ${c.homes} homes now`,
     c => `Hammers in ${c.name} ${daypart()}. ${c.homes} homes`,
-  ],
-  rebuilding: [
-    c => `${c.name} is rebuilding (${c.homes} homes)`,
-    c => `${c.name} clears the ash and builds again, ${c.homes} homes standing`,
-    c => `New timber over old foundations at ${c.name}: ${c.homes} homes`,
   ],
   market: [
     c => `Market day at ${c.name}: ${c.deal}. ${c.coin} coin in the chest.`,
@@ -2906,6 +2905,13 @@ const PHRASES = {
     c => `Lightning strikes just outside ${c.name}`,
     c => `A bolt comes down ${daypart()} within sight of ${c.name}`,
     c => `Thunder over ${c.name}, and a strike in the timber close by`,
+  ],
+  crowning: [
+    c => c.name ? `Fire is crowning in the timber near ${c.name}` : 'Fire is crowning in the timber',
+    c => c.name ? `The fire is crowning in the timber above ${c.name}; whole trees go up at once` : 'Fire is crowning in the timber, tree to tree, faster than a man can run',
+    c => c.name ? `Crowning in the timber within sight of ${c.name} ${daypart()}: the tops are burning before the trunks` : `A crown run ${daypart()}: fire is crowning in the timber and the smoke stands up like a wall`,
+    c => c.name ? `${c.name} watches it crowning in the timber ${weatherWord()}, a roar you feel in the ground` : 'Fire is crowning in the timber, and the embers go out ahead of it',
+    c => c.name ? `Crowning in the timber near ${c.name}, the ${seasonWord()} canopy catching like paper` : 'The fire has got into the crowns. Crowning in the timber, and nothing stops a crown run but weather',
   ],
   lightningWild: [
     () => 'Lightning strike in the forest',
@@ -3929,7 +3935,6 @@ PHRASES.caravan.push(
    mood and the town's memory all apply. Matchers in 32 read some of these lines: every phrasing
    keeps the words they look for (noted beside the bag). */
 
-const cap1 = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const aAn = w => /^[aeiou]/i.test(w) ? 'an' : 'a';
 const ppl = n => `${n} ${n === 1 ? 'person' : 'people'}`;
 const were = n => n === 1 ? 'was' : 'were';
@@ -5098,10 +5103,6 @@ Object.assign(PHRASES, {
 });
 for (const k of Object.keys(WEATHER_MSG)) if (PHRASES['weather_' + k]) Object.defineProperty(WEATHER_MSG, k, { get: () => phraseText('weather_' + k), enumerable: true, configurable: true });
 
-// say() calls back to the town's memory one time in eight. With this many bags that is often, and a burst of
-// lines about one town (a raid: the dead, the funeral, the new chief) would echo the same memory three times.
-// Once a season a town is plenty.
-{ const recallEvery = recall; recall = function (town, key) { if (!town || world.tick - (town.recallTick || -1e9) < YEAR / 4) return null; const r = recallEvery(town, key); if (r) town.recallTick = world.tick; return r; }; }
 /* ───────────────────────── Simulation ───────────────────────── */
 
 const OFFS4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
@@ -5144,7 +5145,7 @@ function maybeCrown(i, x, y, hasWind, W) {
       world.lastCrownLog = world.tick;
       let near = null, nd = Infinity;
       for (const t of world.towns) { const dd = Math.hypot(t.cx - x, t.cy - y); if (dd < nd) { nd = dd; near = t; } }
-      log(near && nd < near.R + 20 ? `Fire is crowning in the timber near ${near.name}` : 'Fire is crowning in the timber', 'alarm');
+      say(near && nd < near.R + 20 ? near : null, 'crowning', {}, 'alarm');
     }
   }
 }
@@ -10141,7 +10142,7 @@ function updateTravellers() {
     }
     // Arrived.
     const p = v.payload || {};
-    if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
+    if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); if (p.text) log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
     else if (v.kind === 'council') { if (world.council && world.council.host === v.to) world.council.arrived++; }
     else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); say(b, 'weddingArrives', { other: a.name, bride: bride.name }, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
   }
@@ -10699,8 +10700,8 @@ logEl.addEventListener('click', ev => {
 
 // Achievements live in this browser's local storage, across valleys.
 const ACHIEVEMENTS = [
-  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rally|is burning|turn out/],
-  ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast|Fire reaches/],
+  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rall(y|ies)|is burning|turn out|sees the glow|on the line|crowning in the timber|Flames at/],
+  ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast/],
   ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /has been sighted|is in the valley|shape in the sky|dragon, returns/],
   ['dragon-slain', '⚔️', 'Dragonslayer', 'A town slays a dragon', /SLAYS/],
   ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /It will remember/],

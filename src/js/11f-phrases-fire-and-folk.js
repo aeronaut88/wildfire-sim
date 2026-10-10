@@ -4,7 +4,6 @@
    mood and the town's memory all apply. Matchers in 32 read some of these lines: every phrasing
    keeps the words they look for (noted beside the bag). */
 
-const cap1 = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 const aAn = w => /^[aeiou]/i.test(w) ? 'an' : 'a';
 const ppl = n => `${n} ${n === 1 ? 'person' : 'people'}`;
 const were = n => n === 1 ? 'was' : 'were';
@@ -1173,7 +1172,3 @@ Object.assign(PHRASES, {
 });
 for (const k of Object.keys(WEATHER_MSG)) if (PHRASES['weather_' + k]) Object.defineProperty(WEATHER_MSG, k, { get: () => phraseText('weather_' + k), enumerable: true, configurable: true });
 
-// say() calls back to the town's memory one time in eight. With this many bags that is often, and a burst of
-// lines about one town (a raid: the dead, the funeral, the new chief) would echo the same memory three times.
-// Once a season a town is plenty.
-{ const recallEvery = recall; recall = function (town, key) { if (!town || world.tick - (town.recallTick || -1e9) < YEAR / 4) return null; const r = recallEvery(town, key); if (r) town.recallTick = world.tick; return r; }; }
