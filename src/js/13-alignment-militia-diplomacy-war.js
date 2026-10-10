@@ -19,12 +19,16 @@ function declareWar(a, b, why) {
   a.wars[b.id] = world.tick; b.wars[a.id] = world.tick;
   setRel(a, b, Math.min(rel(a, b), -70));
   const el = person(a, 'elder'); deed(el, `declared war on ${b.name}`);
-  say(a, 'warDeclared', { other: b.name, why, elder: el ? el.name : null }, 'war'); remember(a, 'war', { who: b.name }); remember(b, 'war', { who: a.name });
+  const pn = pairNote(a, b), resumed = pn.peaceAt !== undefined && world.tick - pn.peaceAt < YEAR;
+  pn.quiet = resumed;
+  // A war taken up again within a year of its truce is not news; once in a while the valley says so, in one line.
+  if (!resumed) { say(a, 'warDeclared', { other: b.name, why, elder: el ? el.name : null }, 'war'); remember(a, 'war', { who: b.name }); remember(b, 'war', { who: a.name }); }
+  else if (!(world.tick - pn.flapLogged < YEAR * 2) && !(world.tick - world.flapLogged < YEAR / 2)) { pn.flapLogged = world.flapLogged = world.tick; say(a, 'warFlaps', { other: b.name }, 'war'); }
   for (const t of [a, b]) { const [x, y] = cellCenter(t.cy * world.n + t.cx); popups.push({ x, y: y - t.R * cellPx - 14, text: 'WAR', color: '#ff4040', t0: performance.now(), dur: 2500 }); }
   // Leagues: a friend of the one attacked may come in.
   if (!why || !/for its ally/.test(why)) for (const o of world.towns) {
     if (o === a || o === b || !isAlive(o) || atWar(o, a) || rel(o, b) < 60 || o.align.moral < 0 || has(o, 'peacemaker') || has(o, 'hermit') || o.militia < 6) continue;
-    if (Math.random() < 0.5) { log(`${o.name} will not see ${b.name} stand alone`, 'war'); declareWar(o, a, `for its ally ${b.name}`); }
+    if (Math.random() < 0.5) { const pn = pairNote(o, a); if (!(pn.peaceAt !== undefined && world.tick - pn.peaceAt < YEAR)) say(o, 'standsWithAlly', { other: b.name }, 'war'); declareWar(o, a, `for its ally ${b.name}`); }
   }
 }
 // Every few years the towns send envoys to a council at the biggest town. Something comes of it, or nothing does.
@@ -39,7 +43,7 @@ function updateCouncil() {
     if (members.length < 2) return;
     world.council = { host: host.id, at: world.tick, members: members.map(t => t.id), arrived: 0 };
     stat('ev', 'councils');
-    log(`${host.name} calls a council of the valley. Envoys set out from ${members.map(t => t.name).join(', ')}.`, 'diplo');
+    say(host, 'councilCalled', { members: andList(members.map(t => t.name)) }, 'diplo');
     return;
   }
   if (c.arrived < c.members.length && world.tick - c.at < 500) return;
@@ -49,18 +53,20 @@ function updateCouncil() {
   const wars = []; for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) if (atWar(members[i], members[j])) wars.push([members[i], members[j]]);
   const r = Math.random();
   spawnCrowd(host, host.cy * world.n + host.cx, 40, 8);
-  if (wars.length && r < 0.5) { for (const [a, b] of wars) makePeace(a, b, 'at the council'); log(`The council at ${host.name} ends ${wars.length === 1 ? 'the war' : 'the wars'} between ${wars.map(([a, b]) => a.name + ' and ' + b.name).join(', ')}. Not everyone goes home happy.`, 'diplo'); }
-  else if (r < 0.35) { const pairs = []; for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) { const a = members[i], b = members[j], key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; if (!(world.tradeRoads || {})[key] && Math.hypot(a.cx - b.cx, a.cy - b.cy) <= 60) pairs.push([a, b]); } const p = pairs[Math.floor(Math.random() * pairs.length)]; if (p) { const [a, b] = p; const path = roadPath(a.cy * world.n + a.cx, b.cy * world.n + b.cx); if (path && path.filter(q => world.type[q] === T.WATER).length <= 6) { const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; world.tradeRoads = world.tradeRoads || {}; world.tradeRoads[key] = { a: a.id, b: b.id, path, wagonT: 0, building: true }; world.roadProjects = world.roadProjects || []; world.roadProjects.push({ key, a: a.id, b: b.id, path, k: 0, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, wait: 0, water: 0, halted: false }); setRel(a, b, rel(a, b) + 10); log(`The council at ${host.name} agrees a road between ${a.name} and ${b.name}, and the stone for it`, 'diplo'); return; } } log(`The council at ${host.name} talks of roads and agrees nothing`, 'diplo'); }
-  else if (r < 0.6) { world.councilWatch = world.tick + YEAR * 2; for (const t of members) setRel(host, t, rel(host, t) + 5); log(`The council at ${host.name} agrees a shared fire watch: every town will ride to a neighbour's smoke for two years`, 'diplo'); }
-  else if (r < 0.8) { const a = members[Math.floor(Math.random() * members.length)]; let b = members[Math.floor(Math.random() * members.length)]; if (b === a) b = members[(members.indexOf(a) + 1) % members.length]; setRel(a, b, rel(a, b) - 12); log(`The council at ${host.name} collapses in insults between ${a.name} and ${b.name}. The envoys go home early.`, 'diplo'); }
-  else { for (const t of members) t.unrest = Math.max(0, (t.unrest || 0) - 2); log(`The council at ${host.name} agrees nothing but a feast, and that goes well`, 'diplo'); }
+  if (wars.length && r < 0.5) { for (const [a, b] of wars) makePeace(a, b, 'at the council'); say(host, 'councilPeace', { wars: wars.length === 1 ? 'the war' : 'the wars', pairs: wars.map(([a, b]) => a.name + ' and ' + b.name).join(', ') }, 'diplo'); }
+  else if (r < 0.35) { const pairs = []; for (let i = 0; i < members.length; i++) for (let j = i + 1; j < members.length; j++) { const a = members[i], b = members[j], key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; if (!(world.tradeRoads || {})[key] && Math.hypot(a.cx - b.cx, a.cy - b.cy) <= 60) pairs.push([a, b]); } const p = pairs[Math.floor(Math.random() * pairs.length)]; if (p) { const [a, b] = p; const path = roadPath(a.cy * world.n + a.cx, b.cy * world.n + b.cx); if (path && path.filter(q => world.type[q] === T.WATER).length <= 6) { const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id; world.tradeRoads = world.tradeRoads || {}; world.tradeRoads[key] = { a: a.id, b: b.id, path, wagonT: 0, building: true }; world.roadProjects = world.roadProjects || []; world.roadProjects.push({ key, a: a.id, b: b.id, path, k: 0, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, wait: 0, water: 0, halted: false }); setRel(a, b, rel(a, b) + 10); say(host, 'councilRoad', { a: a.name, b: b.name }, 'diplo'); return; } } say(host, 'councilNoRoad', {}, 'diplo'); }
+  else if (r < 0.6) { world.councilWatch = world.tick + YEAR * 2; for (const t of members) setRel(host, t, rel(host, t) + 5); say(host, 'councilWatch', {}, 'diplo'); }
+  else if (r < 0.8) { const a = members[Math.floor(Math.random() * members.length)]; let b = members[Math.floor(Math.random() * members.length)]; if (b === a) b = members[(members.indexOf(a) + 1) % members.length]; setRel(a, b, rel(a, b) - 12); say(host, 'councilInsult', { a: a.name, b: b.name }, 'diplo'); }
+  else { for (const t of members) t.unrest = Math.max(0, (t.unrest || 0) - 2); say(host, 'councilFeast', {}, 'diplo'); }
 }
 function makePeace(a, b, why) {
   if (!atWar(a, b)) return;
   delete a.wars[b.id]; delete b.wars[a.id];
   setRel(a, b, Math.max(rel(a, b), -25));
   const ea = person(a, 'elder'), eb = person(b, 'elder'); deed(ea, `made peace with ${b.name}`); deed(eb, `made peace with ${a.name}`);
-  say(a, 'truce', { other: b.name, why, hands: ea && eb ? `${ea.name} and ${eb.name}` : null }, 'diplo');
+  const pn = pairNote(a, b);
+  if (!pn.quiet) say(a, 'truce', { other: b.name, why, hands: ea && eb ? `${ea.name} and ${eb.name}` : null }, 'diplo'); // the truce that ends a quietly resumed war is as quiet as the war
+  pn.peaceAt = world.tick; pn.quiet = false;
 }
 
 function militiaRate(t) {
@@ -94,13 +100,15 @@ function buildWall(t) {
     type[i] = T.WALL; dirty.add(i); laid++;
   }
   if (laid < 6) return;
+  const again = t.wallR > 0;
   t.wallR = r;
-  log(`${t.name} raises a stone wall`, 'build');
+  say(t, 'wall', { again }, 'build');
 }
 
 // Relations drift and random events. Runs every 50 ticks across all living pairs.
-const DIPLO_GOOD = ['sign a trade pact', 'exchange harvest surpluses', 'marry their children into each other\'s families', 'share a fire watch', 'settle an old border quarrel'];
-const DIPLO_BAD = ['quarrel over grazing land', 'trade insults at the river crossing', 'accuse each other of poaching', 'come to blows at a market day', 'refuse each other\'s refugees'];
+// Each incident is a bag in 11d. One incident per pair a year reaches the log; the rest happen quietly.
+const DIPLO_GOOD = ['dgTrade', 'dgHarvest', 'wedding', 'dgWatch', 'dgBorder'];
+const DIPLO_BAD = ['dbGrazing', 'dbInsults', 'dbPoaching', 'dbBlows', 'dbRefuse'];
 function updateDiplomacy() {
   if (--world.diploTimer > 0) return;
   world.diploTimer = 50;
@@ -119,14 +127,18 @@ function updateDiplomacy() {
     if (Math.random() < 0.06) {
       const good = Math.random() < 0.5 + 0.15 * (a.align.moral + b.align.moral) - (atWar(a, b) ? 0.3 : 0);
       const [x, y] = Math.random() < 0.5 ? [a, b] : [b, a];
+      const pn = pairNote(a, b), loud = onceIn(pn, 'incident', YEAR);
+      const facts = { other: y.name, o: y };
       if (good) {
         const what = DIPLO_GOOD[Math.floor(Math.random() * DIPLO_GOOD.length)];
-        if (/marry/.test(what)) { if (sendTraveller(x, y, 'wedding', { delta: 12 })) log(`A wedding party sets out from ${x.name} for ${y.name}`, 'diplo'); }
-        else if (sendTraveller(x, y, 'envoy', { delta: 12, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}`, 'diplo');
+        if (what === 'wedding') { if (sendTraveller(x, y, 'wedding', { delta: 12 }) && loud) say(x, 'weddingOut', facts, 'diplo'); }
+        else if (!loud) setRel(a, b, rel(a, b) + 12); // the same goodwill, without an envoy on the road to tell of it
+        else if (sendTraveller(x, y, 'envoy', { delta: 12, text: phraseOf(x, what, facts) }) && Math.random() < 0.3 && onceIn(pn, 'envoyLogged', YEAR * 2)) say(x, 'envoyGood', { other: y.name, o: y }, 'diplo');
       } else {
         const what = DIPLO_BAD[Math.floor(Math.random() * DIPLO_BAD.length)];
-        if (/river crossing|market day/.test(what)) { setRel(a, b, rel(a, b) - 14); log(`${a.name} and ${b.name} ${what}`, 'diplo'); }
-        else if (sendTraveller(x, y, 'envoy', { delta: -14, text: `${a.name} and ${b.name} ${what}` }) && Math.random() < 0.3) log(`An envoy sets out from ${x.name} for ${y.name}, and nobody expects good news`, 'diplo');
+        if (what === 'dbInsults' || what === 'dbBlows') { setRel(a, b, rel(a, b) - 14); if (loud) say(x, what, facts, 'diplo'); }
+        else if (!loud) setRel(a, b, rel(a, b) - 14);
+        else if (sendTraveller(x, y, 'envoy', { delta: -14, text: phraseOf(x, what, facts) }) && Math.random() < 0.3 && onceIn(pn, 'envoyLogged', YEAR * 2)) say(x, 'envoyBad', { other: y.name, o: y }, 'diplo');
       }
     }
     // Envy: a militaristic town that cannot reach a metal its neighbour digs sours on that neighbour.
@@ -135,7 +147,7 @@ function updateDiplomacy() {
       if (want) {
         setRel(x, y, rel(x, y) - 2.5);
         x.covets = { town: y.id, res: want };
-        if (x.covetLogged !== y.id + ':' + want) { x.covetLogged = y.id + ':' + want; log(`${x.name} covets the ${want} seams of ${y.name}`, 'diplo'); }
+        noteEnvy(x, want);
       } else if (x.covets && x.covets.town === y.id) x.covets = null;
     }
     // War and peace.
@@ -148,8 +160,19 @@ function updateDiplomacy() {
       const exhausted = since > 700 || Math.min(a.popLeft, b.popLeft) < 12 || (a.militia < 3 && b.militia < 3);
       const peaceful = has(a, 'peacemaker') || has(b, 'peacemaker'), stubborn = has(a, 'warmonger') || has(b, 'warmonger');
       if ((exhausted && Math.random() < (peaceful ? 0.7 : stubborn ? 0.12 : 0.3)) || r > (peaceful ? -45 : -30)) makePeace(a, b, exhausted ? 'out of exhaustion' : peaceful ? 'at the peacemaker\'s urging' : '');
-    } else if (r > 60 && Math.random() < 0.05) log(`${a.name} and ${b.name} renew their alliance`, 'diplo');
+    } else if (r > 60 && Math.random() < 0.05) { if (onceIn(pairNote(a, b), 'allyLogged', YEAR * 2)) { const [x, y] = Math.random() < 0.5 ? [a, b] : [b, a]; say(x, 'allies', { other: y.name, o: y }, 'diplo'); } }
   }
+}
+// True at most once per `gap` ticks for this note and key, and marks the time when it is.
+function onceIn(note, key, gap) { if (world.tick - note[key] < gap) return false; note[key] = world.tick; return true; }
+// Envy is news when it begins, when it finds a new metal to want, and once in a long while as it festers.
+// The town card still names the neighbour; the log names nobody.
+function noteEnvy(x, res) {
+  const e = x.envyLogged, now = world.tick;
+  if (!e || now - e.seen > YEAR) { x.envyLogged = { res, kinds: [res], tick: now, seen: now }; say(x, 'covetBegins', { res }, 'diplo'); return; }
+  e.seen = now;
+  if (!e.kinds.includes(res)) { const was = e.kinds[e.kinds.length - 1]; e.kinds.push(res); e.res = res; if (now - e.tick > YEAR / 8) { e.tick = now; say(x, 'covetShifts', { res, was }, 'diplo'); } return; }
+  if (now - e.tick > YEAR * 1.5 && Math.random() < 0.1) { e.tick = now; say(x, 'covetStill', { list: andList(e.kinds) }, 'diplo'); }
 }
 
 // Raids. Evil and chaotic towns start them; anyone at war does.
@@ -180,7 +203,8 @@ function maybeRaid(t) {
   guns = Math.min(guns, Math.floor((t.res.iron - armour * 10) / 6));
   pay(t, { iron: armour * 10 + guns * 6, [fuel]: armour * perTank });
   world.warbands.push({ from: t.id, to: target.id, x: t.cx, y: t.cy, px: t.cx, py: t.cy, face: 1, path, pi: 0, size, wait: 0, armour, guns });
-  log(atWar(t, target) ? `${t.name} marches ${size} soldiers on ${target.name}` : `A raiding party of ${size} leaves ${t.name} for ${target.name}`, 'war');
+  const kit = armour ? `, with ${armour} tank${armour > 1 ? 's' : ''}${guns ? ` and ${guns} gun${guns > 1 ? 's' : ''}` : ''}` : guns ? `, dragging ${guns} gun${guns > 1 ? 's' : ''}` : '';
+  say(t, atWar(t, target) ? 'marchWar' : 'raid', { other: target.name, size, kit }, 'war');
 }
 
 function updateWarbands() {
@@ -193,7 +217,7 @@ function updateWarbands() {
       const gang = (world.firebugs || []).find(g => g.kind === 'gang' && g.name === b.posse);
       if (!gang) { from.militia += b.size; continue; }
       if (Math.hypot(b.x - gang.x, b.y - gang.y) <= 2) { posseArrives(b, gang); continue; }
-      if (b.pi >= b.path.length || Math.hypot(b.path[b.path.length - 1] % n - gang.x, Math.floor(b.path[b.path.length - 1] / n) - gang.y) > 4) { const alt = findPath(b.x, b.y, gang.x, gang.y); if (alt) { b.path = alt; b.pi = 0; } else { from.militia += b.size; log(`${from.name}'s posse loses the trail and rides home`, 'war'); continue; } }
+      if (b.pi >= b.path.length || Math.hypot(b.path[b.path.length - 1] % n - gang.x, Math.floor(b.path[b.path.length - 1] / n) - gang.y) > 4) { const alt = findPath(b.x, b.y, gang.x, gang.y); if (alt) { b.path = alt; b.pi = 0; } else { from.militia += b.size; say(from, 'posseLost', {}, 'war'); continue; } }
       const next = b.path[b.pi]; if (next !== undefined && passable(world.type[next]) && world.burnLeft[next] <= 0) { const nx = next % n, ny = (next - nx) / n; if (nx !== b.x) b.face = Math.sign(nx - b.x); b.x = nx; b.y = ny; b.pi++; }
       keep.push(b); continue;
     }
@@ -201,7 +225,7 @@ function updateWarbands() {
     if (world.burnLeft[b.y * n + b.x] > 0) {
       const dead = Math.max(1, Math.ceil(b.size * 0.25));
       b.size -= dead; applyLosses(from, dead, 'fire');
-      if (!b.burnedOnce) { b.burnedOnce = true; log(`${from.name}'s column marches into the fire, ${dead} lost`, 'loss'); }
+      if (!b.burnedOnce) { b.burnedOnce = true; say(from, 'columnFire', { dead, other: to.name }, 'loss'); }
       if (b.size <= 0) continue;
       // Get out: step to any neighbouring cell that is not burning, then find a new route.
       let fled = false;
@@ -213,7 +237,7 @@ function updateWarbands() {
     if (b.pi < b.path.length) {
       const next = b.path[b.pi];
       if (world.burnLeft[next] > 0 || !passable(world.type[next])) {
-        if (++b.wait > 10) { const alt = findPath(b.x, b.y, to.cx, to.cy); if (alt) { b.path = alt; b.pi = 0; b.wait = 0; } else if (b.wait > 50) { from.militia += b.size; log(`${from.name}'s raiders turn back`, 'war'); continue; } }
+        if (++b.wait > 10) { const alt = findPath(b.x, b.y, to.cx, to.cy); if (alt) { b.path = alt; b.pi = 0; b.wait = 0; } else if (b.wait > 50) { from.militia += b.size; say(from, 'raidersBack', { other: to.name }, 'war'); continue; } }
         keep.push(b); continue;
       }
       b.wait = 0;
@@ -221,7 +245,7 @@ function updateWarbands() {
       if (nx !== b.x) b.face = Math.sign(nx - b.x);
       b.x = nx; b.y = ny; b.pi++;
     }
-    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { if (b.defect) { to.militia += b.size; log(`${from.name}'s deserters reach ${to.name}'s lines, ${b.size} spears for the other side`, 'war'); continue; } startBattle(b, from, to); continue; }
+    if (Math.hypot(b.x - to.cx, b.y - to.cy) <= to.R + 2.5) { if (b.defect) { to.militia += b.size; say(from, 'deserters', { other: to.name, n: b.size }, 'war'); continue; } startBattle(b, from, to); continue; }
     keep.push(b);
   }
   world.warbands = keep;
