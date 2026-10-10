@@ -620,15 +620,30 @@ can expose a seam too. Every town within a walk will want it.
 
 ## The log does not repeat itself
 
-The common events (alarms, stand-downs, famine, plague, growth, markets, caravans, arson, wars,
-battles, dragons, lightning, settlers) are said one of several ways, never the same way twice
-running, and coloured by the hour, the weather, the season, the elder in charge and the town's
-mood. Towns remember what defined them lately (a hanging, a famine, a dragon, a great fire, a
-war, a plague, a festival, a wedding, a sack, a revolt) and the log calls back to it: "It is two
-seasons since the hanging of Wren Fenwick." People come in families: a new notable is often kin
-of someone already in town, a constable's child tends to follow in the job, and a family
-remembers a hanging or a banishment. Kin who hold a grudge push unrest up, and the next thief or
-fire-setter is often one of them, until a revolt settles the score.
+The log is the game, and it is written to be read for an hour without seeing the same kind of
+line twice. Nearly every event goes through a bag of six to twelve phrasings that differ in
+shape and point of view, not just in words, chosen never the same way twice running and
+coloured by the hour, the weather, the season, the elder in charge, the town's temperament and
+mood, named townsfolk and what the town remembers. The bags live in `src/js/11b-phrases.js`
+and the four `11d` to `11g` files beside it.
+
+Just as important is how often a thing is said. The first of a kind is news (the first field,
+the first granary, the first stone house); the tenth gets a line only when it means something
+to someone, at most once a year per town. One cause makes one line, not one per target: a town
+"covets every seam its neighbours dig" instead of a line per neighbour, allied crews arriving
+at a fire are one line naming every helper, a fire's dead are counted once when it is out. Wars
+that flap between truce and re-declaration are logged once. Measured with
+`tests/logdump.mjs` and `tests/analyze_log.py` over 32,000 ticks: 14,585 lines and 1,465
+distinct templates before, 6,998 lines and 2,097 templates after, and the worst back-to-back
+repeat fell from 364 to 7.
+
+Towns remember what defined them lately (a hanging, a famine, a dragon, a great fire, a war, a
+plague, a festival, a wedding, a sack, a revolt, an elder removed by the crown) and the log
+calls back to it, at most once a season: "It is two seasons since the hanging of Wren Fenwick."
+People come in families: a new notable is often kin of someone already in town, a constable's
+child tends to follow in the job, and a family remembers a hanging or a banishment. Kin who hold
+a grudge push unrest up, and the next thief or fire-setter is often one of them, until a revolt
+settles the score.
 
 ## Everything has a body
 
@@ -655,8 +670,9 @@ you pan, or you press Esc. The town card's recent-events list works the same way
 
 ## The sidebar
 
-Five tabs: Play (run, ignite, dispatch, save and seed), Towns, History, Settings (world,
-fire, wind, terrain and the legend) and Info (achievements and the notes). The running log
+Five tabs: Play (run, the next valley's size, towns and tree density with the New Forest button
+beside them, ignite, dispatch, save and seed), Towns, History, Settings (weather, regrowth,
+fire, wind and the legend) and Info (achievements and the notes). The running log
 sits under the map so you are always in tune with the world.
 
 The History tab draws sand plots, and a full-screen button blows them up to the whole window
@@ -718,7 +734,30 @@ remembers whether it was open.
 | New random forest   | New Forest button   | `N`     |
 
 Sliders: speed (ticks per second), blast radius, spread probability, wind strength,
-map size (30 to 300, default 200), and tree density. Changing size or density regenerates the map.
+map size (30 to 500, default 200), max living towns and tree density. Size and density are
+settings for the next valley: New Forest makes it. The map keeps your zoom when a phone's
+address bar comes and goes; only a new valley resets it.
+
+## Versions
+
+The build stamps the page with the number in `VERSION` (shown at the foot of the Info tab,
+and on the seed readout's tooltip). Every save and exported file carries the version it was
+made with; the slot list shows it, and a save from an older build says so when it loads.
+Saves from before v0.10 show as "pre-v0.10". Bump `VERSION` when a release goes out and
+tag the commit `vX.Y`. The history is tagged back to the first commit:
+
+| tag | what |
+|---|---|
+| v0.1 | the forest fire automaton with sprites and missiles (2026-10-04) |
+| v0.2 | living cities: civic and military buildings, watchable battles, tanks, bombers |
+| v0.3 | beasts and hunters, the ledger, sidebar tabs, history sand plots, hotkeys |
+| v0.4 | the page split into source files with a reproducible build, tests and CI |
+| v0.5 | wartime crimes, tiered achievements, medicine |
+| v0.6 | snow that falls and melts in patches |
+| v0.7 | the larder: fishing, smokehouse, mill, bakery, brewery, inn, four crops, jobs |
+| v0.8 | factions: borders, unions, conquest, governments and rulers |
+| v0.9 | zoom to 40x, valleys up to 500 wide, the hand of god |
+| v0.10 | a log that does not repeat itself, new-valley settings on the Play tab, versions |
 
 ## Safety
 

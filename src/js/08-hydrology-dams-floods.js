@@ -13,21 +13,21 @@ function floodArea(sourceCells, rise, radius, permanent, cause) {
       if (elev[i] <= level && Math.hypot(dx, dy) <= radius) hit.add(i);
     }
   }
-  let count = 0, drowned = 0, homes = 0;
+  let count = 0, drowned = 0, homes = 0, hitTown = null;
   for (const i of hit) {
     const t = type[i];
     if (t === T.WATER || t === T.ROCK || t === T.DAM || t === T.BRIDGE || t === T.WALL || t === T.PAD || t === T.HANGAR) continue;
     if (!world.floodOrig.has(i)) world.floodOrig.set(i, t);
     if (isBuilding(t)) {
       const town = world.towns[world.townOf[i]];
-      if (town) { if (isHome(t)) { town.housesLeft--; town.homesLost++; } const dead = Math.min(town.popLeft, Math.round(occupants(town) * 0.15)); applyLosses(town, dead, 'blast'); drowned += dead; homes++; world.buildingsLeft--; world.buildingsLost++; }
+      if (town) { hitTown = hitTown || town; if (isHome(t)) { town.housesLeft--; town.homesLost++; } const dead = Math.min(town.popLeft, Math.round(occupants(town) * 0.15)); applyLosses(town, dead, 'blast'); drowned += dead; homes++; world.buildingsLeft--; world.buildingsLost++; }
       world.floodOrig.set(i, T.RUBBLE);
     } else if (isTree(t)) world.treeCount--;
     if (world.burnLeft[i] > 0) world.burnLeft[i] = 0;
     world.road[i] = 0;
     type[i] = T.WATER; world.flooded.push(i); dirty.add(i); count++;
   }
-  if (homes) log(`${cause}: ${homes} building${homes === 1 ? '' : 's'} flooded out${drowned ? `, ${drowned} drowned` : ''}`, 'loss');
+  if (homes) say(hitTown, 'flooded', { cause, homes, drowned }, 'loss');
   if (!permanent) world.floodUntil = Math.max(world.floodUntil, world.tick + 120 + Math.floor(Math.random() * 120));
   return count;
 }
@@ -58,7 +58,7 @@ function maybeBurnScarFlood() {
   }
   if (total && ash / total > 0.3 && Math.random() < 0.25) {
     const count = floodArea(world.river, 0.018, 3, false, 'The river bursts its banks below the burn scar');
-    if (count) { log(`The river bursts its banks below the burn scar, ${count} cells under water`, 'weather'); }
+    if (count) say(null, 'burstBanks', { n: count }, 'weather');
   }
 }
 

@@ -7,8 +7,8 @@ function updateAir() {
   const ownerTown = world.towns.find(t => t.name === air.owner || air.owner.startsWith(t.name));
   if (air.sorties < air.max && ++air.regen >= 160) {
     air.regen = 0;
-    if (!ownerTown || ownerTown.res.oil >= 2) { if (ownerTown) ownerTown.res.oil -= 2; air.sorties++; log(`Tanker turned around, ${air.sorties} sortie${air.sorties === 1 ? '' : 's'} ready`, 'good'); }
-    else if (!air.dryLogged || world.tick - air.dryLogged > 600) { air.dryLogged = world.tick; log(`Tanker grounded at ${ownerTown.name}: no fuel`, 'loss'); }
+    if (!ownerTown || ownerTown.res.oil >= 2) { if (ownerTown) ownerTown.res.oil -= 2; air.sorties++; say(ownerTown || null, 'tankerReady', { n: air.sorties }, 'good'); }
+    else if (!air.dryLogged || world.tick - air.dryLogged > 600) { air.dryLogged = world.tick; say(ownerTown, 'tankerGrounded', {}, 'loss'); }
   }
   if (air.plane || air.sorties <= 0 || air.cooldown > 0) return;
   let target = null;
@@ -35,7 +35,7 @@ function updateAir() {
   air.plane = { legs: [base, p0, p1, base], leg: 0, t: 0, x: air.x, y: air.y, heading: 0, dropped: new Set(), lineA: [ax, ay], lineB: [bx, by], forTown: target.id };
   air.sorties--;
   air.cooldown = 45;
-  log(`Air tanker launches for ${target.name} (${air.sorties} sortie${air.sorties === 1 ? '' : 's'} left)`, 'good');
+  say(target, 'tankerLaunch', { n: air.sorties }, 'good');
 }
 
 function flyPlane(dtSec) {
@@ -54,7 +54,7 @@ function flyPlane(dtSec) {
     p.heading = Math.atan2(by - ay, bx - ax);
     if (p.leg === 1) dropAt(p);
     if (p.t >= 0.999) {
-      if (p.leg === 1) log(`Tanker drops retardant on ${p.dropped.size} cells`, 'good');
+      if (p.leg === 1) say(world.towns[p.forTown] || null, 'tankerDrop', { n: p.dropped.size }, 'good');
       p.leg++; p.t = 0;
     }
   }

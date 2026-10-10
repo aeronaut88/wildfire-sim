@@ -19,6 +19,22 @@ function craftGate(t, next) {
   return null;
 }
 
+// A town's technology is news once a year at most: a new step, said as what it changes for people,
+// and in a year without one, the step it is stuck on. The bomb is always news.
+function techStep(t, tech, verb, kind) {
+  const y = Math.floor(world.tick / YEAR);
+  if (kind !== 'nuke' && t.techStepYear === y) return;
+  t.techStepYear = y;
+  const who = namedOf(t, ['townsfolk', 'smith', 'mason', 'geologist', 'healer', 'miller', 'brewer', 'cook']);
+  say(t, 'techLearn', { tech, verb, means: TECH_MEANS[tech] || 'new ways of doing old things', who: who ? who.name : null }, kind);
+}
+function techNeed(t, tech, need, word) {
+  const y = Math.floor(world.tick / YEAR);
+  if (t.techStepYear === y || t.techNeedYear === y) return;
+  t.techNeedYear = y;
+  const who = namedOf(t, ['townsfolk', 'smith', 'mason', 'geologist', 'elder']);
+  say(t, 'techNeed', { tech, need, word, who: who ? who.name : null }, 'tech');
+}
 function militarism(t) {
   let m = 0.5;
   const tr = trait(t); if (tr === 'warmonger') m += 0.3; else if (tr === 'tyrant') m += 0.2; else if (tr === 'peacemaker') m -= 0.3; else if (tr === 'scholar' || tr === 'greenthumb' || tr === 'merchant') m -= 0.1;
@@ -70,44 +86,44 @@ function updateTech(t) {
   if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {
     const next = t.mil + 1, need = MIL_NEED[next];
     const why = lacking(t, need) || (next === 5 && !(hasType(t, T.FACTORY) && t.powerRatio >= 0.5) ? 'a powered factory' : next === 6 && !hasType(t, T.UNIVERSITY) ? 'a university' : null);
-    if (why) { if (t.milGateLogged !== next) { t.milGateLogged = next; log(`${t.name} has the know-how for ${MIL_TECH[next].toLowerCase()} but needs ${RES_KINDS.includes(why) ? 'more ' + why : why}`, 'tech'); } }
+    if (why) { if (t.milGateLogged !== next) { t.milGateLogged = next; techNeed(t, MIL_TECH[next].toLowerCase(), RES_KINDS.includes(why) ? 'more ' + why : why, 'know-how'); } }
     else {
       pay(t, need); t.mil++;
-      log(`${t.name} masters ${MIL_TECH[t.mil].toLowerCase()}`, t.mil >= 6 ? 'nuke' : 'tech');
-      if (t.mil === 6) log(`${t.name} knows how to build a bomb. It needs uranium.`, 'nuke');
+      if (t.mil === 6) say(t, 'bombKnow', {}, 'nuke');
+      else techStep(t, MIL_TECH[t.mil].toLowerCase(), 'masters', 'tech');
     }
   }
   if (t.mil >= 2 && t.align.order >= 0 && !t.wallR && t.popLeft >= 40 && canAfford(t, COST.wall)) { pay(t, COST.wall); buildWall(t); }
   if (t.civ < 5 && t.civPts >= CIV_COST[t.civ + 1]) {
     const next = t.civ + 1, need = CIV_NEED[next], why = lacking(t, need);
-    if (why) { if (t.civGateLogged !== next) { t.civGateLogged = next; log(`${t.name} has the plans for ${CIV_TECH[next].toLowerCase()} but needs more ${why}`, 'tech'); } }
+    if (why) { if (t.civGateLogged !== next) { t.civGateLogged = next; techNeed(t, CIV_TECH[next].toLowerCase(), 'more ' + why, 'plans'); } }
     else {
       pay(t, need); t.civ++;
-      log(`${t.name} learns ${CIV_TECH[t.civ].toLowerCase()}`, 'tech');
+      techStep(t, CIV_TECH[t.civ].toLowerCase(), 'learns', 'tech');
       if (t.civ === 2) for (const tr of t.trucks) { tr.cap = 30; }
     }
   }
   t.craft = t.craft || 0;
   if (t.craft < CRAFT_CAP && (t.craftPts || 0) >= CRAFT_COST[t.craft + 1]) {
     const next = t.craft + 1, need = CRAFT_NEED[next], why = lacking(t, need) || craftGate(t, next);
-    if (why) { if (t.craftGateLogged !== next) { t.craftGateLogged = next; log(`${t.name} has the recipe for ${CRAFT_TECH[next].toLowerCase()} but needs ${RES_KINDS.includes(why) ? 'more ' + why : why}`, 'tech'); } }
+    if (why) { if (t.craftGateLogged !== next) { t.craftGateLogged = next; techNeed(t, CRAFT_TECH[next].toLowerCase(), RES_KINDS.includes(why) ? 'more ' + why : why, 'recipe'); } }
     else {
       pay(t, need); t.craft++; stat('ev', 'craftSteps');
-      log(`${t.name} learns ${CRAFT_TECH[t.craft].toLowerCase()}`, 'tech');
+      techStep(t, CRAFT_TECH[t.craft].toLowerCase(), 'learns', 'tech');
       if (t.craft === 2 && t.codeWish && world.tick - t.codeWish < 2400) adoptCode(t); // the fire is still fresh in everyone's mind
     }
   }
   if (t.mil === 6 && t.nukes < 2 && hasType(t, T.SILO) && canAfford(t, COST.nuke) && Math.random() < 0.03) {
     pay(t, COST.nuke); t.nukes++; t.bombsBuilt = (t.bombsBuilt || 0) + 1;
-    log(t.bombsBuilt === 1 ? `${t.name} has built a bomb. Nobody there knows what it will do to the land.` : `${t.name} completes another bomb`, 'nuke');
+    say(t, t.bombsBuilt === 1 ? 'bombBuilt' : 'bombAnother', {}, 'nuke');
   }
   if (t.mil >= 5 && hasType(t, T.AIRBASE) && (t.bombers || 0) < 3 && canAfford(t, COST.bomber) && Math.random() < 0.03) {
     pay(t, COST.bomber); t.bombers = (t.bombers || 0) + 1; t.bombersBuilt = (t.bombersBuilt || 0) + 1; stat('ev', 'bombersBuilt');
-    log(t.bombersBuilt === 1 ? `A bomber rolls out of the hangar at ${t.name}. The neighbours take note.` : `Another bomber rolls out at ${t.name}`, 'war');
+    say(t, t.bombersBuilt === 1 ? 'bomberFirst' : 'bomberAnother', {}, 'war');
   }
   if (t.civ >= 5 && hasType(t, T.AIRBASE) && (t.fighters || 0) < 2 && canAfford(t, COST.fighter) && Math.random() < 0.03) {
     pay(t, COST.fighter); t.fighters = (t.fighters || 0) + 1; t.fightersBuilt = (t.fightersBuilt || 0) + 1; stat('ev', 'fightersBuilt');
-    log(t.fightersBuilt === 1 ? `${t.name} rolls out a fighter jet. It was built for one thing, and everyone knows what.` : `${t.name} rolls out a second jet`, 'tech');
+    say(t, t.fightersBuilt === 1 ? 'jetFirst' : 'jetSecond', {}, 'tech');
   }
   if (t.shellCooldown > 0) t.shellCooldown--;
   if (t.nukeCooldown > 0) t.nukeCooldown--;
@@ -137,7 +153,7 @@ function maybeBombard(t) {
     const x = Math.round(to.cx + Math.cos(a) * d), y = Math.round(to.cy + Math.sin(a) * d);
     if (x < 0 || y < 0 || x >= n || y >= n) return;
     launchShell(t.cx, t.cy, y * n + x, 1, false);
-    if (Math.random() < 0.15) log(`${t.name}'s guns shell ${to.name}`, 'war');
+    if (Math.random() < 0.15) say(t, 'shell', { other: to.name }, 'war');
   }
 }
 
@@ -152,7 +168,7 @@ function launchBomber(from, to) {
   const run = to.R + 6;
   const p0 = [to.cx - Math.cos(ang) * run, to.cy - Math.sin(ang) * run], p1 = [to.cx + Math.cos(ang) * run, to.cy + Math.sin(ang) * run];
   world.bombers.push({ legs: [[bx, by], p0, p1, [bx, by]], leg: 0, t: 0, x: bx, y: by, heading: 0, from: from.id, to: to.id, dropT: 0, dropped: 0 });
-  log(`A bomber lifts off from ${from.name} bound for ${to.name}`, 'war');
+  say(from, 'bomberLifts', { other: to.name }, 'war');
 }
 function loseBomber(p, why) {
   const from = world.towns[p.from];
@@ -194,7 +210,7 @@ function flyBombers(dtSec) {
     if (p.leg >= p.legs.length - 1) {
       const to = world.towns[p.to], from = world.towns[p.from];
       if (!hasType(from, T.AIRBASE)) { loseBomber(p, `${from.name}'s bomber comes home to find the air base gone and goes down in the fields`); continue; }
-      log(`${from.name}'s bomber returns, ${p.dropped} bombs on ${to.name}`, 'war'); continue;
+      say(from, 'bomberReturns', { n: p.dropped, other: to.name }, 'war'); continue;
     }
     keep.push(p);
   }
@@ -218,7 +234,7 @@ function launchNuke(from, to) {
   launchShell(sx, sy, to.cy * n + to.cx, 9, true);
   const [px, py] = cellCenter(sy * n + sx);
   for (let k = 0; k < 40; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 120, vy: -20 - Math.random() * 60, life: 0, max: 1200, color: 'smoke', size: 4 + Math.random() * 6, grav: -30 });
-  log(`${from.name} has launched THE BOMB at ${to.name}`, 'nuke');
+  say(from, 'launchBomb', { other: to.name }, 'nuke');
   for (const t of world.towns) if (t !== from && isAlive(t)) setRel(from, t, rel(from, t) - 40); // the whole valley recoils
 }
 
@@ -249,7 +265,7 @@ function detonateNuke(targetIdx) {
   setWeather('ashfall', true);
   let nearTown = null, nd = Infinity;
   for (const t of world.towns) { const dd = Math.hypot(t.cx - cx, t.cy - cy); if (dd < nd) { nd = dd; nearTown = t; } }
-  log(`The bomb falls on ${nearTown ? nearTown.name : 'the valley'}. The ground will not forget.`, 'nuke');
+  say(nearTown || null, 'bombFalls', {}, 'nuke');
 }
 
 // A reactor that burns or falls to an army does not just go out.
@@ -267,7 +283,7 @@ function meltdown(i, town) {
   shake = 2;
   if (params.weatherMode === 'auto') setWeather('ashfall', true);
   town.meltdowns = (town.meltdowns || 0) + 1; stat('ev', 'meltdowns');
-  log(`MELTDOWN at ${town.name}. The reactor burns open and the land around it is poisoned for years.`, 'nuke');
+  say(town, 'meltdown', {}, 'nuke');
 }
 function addFallout(i, dose) {
   if (world.fallout[i] === 0) world.falloutList.push(i);
@@ -295,8 +311,8 @@ function updateFallout() {
       if (dose < 10) { t.sick = 0; continue; }
       const dead = Math.max(1, Math.round(t.popLeft * dose / 255 * 0.03));
       applyLosses(t, Math.min(dead, t.popLeft), 'fallout');
-      if (!t.sick) { t.sick = 1; log(`A sickness no one can name spreads through ${t.name}`, 'loss'); }
-      if (t.popLeft <= 0) log(`${t.name} is empty. The land is poisoned.`, 'loss');
+      if (!t.sick) { t.sick = 1; say(t, 'sickness', {}, 'loss'); }
+      if (t.popLeft <= 0) say(t, 'poisoned', {}, 'loss');
     }
   }
 }

@@ -26,7 +26,8 @@ def build():
     tail = read(os.path.join(SRC, 'tail.html'))
     js_dir = os.path.join(SRC, 'js')
     parts = [read(os.path.join(js_dir, name)) for name in sorted(os.listdir(js_dir)) if name.endswith('.js')]
-    script = '(() => {\n' + ''.join(parts) + '})();\n'
+    version = read(os.path.join(ROOT, 'VERSION')).strip()
+    script = '(() => {\n' + f"const SW_VERSION = '{version}';\n" + ''.join(parts) + '})();\n'
     return head + '<script>\n' + script + '</script>\n' + tail
 
 

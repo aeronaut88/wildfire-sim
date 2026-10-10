@@ -58,7 +58,12 @@ function elect(town, role, quiet, avoidTrait) {
   const p = makePersonIn(town, role, 20 + Math.random() * 35, prev && role !== 'firebug' && Math.random() < 0.35 ? prev : null);
   if (role === 'elder') p.trait = rollTrait(town, avoidTrait);
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
-  if (!quiet) log(role === 'elder' ? `${town.name} chooses ${p.name} as elder, ${/^[aeiou]/.test(TRAITS[p.trait].label) ? 'an' : 'a'} ${TRAITS[p.trait].label} who ${TRAITS[p.trait].blurb}` : role === 'chief' ? `${p.name} takes over as ${town.name}'s fire chief` : `${p.name} becomes ${town.name}'s ${ROLE_LABEL[role]}`, 'build');
+  if (!quiet) {
+    const kin = kinLabel(town, p) || null;
+    if (role === 'elder') say(town, 'electElder', { who: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, kin }, 'build');
+    else if (role === 'chief') say(town, 'electChief', { who: p.name, story: p.story, kin }, 'build');
+    else say(town, 'electRole', { who: p.name, role: ROLE_LABEL[role], story: p.story, kin }, 'build');
+  }
   if (role === 'elder' && !quiet && town.align.moral > 0 && (p.trait === 'peacemaker' || Math.random() < 0.5)) amnesty(town, `${p.name}'s first act as elder`);
   return p;
 }
@@ -85,7 +90,7 @@ function updateUnrest(town) {
     const hall = town.buildings.find(i => world.type[i] === T.TOWNHALL), dest = hall !== undefined ? hall : town.cy * world.n + town.cx;
     const want = Math.min(14, 2 + Math.floor((u - 70) / 3)), have = town.workers.filter(w => w.unrestCrowd).length;
     if (have < want) { const n = world.n; for (let k = have; k < want; k++) { const h = campPoint(town); if (h < 0) break; town.workers.push({ x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: dest, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + 100000, spread: k, unrestCrowd: true }); } }
-    if (u >= 80 && (!town.unrestLogged || world.tick - town.unrestLogged > 300)) { town.unrestLogged = world.tick; log(pick([`A crowd stands outside the hall at ${town.name} and does not go home when it gets dark`, `${town.name}: ${want * 10} or more at the hall, and somebody has brought a rope`, `The square at ${town.name} fills ${daypart()}. ${l.name} does not come out.`, `Stones at the hall windows in ${town.name}`]), 'war'); const [px, py] = cellCenter(dest); popups.push({ x: px, y: py - cellPx * 2, text: 'UNREST', color: '#ff6ad5', t0: performance.now(), dur: 2000 }); }
+    if (u >= 80 && (!town.unrestLogged || world.tick - town.unrestLogged > 300)) { town.unrestLogged = world.tick; say(town, 'unrestCrowd', { n: want * 10, leader: l.name }, 'war'); const [px, py] = cellCenter(dest); popups.push({ x: px, y: py - cellPx * 2, text: 'UNREST', color: '#ff6ad5', t0: performance.now(), dur: 2000 }); }
   } else if (u < 60 && town.workers.some(w => w.unrestCrowd)) { for (const w of town.workers) if (w.unrestCrowd) w.until = world.tick; }
   if (u >= 80 && Math.random() < 0.02 + 0.10 * (u - 80) / 20) overthrow(town, l);
 }
@@ -94,7 +99,7 @@ function overthrow(town, l) {
   const hanged = (l.trait === 'tyrant' || l.trait === 'warmonger') && Math.random() < 0.5;
   l.role = 'ousted';
   stat('ev', 'overthrows'); town.overthrows = (town.overthrows || 0) + 1;
-  log(`REVOLT in ${town.name}: the people rise against ${l.name} the ${tr} and drag them out of the hall${hanged ? '. Somebody has a rope.' : '.'}`, 'war'); remember(town, 'revolt', { who: l.name });
+  say(town, 'revolt', { leader: l.name, label: tr, hanged }, 'war'); remember(town, 'revolt', { who: l.name });
   { // The walk: to the gallows or the hall beam, or to the gate and out.
     const n = world.n, hall = town.buildings.find(i => world.type[i] === T.TOWNHALL), from = hall !== undefined ? hall : town.cy * n + town.cx;
     const gallows = town.buildings.find(i => world.type[i] === T.GALLOWS);
@@ -102,12 +107,12 @@ function overthrow(town, l) {
     for (const w of town.workers) if (w.unrestCrowd) { w.target = dest; w.until = world.tick + 200; w.unrestCrowd = false; }
     town.workers.push({ x: from % n, y: Math.floor(from / n), px: from % n, py: Math.floor(from / n), target: dest, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + 400, spread: 0, ousted: l.name, story: l.story, hanged, lastCell: -1 });
     spawnCrowd(town, dest, 120, 6);
-    if (hanged && dest === from) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; log(`${l.name} is hanged from the hall beam at ${town.name} before the crowd has finished shouting`, 'loss'); town.workers = town.workers.filter(w => w.ousted !== l.name); }
+    if (hanged && dest === from) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; say(town, 'hallBeam', { leader: l.name }, 'loss'); town.workers = town.workers.filter(w => w.ousted !== l.name); }
   }
   for (const q of town.people) if (q.alive && q.grudge && q.grudge.against === 'the law') { q.grudge = null; deed(q, 'was in the crowd at the hall the day the elder fell, and called it settled'); }
   const [px, py] = cellCenter(town.cy * world.n + town.cx); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'REVOLT', color: '#ff6ad5', t0: performance.now(), dur: 2600 });
   town.militia = Math.floor(town.militia * 0.75); town.unrest = 30;
-  if (Math.random() < 0.35) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`Riots in ${town.name}; a house burns`, 'arson'); } }
+  if (Math.random() < 0.35) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); say(town, 'riots', {}, 'arson'); } }
   const next = elect(town, 'elder', false, l.trait);
   deed(next, `came to power in the revolt against ${l.name}`);
 }
@@ -117,15 +122,15 @@ function leaderActs(town) {
   const tr = l.trait;
   if (tr === 'madman') {
     const r = Math.random();
-    if (r < 0.3 && town.res.grain > 10) { town.res.grain = Math.floor(town.res.grain / 2); log(`${l.name} of ${town.name} declares a feast and empties half the granary`, 'arson'); }
-    else if (r < 0.55) { const fields = town.buildings.filter(i => world.type[i] === T.FARM && world.burnLeft[i] <= 0); if (fields.length) { ignite(fields[Math.floor(Math.random() * fields.length)]); log(`${l.name} of ${town.name} sets a field alight to see what the smoke says`, 'arson'); } }
+    if (r < 0.3 && town.res.grain > 10) { town.res.grain = Math.floor(town.res.grain / 2); say(town, 'madFeast', { leader: l.name }, 'arson'); }
+    else if (r < 0.55) { const fields = town.buildings.filter(i => world.type[i] === T.FARM && world.burnLeft[i] <= 0); if (fields.length) { ignite(fields[Math.floor(Math.random() * fields.length)]); say(town, 'madField', { leader: l.name }, 'arson'); } }
     else if (r < 0.75) { const others = world.towns.filter(o => o !== town && isAlive(o) && !atWar(town, o)); if (others.length) declareWar(town, others[Math.floor(Math.random() * others.length)], 'over an insult nobody else heard'); }
-    else if (town.livestock) { let freed = 0; for (const k of LIVESTOCK) { freed += town.livestock[k] || 0; town.livestock[k] = 0; } if (freed) log(`${l.name} of ${town.name} opens the pastures and sets ${freed} animals free`, 'arson'); }
+    else if (town.livestock) { let freed = 0; for (const k of LIVESTOCK) { freed += town.livestock[k] || 0; town.livestock[k] = 0; } if (freed) say(town, 'madAnimals', { leader: l.name, n: freed }, 'arson'); }
   } else if (tr === 'drunkard' && Math.random() < 0.5) {
-    const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`${l.name} of ${town.name} falls asleep with the lamp lit`, 'alarm'); }
+    const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); say(town, 'drunkLamp', { leader: l.name }, 'alarm'); }
   } else if (tr === 'prophet' && !hasType(town, T.TOWER) && town.popLeft >= 20 && canAfford(town, COST[T.TOWER])) {
-    const i = placeCivic(town, T.TOWER, false); if (i >= 0) { pay(town, COST[T.TOWER]); log(`${l.name} of ${town.name} orders a watchtower raised against the fire to come`, 'build'); }
-  } else if (tr === 'tyrant' && town.res.coin >= 20) { const cut = Math.floor(town.res.coin * 0.1); town.res.coin -= cut; l.hoard = (l.hoard || 0) + cut; if (Math.random() < 0.3) log(`${l.name} of ${town.name} takes ${cut} coin from the chest for the palace`, 'loss'); }
+    const i = placeCivic(town, T.TOWER, false); if (i >= 0) { pay(town, COST[T.TOWER]); say(town, 'prophetTower', { leader: l.name }, 'build'); }
+  } else if (tr === 'tyrant' && town.res.coin >= 20) { const cut = Math.floor(town.res.coin * 0.1); town.res.coin -= cut; l.hoard = (l.hoard || 0) + cut; if (Math.random() < 0.3) say(town, 'tyrantTax', { leader: l.name, n: cut }, 'loss'); }
 }
 const DEATH_VERB = { hanged: 'is hanged', banished: 'is banished', 'hanged by the mob': 'is hanged by the mob', 'thrown out by the mob': 'is thrown out by the mob', fever: 'dies of the marsh fever', cholera: 'dies of cholera', wolves: 'is taken by wolves', bear: 'is killed by a bear', earthquake: 'is killed in the earthquake', fire: 'dies in the fire', 'dragon fire': 'is taken by the dragon', 'torched in a raid': 'dies when the raiders torch the town', famine: 'starves', battle: 'falls in battle', 'put to the sword': 'is put to the sword', plague: 'dies of the plague', thirst: 'dies of thirst', fallout: 'wastes away from the fallout', blast: 'is killed in the blast', dragon: 'is killed by the dragon', 'fire crews lost': 'is lost with the fire crews' };
 function killNotable(town, cause) {
@@ -134,7 +139,8 @@ function killNotable(town, cause) {
   if (p.role === 'child' && cause !== 'famine' && cause !== 'plague' && cause !== 'fire' && Math.random() < 0.6) return; // children are kept back from most of it
   const wasLabel = roleLabel(p);
   p.alive = false; p.died = world.tick; p.cause = cause; stat('ev', 'notableDeaths');
-  log(`${p.name}, ${wasLabel} of ${town.name}, ${DEATH_VERB[cause] || 'dies'} at ${personAge(p)}`, 'loss');
+  { const kin = kinOf(town, p).find(q => q.alive), last = p.deeds && p.deeds.length ? p.deeds[p.deeds.length - 1].text : null;
+    say(town, 'notableDies', { who: p.name, label: wasLabel, verb: DEATH_VERB[cause] || 'dies', age: personAge(p), story: p.story, kinName: kin ? kin.name : null, seat: SEAT_OF[p.role] || null, deeds: last }, 'loss'); }
   rulerDied(town, p);
   funeral(town, p, false);
   if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role);
@@ -145,7 +151,7 @@ function agePeople(town) {
   for (const p of town.people) if (p.alive && personAge(p) > 72 && Math.random() < (0.08 + (personAge(p) - 72) * 0.02) * (hasType(town, T.HEALER) ? 0.6 : 1)) {
     const wasLabel = roleLabel(p);
     p.alive = false; p.died = world.tick; p.cause = 'old age'; stat('ev', 'notableDeaths');
-    log(`${p.name}, ${wasLabel} of ${town.name}, dies of old age at ${personAge(p)}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+    say(town, 'oldAge', { who: p.name, label: wasLabel, age: personAge(p), story: p.story }, 'loss');
     rulerDied(town, p);
     funeral(town, p, false);
     if (p.role === 'elder' || p.role === 'chief' || p.role === 'hunter') elect(town, p.role); else if (p.role === 'firebug') elect(town, 'firebug', true);

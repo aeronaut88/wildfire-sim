@@ -18,8 +18,8 @@ bindRange('blast', 'blastOut', 'blast', v => v === 0 ? 'point' : `${v}`);
 bindRange('regrow', 'regrowOut', 'regrow', v => v === 0 ? 'off' : v.toFixed(1));
 bindRange('townCap', 'townCapOut', 'townCap', v => `${v}`);
 bindRange('maxTowns', 'maxTownsOut', 'maxTowns', v => `${v}`);
-bindRange('density', 'densityOut', 'density', v => v.toFixed(2), () => reset());
-bindRange('size', 'sizeOut', null, v => `${v} &times; ${v}`, () => reset(parseInt($('size').value, 10)));
+bindRange('density', 'densityOut', 'density', v => v.toFixed(2));
+bindRange('size', 'sizeOut', null, v => `${v} &times; ${v}`); // takes effect with New Forest
 
 document.querySelectorAll('.seg button[data-nb]').forEach(b => {
   b.addEventListener('click', () => {
@@ -237,7 +237,8 @@ function setRunning(r) {
 }
 btnPlay.addEventListener('click', () => setRunning(!running));
 $('btnStep').addEventListener('click', () => { setRunning(false); step(); });
-$('btnReset').addEventListener('click', () => reset());
+$('btnReset').addEventListener('click', () => reset(parseInt($('size').value, 10)));
+{ const f = $('swFoot'); if (f) f.textContent = `Wildfire v${SW_VERSION}. Saves and exported files carry the version they were made with.`; const hs = $('hudSeed'); if (hs) hs.title = `Wildfire v${SW_VERSION}`; }
 $('btnMissile').addEventListener('click', () => launchMissile(randomFuelCell()));
 $('btnLightning').addEventListener('click', () => lightning(randomFuelCell()));
 

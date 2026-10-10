@@ -2,7 +2,7 @@
 let showTab = () => {};
 (function buildTabs() {
   const panel = document.querySelector('aside.panel'), nav = $('tabs');
-  const TABS = [['Play', ['Run', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Towns', ['Settlements']], ['History', ['History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
+  const TABS = [['Play', ['Run', 'New valley', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Towns', ['Settlements']], ['History', ['History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
   const groups = [...panel.children].filter(el => el !== nav);
   const byTitle = {};
   for (const g of groups) { const t = g.querySelector(':scope > .title'); byTitle[g.classList.contains('foot') ? '__foot' : (t ? t.firstChild.textContent.trim() : '')] = g; } // first text node: titles may carry a button

@@ -107,18 +107,18 @@ function finishBattle(bt, from, to) {
     world.raidfire = false;
     captives = Math.max(0, Math.min(captives, to.popLeft));
     to.popLeft -= captives; from.popLeft += captives; from.popTotal += captives;
-    if (to.livestock && from.livestock) { const taken = []; for (const k of LIVESTOCK) { const d = Math.floor((to.livestock[k] || 0) * 0.5); if (d > 0) { to.livestock[k] -= d; from.livestock[k] = (from.livestock[k] || 0) + d; taken.push(`${d} ${k}`); } } if (taken.length) log(`${from.name} drives off ${taken.join(', ')} from ${to.name}'s pastures`, 'war'); }
-    if (to.res && from.res) { const loot = []; for (const k of RES_KINDS) { const amt = Math.floor((to.res[k] || 0) * 0.6); if (amt > 0) { to.res[k] -= amt; addRes(from, k, amt); loot.push(`${amt} ${k}`); } } if (loot.length) log(`${from.name} carries off ${loot.join(', ')} from ${to.name}`, 'war'); }
+    if (to.livestock && from.livestock) { const taken = []; for (const k of LIVESTOCK) { const d = Math.floor((to.livestock[k] || 0) * 0.5); if (d > 0) { to.livestock[k] -= d; from.livestock[k] = (from.livestock[k] || 0) + d; taken.push(`${d} ${k}`); } } if (taken.length) say(from, 'rustle', { other: to.name, taken: andList(taken) }, 'war'); }
+    if (to.res && from.res) { const loot = []; for (const k of RES_KINDS) { const amt = Math.floor((to.res[k] || 0) * 0.6); if (amt > 0) { to.res[k] -= amt; addRes(from, k, amt); loot.push(`${amt} ${k}`); } } if (loot.length) say(from, 'loot', { other: to.name, loot: andList(loot) }, 'war'); }
     let sword = 0;
     if (from.align.moral < 0) { sword = Math.min(to.popLeft, Math.round(to.popLeft * (0.1 + Math.random() * 0.25))); applyLosses(to, sword, 'put to the sword'); }
     from.militia += bt.att;
     stat('ev', 'sacks');
     popups.push({ x: cx, y: cy - to.R * cellPx - 14, text: 'SACKED', color: '#ff4040', t0: performance.now(), dur: 2500 });
-    remember(to, 'sack', { who: from.name }); log(`${from.name} sacks ${to.name}: ${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}`, 'war');
+    remember(to, 'sack', { who: from.name }); say(from, 'sack', { other: to.name, toll: `${bt.def0} defenders dead, ${torch} homes torched${wrecked ? `, ${wrecked} buildings wrecked` : ''}${captives ? `, ${captives} carried off` : ''}${sword ? `, ${sword} put to the sword` : ''}` }, 'war');
     if (to.popLeft < 10 || to.housesLeft - torch < 2) { // razed
       for (const i of to.buildings) if (isBuilding(world.type[i])) { onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; world.burnLeft[i] = 0; dirty.add(i); }
       to.housesLeft = 0;
-      log(`${to.name} is razed to the ground by ${from.name}`, 'war');
+      say(from, 'razed', { other: to.name }, 'war');
     }
     setRel(from, to, rel(from, to) - 30);
     if (!atWar(from, to) && (to.align.order > 0 || to.align.moral > 0) && Math.random() < 0.6) declareWar(to, from, 'in answer to the raid');
@@ -146,7 +146,7 @@ function annex(from, to) {
   to.master = from.id;
   joinFaction(to, factionOf(from), 'by conquest'); // and pays tribute from its stockpiles
   to.mil = Math.max(to.mil, from.mil - 1); to.civ = Math.max(to.civ, from.civ - 1);
-  log(`${from.name} annexes ${to.name}. Its people now answer to new masters.`, 'war');
+  say(from, 'annex', { other: to.name }, 'war');
 }
 
 // (raids now play out as battles; see startBattle/updateBattles/finishBattle)
@@ -163,6 +163,7 @@ function applyLosses(t, dead, cause) {
 
 // Allies send fire crews when a friend rallies.
 function maybeSendAid(town) {
+  const sent = [];
   for (const o of world.towns) {
     if (o === town || !isAlive(o) || o.mobilized || rel(o, town) < ((world.councilWatch || 0) > world.tick ? 20 : 60) || o.align.moral < 0 || o.popLeft < 30 || has(o, 'hermit')) continue;
     if (Math.random() > 0.6) continue;
@@ -170,7 +171,12 @@ function maybeSendAid(town) {
     const home = musterPoint(o); if (home < 0) continue;
     const hx = home % world.n, hy = Math.floor(home / world.n);
     for (let c = 0; c < k; c++) town.crews.push({ x: hx, y: hy, px: hx, py: hy, size: 3 + Math.floor(Math.random() * 3), target: -1, progress: 0, mode: 'dig', face: 1 });
-    log(`${o.name} sends ${k} crew${k > 1 ? 's' : ''} to help ${town.name}`, 'good');
+    sent.push({ name: o.name, k });
   }
+  // One line for all the neighbours who came, not one per neighbour.
+  if (!sent.length || !onceIn(town, 'aidLogged', YEAR / 4)) return; // a town helped every week is told of it once a season
+  const total = sent.reduce((a, s) => a + s.k, 0), cw = k => `${k} crew${k > 1 ? 's' : ''}`;
+  const crews = sent.length === 1 ? `${cw(total)} from ${sent[0].name}` : `${cw(total)}, ${andList(sent.map(s => `${s.k} from ${s.name}`))}`;
+  say(town, 'aid', { crews }, 'good', town.cy * world.n + town.cx);
 }
 

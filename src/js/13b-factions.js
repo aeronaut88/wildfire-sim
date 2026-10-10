@@ -41,15 +41,15 @@ function joinFaction(t, f, why) {
   f.towns.push(t.id); t.faction = f.id;
   for (const o of factionTowns(f)) if (o !== t) { delete o.wars[t.id]; delete t.wars[o.id]; setRel(o, t, 100); }
   if (f.towns.length === 2 && f.gov === 'elder') foundGovernment(f, why);
-  else if (f.towns.length > 2) log(`${t.name} joins ${factionName(f)}${why ? ', ' + why : ''}`, 'diplo');
+  else if (f.towns.length > 2) say(t, 'joinsRealm', { realm: factionName(f), why }, 'diplo');
 }
 function leaveFaction(t, why) {
   const old = factionOf(t); if (!old || old.towns.length < 2) return;
   old.towns = old.towns.filter(id => id !== t.id); if (old.capital === t.id) old.capital = old.towns[0];
   t.faction = undefined; const f = ensureFaction(t); t.master = -1; t.name = stripName(t.name);
-  log(`${t.name} breaks away from ${factionName(old)}${why ? ': ' + why : ''}`, 'war');
+  say(t, 'breaksAway', { realm: factionName(old), why }, 'war');
   stat('ev', 'secessions');
-  if (old.towns.length === 1) { const cap = world.towns[old.capital]; log(`${factionName(old)} is no more; ${cap.name} stands alone again`, 'diplo'); old.gov = 'elder'; old.ruler = null; }
+  if (old.towns.length === 1) { const cap = world.towns[old.capital]; say(cap, 'realmEnds', { realm: factionName(old) }, 'diplo'); old.gov = 'elder'; old.ruler = null; }
   return f;
 }
 // The government a faction takes when it first holds two towns, from the capital's elder and alignment.
@@ -67,7 +67,8 @@ function foundGovernment(f, why) {
   if (f.gov === 'republic' || f.gov === 'merchant') { holdElection(f, true); }
   else crownRuler(f, null, 'first');
   const r = rulerOf(f);
-  log(`${names.join(' and ')} are now ${factionName(f)}${why ? ', ' + why : ''}. ${r ? `${rulerTitle(f)} ${r.name} ${f.gov === 'kingdom' ? 'is crowned' : f.gov === 'horde' ? 'is acclaimed by the warbands' : f.gov === 'theocracy' ? 'reads the omens and finds them favourable' : f.gov === 'dominion' ? 'takes the hall with the militia at the door' : 'takes the oath'} in ${cap.name}.` : ''}`, 'diplo');
+  const crowning = r ? `${rulerTitle(f)} ${r.name} ${f.gov === 'kingdom' ? 'is crowned' : f.gov === 'horde' ? 'is acclaimed by the warbands' : f.gov === 'theocracy' ? 'reads the omens and finds them favourable' : f.gov === 'dominion' ? 'takes the hall with the militia at the door' : f.gov === 'merchant' ? 'takes the oath on a ledger' : 'takes the oath'} in ${cap.name}.` : '';
+  say(cap, 'realmFounded', { names: andList(names), realm: factionName(f), why, crowning, capName: cap.name }, 'diplo');
   const [px, py] = cellCenter(cap.cy * world.n + cap.cx); popups.push({ x: px, y: py - cap.R * cellPx - 14, text: f.gov.toUpperCase(), color: f.color, t0: performance.now(), dur: 3500 });
   for (const o of world.towns) if (isAlive(o) && !f.towns.includes(o.id) && f.gov === 'horde') setRel(cap, o, rel(cap, o) - 10); // a horde on the border is nobody's friend
   recomputeClaims();
@@ -107,51 +108,51 @@ function holdElection(f, first) {
   stat('ev', 'elections');
   if (first) { deed(win.el, `was elected the first ${win.el.title} of ${factionName(f)}`); return; }
   deed(win.el, stolen ? `held on as ${win.el.title} in a vote nobody believed` : `was elected ${win.el.title} with ${share}% of the vote`);
-  if (stolen) { log(`${factionName(f)} goes to the polls and ${win.el.name} of ${win.t.name} is declared the winner. Nobody believes it; ${tally[0].el.name} of ${tally[0].t.name} had the towns behind them. ${moodWord(tally[0].t)[0].toUpperCase() + moodWord(tally[0].t).slice(1)}.`, 'war'); for (const t of towns) { t.cheer = Math.max(0, cheerOf(t) - 5); t.unrest = Math.min(100, (t.unrest || 0) + 8); } stat('ev', 'stolenElections'); }
-  else { log(`${factionName(f)} goes to the polls: ${win.el.name} of ${win.t.name} takes it with ${share}% over ${tally[1] ? tally[1].el.name + ' of ' + tally[1].t.name : 'nobody'}. ${pick(['There is dancing in the capital.', 'The losers concede with reasonable grace.', 'The count takes three days and a fistfight.', 'Beer is poured in every member town.'])}`, 'diplo'); for (const t of towns) t.cheer = Math.min(100, cheerOf(t) + 3); }
+  if (stolen) { say(cap, 'electionStolen', { realm: factionName(f), win: `${win.el.name} of ${win.t.name}`, title: win.el.title, real: `${tally[0].el.name} of ${tally[0].t.name}`, realTown: tally[0].t.name, mood: cap1(moodWord(tally[0].t)) }, 'war'); for (const t of towns) { t.cheer = Math.max(0, cheerOf(t) - 5); t.unrest = Math.min(100, (t.unrest || 0) + 8); } stat('ev', 'stolenElections'); }
+  else { say(cap, 'election', { realm: factionName(f), win: `${win.el.name} of ${win.t.name}`, title: win.el.title, share, lose: tally[1] ? tally[1].el.name + ' of ' + tally[1].t.name : 'nobody' }, 'diplo'); for (const t of towns) t.cheer = Math.min(100, cheerOf(t) + 3); }
 }
 // Succession when a ruler dies, by government.
 function succeedRuler(f, dead) {
   const cap = world.towns[f.capital]; if (!cap || !cap.people) return;
   const name = dead ? dead.name : 'the ruler', title = GOVS[f.gov].title(dead);
-  if (f.gov === 'republic' || f.gov === 'merchant') { log(`${title} ${name} of ${factionName(f)} is dead. The towns will vote.`, 'diplo'); f.nextElection = world.tick + 100; f.ruler = null; return; }
+  if (f.gov === 'republic' || f.gov === 'merchant') { say(cap, 'rulerDiesVote', { title, dead: name, realm: factionName(f) }, 'diplo'); f.nextElection = world.tick + 100; f.ruler = null; return; }
   if (f.gov === 'kingdom') {
     const sur = f.dynasty || (dead ? dead.name.split(' ').slice(-1)[0] : null);
     const heir = cap.people.filter(p => p.alive && p.role !== 'ruler' && personAge(p) >= 16 && (p.name.split(' ').slice(-1)[0] === sur || p.kin === name || p.parent === name)).sort((a, b) => a.born - b.born)[0];
-    if (heir) { const h = crownRuler(f, heir, 'heir'); log(`${title} ${name} is dead. ${h.title} ${h.name}, ${pick(['the eldest', 'the only one left', 'a cousin nobody had thought of', 'still a child by the look of them'])}, takes the throne of ${factionName(f)} in ${cap.name}.`, 'diplo'); return; }
+    if (heir) { const h = crownRuler(f, heir, 'heir'); say(cap, 'heir', { title, dead: name, newTitle: h.title, heir: h.name, how: pick(['the eldest', 'the only one left', 'a cousin nobody had thought of', 'still a child by the look of them']), realm: factionName(f) }, 'diplo'); return; }
     // No heir: a crisis. Towns go their own way, or a new house takes the crown.
     stat('ev', 'successionCrises');
     const others = factionTowns(f).filter(t => t.id !== f.capital);
     const gone = others.filter(() => Math.random() < 0.5);
-    log(`${title} ${name} dies without an heir. ${gone.length ? `${gone.map(t => t.name).join(' and ')} will not kneel to a stranger. ` : ''}${factionName(f)} ${gone.length === others.length && others.length ? 'is broken up' : 'finds a new house for the crown'}.`, 'war');
+    say(cap, 'noHeir', { title, dead: name, gone: gone.length ? `${andList(gone.map(t => t.name))} will not kneel to a stranger. ` : '', realm: factionName(f), fate: gone.length === others.length && others.length ? 'is broken up' : 'finds a new house for the crown' }, 'war');
     for (const t of gone) leaveFaction(t, 'the succession');
-    if (world.factions[f.id] && f.towns.length > 1) { f.dynasty = null; const p = crownRuler(f, null, 'crisis'); if (p) log(`${p.title} ${p.name} of a new house is crowned in ${cap.name}`, 'diplo'); }
+    if (world.factions[f.id] && f.towns.length > 1) { f.dynasty = null; const p = crownRuler(f, null, 'crisis'); if (p) say(cap, 'newHouse', { title: p.title, who: p.name }, 'diplo'); }
     return;
   }
   if (f.gov === 'horde') {
     const strong = factionTowns(f).sort((a, b) => (b.militia + (b.soldiers || 0)) - (a.militia + (a.soldiers || 0)))[0];
     const p = crownRuler(f, null, 'seized'); if (!p) return; p.story = `came out of ${strong.name} with the warbands at ${pick(['his', 'her', 'their'])} back`;
-    log(`${title} ${name} is dead and the warbands of ${strong.name} ride into ${cap.name} before the body is cold. ${p.name} is Supreme Leader now. ${pick(['Nobody argues.', 'Those who argued are not seen again.', 'The old guard is sent to the mines.'])}`, 'war');
+    say(cap, 'hordeSuccession', { title, dead: name, strong: strong.name, who: p.name }, 'war');
     return;
   }
-  if (f.gov === 'theocracy') { const p = crownRuler(f, null, 'omen'); if (p) log(`${title} ${name} goes to the gods. The omens name ${p.name} ${p.title} of ${factionName(f)}: ${pick(['a crow on the hall roof', 'a fish with two tails', 'a dream three people had on the same night', 'the way the smoke went'])}.`, 'diplo'); return; }
+  if (f.gov === 'theocracy') { const p = crownRuler(f, null, 'omen'); if (p) say(cap, 'omenSuccession', { title, dead: name, who: p.name, newTitle: p.title, realm: factionName(f) }, 'diplo'); return; }
   // dominion: the captain of the militia takes it
-  const p = crownRuler(f, null, 'seized'); if (p) log(`${title} ${name} is dead. ${p.name} of the militia takes the hall in ${cap.name} and does not call it a coup.`, 'war');
+  const p = crownRuler(f, null, 'seized'); if (p) say(cap, 'dominionSuccession', { title, dead: name, who: p.name, newTitle: p.title, realm: factionName(f) }, 'war');
 }
 function depose(f, how) {
   const cap = world.towns[f.capital], old = rulerOf(f);
   const angry = factionTowns(f).sort((a, b) => (b.unrest || 0) - (a.unrest || 0))[0];
   if (old) { old.role = 'ousted'; old.title = undefined; if (how === 'coup' && Math.random() < 0.6) { old.alive = false; old.cause = 'shot in the coup'; } else if (how === 'assassin') { old.alive = false; old.cause = 'assassinated'; } }
   const p = crownRuler(f, null, how); if (!p) return;
-  if (how === 'coup') { p.story = `led the coup from ${angry.name} and trusts nobody from there`; log(`COUP in ${cap.name}: the militia of ${angry.name} march on the hall. ${old ? `${GOVS[f.gov].title(old)} ${old.name} ${old.alive ? 'is put over the wall in a nightshirt' : 'is shot on the steps'}.` : ''} ${p.name} is ${p.title} of ${factionName(f)} by nightfall.`, 'war'); for (const t of factionTowns(f)) t.unrest = Math.max(0, (t.unrest || 0) - 20); stat('ev', 'coups'); }
-  else { log(`${GOVS[f.gov].title(old)} ${old ? old.name : ''} of ${factionName(f)} is found dead ${daypart()}. ${pick(['A knife.', 'Poison, says the healer.', 'A fall from a window that does not open.'])} ${p.name} takes the hall before anyone asks questions.`, 'war'); stat('ev', 'assassinations'); }
+  if (how === 'coup') { p.story = `led the coup from ${angry.name} and trusts nobody from there`; say(cap, 'coup', { angry: angry.name, fall: old ? `${GOVS[f.gov].title(old)} ${old.name} ${old.alive ? 'is put over the wall in a nightshirt' : 'is shot on the steps'}.` : '', who: p.name, title: p.title, realm: factionName(f) }, 'war'); for (const t of factionTowns(f)) t.unrest = Math.max(0, (t.unrest || 0) - 20); stat('ev', 'coups'); }
+  else { say(cap, 'assassin', { oldTitle: GOVS[f.gov].title(old), old: old ? old.name : 'the ruler', realm: factionName(f), who: p.name }, 'war'); stat('ev', 'assassinations'); }
 }
 // Purges: a horde calms its towns by thinning them.
 function purge(f) {
   const cap = world.towns[f.capital], r = rulerOf(f); let dead = 0;
   for (const t of factionTowns(f)) { const k = Math.max(1, Math.round(t.popLeft * 0.01)); applyLosses(t, k, 'purged'); dead += k; t.unrest = Math.max(0, (t.unrest || 0) - 15); t.cheer = Math.max(0, cheerOf(t) - 4); }
   stat('ev', 'purges', dead); if (r) deed(r, `purged ${dead} across the horde`);
-  log(`${r ? 'Supreme Leader ' + r.name : 'The horde'} purges the towns of ${factionName(f)}: ${dead} taken ${daypart()} and not seen again. ${pick(['The streets are quiet after.', 'Nobody speaks of it.', 'The lists were long this year.'])}`, 'war');
+  say(cap, 'purge', { ruler: r ? 'Supreme Leader ' + r.name : 'the horde', realm: factionName(f), dead }, 'war');
 }
 // Unions: two allied towns with a road between them and no war unite under the bigger.
 function maybeUnions() {
@@ -168,7 +169,7 @@ function maybeUnions() {
     const [big, small] = factionPop(fa) >= factionPop(fb) ? [fa, fb] : [fb, fa];
     const ea = leader(a), eb = leader(b);
     const members = factionTowns(small);
-    log(`${a.name} and ${b.name} unite under one banner${ea && eb ? `; ${ea.name} and ${eb.name} shake on it at the ${Math.random() < 0.5 ? 'ford' : 'market'}` : ''}`, 'diplo');
+    say(a, 'union', { other: b.name, hands: ea && eb ? `${ea.name} and ${eb.name}` : null, place: Math.random() < 0.5 ? 'ford' : 'market' }, 'diplo');
     stat('ev', 'unions');
     for (const t of members) joinFaction(t, big, 'by the union');
     recomputeClaims();
@@ -183,7 +184,7 @@ function updateFactions() {
   for (const id in world.factions) {
     const f = world.factions[id]; if (f.towns.length < 2) continue;
     const cap = world.towns[f.capital];
-    if (!cap || !isAlive(cap)) { log(`${factionName(f)} falls with ${cap ? cap.name : 'its capital'}. Its towns go their own ways.`, 'war'); for (const t of factionTowns(f)) if (t.id !== f.capital) leaveFaction(t, null); continue; }
+    if (!cap || !isAlive(cap)) { say(null, 'realmFalls', { realm: factionName(f), cap: cap ? cap.name : 'its capital' }, 'war'); for (const t of factionTowns(f)) if (t.id !== f.capital) leaveFaction(t, null); continue; }
     const towns = factionTowns(f);
     // the family holds together: no wars inside, friends inside, wars shared
     for (const a of towns) for (const b of towns) if (a !== b) { if (atWar(a, b)) { delete a.wars[b.id]; delete b.wars[a.id]; } if (rel(a, b) < 100) setRel(a, b, 100); if (a.master >= 0 && b.id === a.master && f.capital !== b.id) {} }
@@ -287,7 +288,7 @@ function updateThroughTrade() {
       if (path.length > 240) continue;
       world.wagons.push({ key, path, pi: 0, x: a.cx, y: a.cy, px: a.cx, py: a.cy, face: 1, from: a.id, to: b.id, via: chain.slice(1, -1), long: true });
       stat('ev', 'longWagons'); sent++;
-      if (Math.random() < 0.5) log(`A wagon sets out from ${a.name} for ${b.name} by way of ${chain.slice(1, -1).map(i => world.towns[i].name).join(' and ')}`, 'build');
+      if (Math.random() < 0.5) say(a, 'longWagon', { other: b.name, via: andList(chain.slice(1, -1).map(i => world.towns[i].name)) }, 'build');
       break;
     }
   }

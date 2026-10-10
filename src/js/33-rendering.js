@@ -110,7 +110,11 @@ function layout() {
   const hud = $('hud');
   if (hud) { const margin = Math.max(0, (rect.width - css) / 2); const aside = margin >= 260; hud.classList.toggle('aside', aside); hud.style.left = (aside ? 12 : margin + 12) + 'px'; hud.style.maxWidth = (aside ? margin - 24 : css - 24) + 'px'; }
   redrawTerrain();
-  resetView();
+  // A phone hiding its address bar fires resize: keep the player's zoom when it is the same valley,
+  // scaling the view if the canvas changed size; only a new valley resets to 1x.
+  if (layout.lastN === world.n && layout.lastSize > 0) { const k = size / layout.lastSize; if (k !== 1) { view.x *= k; view.y *= k; } clampView(); updateZoomHud(); }
+  else resetView();
+  layout.lastN = world.n; layout.lastSize = size;
 }
 
 // Hillshade: high ground a touch paler, hollows a touch darker, so the lie of the land reads.

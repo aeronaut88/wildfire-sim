@@ -111,8 +111,8 @@ logEl.addEventListener('click', ev => {
 
 // Achievements live in this browser's local storage, across valleys.
 const ACHIEVEMENTS = [
-  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rally|is burning|turn out/],
-  ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast|Fire reaches/],
+  ['first-fire', '🔥', 'First Light', 'Start a fire', /sounds the alarm|Fire reaches|Lightning|rall(y|ies)|is burning|turn out|sees the glow|on the line|crowning in the timber|Flames at/],
+  ['missile', '🚀', 'Fire Mission', 'Hit something with a missile', /killed by the blast/],
   ['dragon-seen', '🐉', 'There Be Dragons', 'See a dragon', /has been sighted|is in the valley|shape in the sky|dragon, returns/],
   ['dragon-slain', '⚔️', 'Dragonslayer', 'A town slays a dragon', /SLAYS/],
   ['dragon-driven', '🏹', 'Not Today', 'A militia drives a dragon off', /It will remember/],

@@ -36,14 +36,14 @@ function updateSettlers(force) {
     if (!path) return; // no way in from that edge this time
     const size = Math.random() < 0.15 ? 30 + Math.floor(Math.random() * 40) : 8 + Math.floor(Math.random() * 20); // mostly small parties, sometimes a whole caravan
     world.settlers = { ...plan, x: ex, y: ey, px: ex, py: ey, face: 1, wait: 0, path, pi: 0, size };
-    log(`A wagon of settlers appears on the ${ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east'} edge`, 'build');
+    say(plan.town || null, 'settlersAppear', { edge: ey === 0 ? 'north' : ey === n - 1 ? 'south' : ex === 0 ? 'west' : 'east', n: size, bound: plan.town ? plan.town.name : null }, 'build');
     return;
   }
   s.px = s.x; s.py = s.y;
   const here = s.y * n + s.x;
   if (world.burnLeft[here] > 0) {
     world.settlers = null;
-    log(`The settlers never made it. ${s.size} lost on the road.`, 'loss');
+    say(s.town || null, 'settlersLost', { n: s.size, bound: s.town ? s.town.name : null }, 'loss');
     world.deaths += s.size; stat('deaths', 'fire', s.size); stat('deathsTown', 'settlers on the road', s.size);
     const [px, py] = cellCenter(here);
     popups.push({ x: px, y: py, text: '+', color: '#ff8a73', t0: performance.now(), dur: 1400 });
@@ -57,7 +57,7 @@ function updateSettlers(force) {
       if (++s.wait > 12) {
         const alt = findPath(s.x, s.y, s.tx, s.ty);
         if (alt) { s.path = alt; s.pi = 0; s.wait = 0; }
-        else if (s.wait > 60) { world.settlers = null; log('The settlers turned back', 'weather'); return; }
+        else if (s.wait > 60) { world.settlers = null; say(null, 'settlersTurnBack', {}, 'weather'); return; }
       }
       return;
     }
@@ -80,12 +80,12 @@ function updateSettlers(force) {
       say(town, 'settlersFound', { n: s.size, homes: town.housesLeft, leader: el ? el.name : null }, 'build');
       const [px, py] = cellCenter(s.ty * n + s.tx);
       popups.push({ x: px, y: py - town.R * cellPx, text: town.name.toUpperCase(), color: '#d9c48a', t0: performance.now(), dur: 2500 });
-    } else log('The settlers found no good ground and moved on', 'weather');
+    } else say(null, 'settlersNoGround', {}, 'weather');
   } else if (s.mode === 'join') {
     const t = s.town;
     t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
     t.growTimer = 1;
-    log(s.refugees ? `${t.name} takes in ${s.size} refugees from ${s.refugees}` : `${s.size} newcomers settle in ${t.name} (pop now ${t.popLeft})`, 'build');
+    if (s.refugees) say(t, 'refugeesIn', { n: s.size, from: s.refugees }, 'build'); else say(t, 'newcomers', { n: s.size, pop: t.popLeft }, 'build');
   } else {
     const t = s.town;
     t.popLeft += s.size; t.popTotal += s.size; world.popLeft += s.size; world.popTotal += s.size;
@@ -93,7 +93,7 @@ function updateSettlers(force) {
     t.res.wood = Math.min(resCap(t, 'wood'), (t.res.wood || 0) + 8 + Math.min(16, s.size)); t.res.grain = Math.min(resCap(t, 'grain'), (t.res.grain || 0) + 6 + Math.floor(s.size / 2));
     let built = 0;
     for (let k = 0; k < 2; k++) if (buildHouse(t, true)) built++;
-    log(`${s.size} settlers resettle ${t.name} (pop now ${t.popLeft}, ${built} homes started with the timber they brought)`, 'build');
+    say(t, 'resettle', { n: s.size, pop: t.popLeft, built }, 'build');
   }
   world.settlers = null;
 }
@@ -131,7 +131,7 @@ function onHangarDestroyed(why) {
     const i = (air.y + dy) * n + air.x + dx;
     if (world.type[i] === T.PAD) { world.type[i] = T.RUBBLE; dirty.add(i); }
   }
-  log(`The airstrip at ${air.owner} ${why}. The tanker is gone.`, 'loss');
+  say(null, 'airstripLost', { owner: air.owner, why }, 'loss');
   world.air = null;
 }
 
@@ -140,7 +140,7 @@ function burnout(i) {
   if (t === T.BRIDGE || t === T.DAM) {
     // Back to river.
     world.type[i] = T.WATER; world.road[i] = 0; world.burnLeft[i] = 0; world.water.push(i); dirty.add(i); world.burnedCount++;
-    if (t === T.BRIDGE) log('A bridge burns and falls into the river', 'loss');
+    if (t === T.BRIDGE) { const [nt, nd] = nearestTown(i % world.n, Math.floor(i / world.n)); say(nt && nd < 40 ? nt : null, 'bridgeBurns', {}, 'loss', i); }
     return;
   }
   if (t === T.FARM) { const tw = world.towns[world.townOf[i]]; if (tw) tw.farmsLost = (tw.farmsLost || 0) + 1; if (world.cropKind) world.cropKind[i] = 0; }
@@ -198,7 +198,6 @@ function strikeCell(cx, cy, radius) {
       dirty.add(i);
     }
   }
-  for (const town of world.towns) if (town.blastDead) { log(`${town.name}: ${town.blastDead} killed by the blast`, 'loss'); town.blastDead = 0; }
   for (const town of world.towns) {
     town.crews = town.crews.filter(c => {
       if (Math.hypot(c.x - cx, c.y - cy) <= radius) { loseCrew(town, c, 'caught in the blast'); return false; }
