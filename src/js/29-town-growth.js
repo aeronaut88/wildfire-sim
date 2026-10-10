@@ -29,7 +29,7 @@ function growTown(town) {
   updateWater(town);
   town.powerRatio = updatePower(town);
   // Coin comes from selling, not from thin air: caravans, paid deliveries, and gold minted at the hall.
-  if (town.res.gold > 0 && hasType(town, T.TOWNHALL) && hasType(town, T.FORGE)) { town.res.gold--; town.res.coin += 10; town.minted = (town.minted || 0) + 10; stat('ev', 'minted', 10); if (town.minted === 10) log(`${town.name} mints its first coin from its own gold`, 'build'); }
+  if (town.res.gold > 0 && hasType(town, T.TOWNHALL) && hasType(town, T.FORGE)) { town.res.gold--; town.res.coin += 10; town.minted = (town.minted || 0) + 10; stat('ev', 'minted', 10); if (town.minted === 10) say(town, 'mint', {}, 'build'); }
   { const cellar = hasType(town, T.CELLAR) ? 0.5 : 1; // a cold cellar keeps things twice as long
     if (town.res.fish > 10 && Math.random() < 0.3 * cellar) town.res.fish--; // fish spoils
     if (town.res.game > 10 && Math.random() < 0.3 * cellar) town.res.game--;
@@ -56,7 +56,7 @@ function growTown(town) {
   if (world.weather.kind === 'drought' && Math.random() < 0.5) {
     let lost = 0;
     for (const i of town.buildings) if (world.type[i] === T.FARM && Math.random() < (world.biome[i] === 5 ? 0.06 : 0.02) * (cropKindAt(i) === 1 ? 0.5 : cropKindAt(i) === 3 ? 0.3 : 1) && !nearWater(i, 3)) { world.type[i] = T.SCRUB; world.since[i] = world.tick; dirty.add(i); lost++; }
-    if (lost) { town.farms = Math.max(0, (town.farms || 0) - lost); town.buildings = town.buildings.filter(i => world.type[i] !== T.SCRUB); stat('ev', 'fieldsWithered', lost); if (Math.random() < 0.5) log(`The drought withers ${lost} of ${town.name}'s fields`, 'loss'); }
+    if (lost) { town.farms = Math.max(0, (town.farms || 0) - lost); town.buildings = town.buildings.filter(i => world.type[i] !== T.SCRUB); stat('ev', 'fieldsWithered', lost); town.withered = (town.withered || 0) + lost; if (Math.random() < 0.5 && twDue(town, 'wither', YEAR / 4)) { say(town, 'wither', { n: town.withered }, 'loss'); town.withered = 0; } }
   }
   // Crops grow, and the town eats from its stores: grain first, then fish and game; the herd gives a little every time.
   growCrops(town);
@@ -87,7 +87,7 @@ function growTown(town) {
     const needCap = Math.ceil(town.popLeft / 30) * 44, cap = 60 + 120 * gr;
     if (town.popLeft >= 12 && (cap < needCap || town.res.grain >= cap * 0.75) && gr < 1 + Math.floor(town.popLeft / 40) && canAfford(town, COST[T.GRANARY]) && Math.random() < 0.7) {
       const i = placeCivic(town, T.GRANARY, false);
-      if (i >= 0) { pay(town, COST[T.GRANARY]); log(`${town.name} ${gr ? 'raises another granary' : 'raises a granary'}`, 'build'); }
+      if (i >= 0) { pay(town, COST[T.GRANARY]); twNews(town, 'granary', !gr, { n: gr + 1 }, 'build', i); } // the first is news; after that, once a year
     }
   }
   const pressure = town.popLeft >= housingCapacity(town) * 0.8 || town.housesLeft < 3; // beds, not bread: a hungry town does not sprawl
@@ -213,7 +213,7 @@ function buildField(town, fieldType) {
   town.farms = (town.farms || 0) + 1;
   world.cropKind[best] = pickCrop(town); world.crop[best] = 0;
   toSite(town, best, T.FARM);
-  if (town.farms === 1 || town.farms % 8 === 0) log(`${town.name} clears fields (${countType(town, T.FARM)} farms)`, 'build');
+  twFields(town, best); // the first field, then a line for every eight more
   dirty.add(best);
   return true;
 }
@@ -251,7 +251,7 @@ function buildTenement(town) {
   if (!canAfford(town, COST[T.TENEMENT])) return false;
   pay(town, COST[T.TENEMENT]);
   world.type[i] = T.TENEMENT; dirty.add(i); town.housesTotal++; town.housesLeft++; world.buildingsTotal++; world.buildingsLeft++; toSite(town, i, T.TENEMENT, undefined, true);
-  if (Math.random() < 0.3) log(`${town.name} raises a tenement block`, 'build');
+  if (Math.random() < 0.3 && twDue(town, 'tenement', YEAR / 2)) say(town, 'tenement', {}, 'build', i);
   return true;
 }
 
@@ -335,11 +335,11 @@ function buildCivic(town) {
   const cost = COST[type];
   if (!canAfford(town, cost)) {
     const k = lacking(town, cost);
-    if (town.wishLogged !== type && Math.random() < 0.3) { town.wishLogged = type; log(k ? `${town.name} wants a ${BUILDING_NAMES[type].toLowerCase()} but has no ${k}` : `${town.name} wants a ${BUILDING_NAMES[type].toLowerCase()} but is saving for the next step`, 'build'); }
+    if (town.wishLogged !== type && Math.random() < 0.3) { town.wishLogged = type; if (twDue(town, 'want' + type, YEAR)) say(town, k ? 'wants' : 'wantsSaving', { what: BUILDING_NAMES[type].toLowerCase(), lack: k }, 'build'); } // one wish a year per thing wished for
     return;
   }
   const i = placeCivic(town, type, nearCentre);
-  if (i >= 0) { pay(town, cost); log(`${town.name} ${verb}`, 'build'); }
+  if (i >= 0) { pay(town, cost); twCivic(town, type, verb, i); }
 }
 
 // Rebuild rubble first, then grow outward along the roads, up to the size cap.
@@ -388,15 +388,15 @@ function buildHouse(town, quiet) {
   town.built++;
   toSite(town, best, T.HOUSE, undefined, stone);
   if (onShell) town.sites[best].need = Math.max(4, Math.round(town.sites[best].need * 0.4));
-  if (town.destroyed) { town.destroyed = false; if (!quiet) log(`${town.name} rebuilds from the ashes`, 'build'); }
+  if (town.destroyed) { town.destroyed = false; if (rebuilt) town.rebuilding = town.rebuilding || world.tick; if (!quiet) log(`${town.name} rebuilds from the ashes`, 'build'); }
   const d = Math.hypot((best % n) - town.cx, Math.floor(best / n) - town.cy);
   if (d > town.R + 0.3) {
     town.R = Math.ceil(d);
     layRoads(town, true);
     recomputeRing(town);
     if (!quiet) say(town, 'grows', { homes: town.housesLeft }, 'build');
-  } else if (!quiet && rebuilt && Math.random() < 0.12) say(town, 'rebuilding', { homes: town.housesLeft }, 'build');
-  else if (!quiet && !rebuilt && town.built % 12 === 0) say(town, 'addsHomes', { homes: town.housesLeft }, 'build');
+  } else if (!quiet && rebuilt) twRebuilt(town); // once when rebuilding starts; twRebuildCheck says when it is done
+  else if (!quiet && !rebuilt && town.built % 12 === 0 && twDue(town, 'addsHomes', YEAR / 4)) say(town, 'addsHomes', { homes: town.housesLeft }, 'build');
   dirty.add(best);
   return true;
 }
@@ -530,7 +530,7 @@ function expandRoads(town) {
   town.layout = trial;
   layRoads(town, true);
   recomputeRing(town);
-  log(`${town.name} lays a new ${o.kind === 'ring' ? 'ring road' : o.kind === 'branch' ? 'side street' : 'road'}`, 'build');
+  if (twDue(town, 'newStreet', YEAR / 2)) say(town, 'newStreet', { what: o.kind === 'ring' ? 'ring road' : o.kind === 'branch' ? 'side street' : 'road' }, 'build');
   return true;
 }
 
