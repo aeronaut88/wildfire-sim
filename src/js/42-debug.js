@@ -84,3 +84,5 @@ window.addEventListener('keydown', ev => {
 try { if (localStorage.getItem('wildfireDebug') === '1') setTimeout(() => toggleDebug(true), 0); } catch (e) {}
 window.__wildfire.debug = toggleDebug;
 window.__wildfire.debugAimedComet = debugAimedComet;
+// Make a faction on demand (for the crown harness): b joins a's faction, friends for life.
+window.__wildfire.debugUnite = (aId, bId) => { const a = world.towns[aId], b = world.towns[bId]; if (!a || !b) return null; setRel(a, b, 100); delete a.wars[b.id]; delete b.wars[a.id]; joinFaction(b, factionOf(a), 'by the hand of god'); recomputeClaims(); return factionOf(a).id; };
