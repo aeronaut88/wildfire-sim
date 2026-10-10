@@ -527,12 +527,31 @@
       <div class="btnrow">
         <button id="btnPlay" class="primary">Pause</button>
         <button id="btnStep">Step</button>
-        <button id="btnReset" class="wide">New Forest</button>
       </div>
       <div class="control">
         <label for="speed">Speed</label><output id="speedOut">4 t/s</output>
         <input type="range" id="speed" min="1" max="240" value="4">
       </div>
+    </div>
+
+    <div class="group">
+      <div class="title">New valley</div>
+      <div class="control">
+        <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
+        <input type="range" id="size" min="30" max="500" step="10" value="200">
+      </div>
+      <div class="control">
+        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">8</output>
+        <input type="range" id="maxTowns" min="1" max="12" step="1" value="8">
+      </div>
+      <div class="control">
+        <label for="density">Tree density</label><output id="densityOut">0.65</output>
+        <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
+      </div>
+      <div class="btnrow">
+        <button id="btnReset" class="primary wide">New Forest</button>
+      </div>
+      <div class="control"><div class="hint">Set the valley you want, then New Forest makes it. Up to 500 wide: a big valley holds more towns, takes a moment to make, and above 300 runs slower at the highest speeds.</div></div>
     </div>
 
     <div class="group">
@@ -622,10 +641,6 @@
         <label for="townCap">Sprawl troubles start at radius</label><output id="townCapOut">8</output>
         <input type="range" id="townCap" min="3" max="16" step="1" value="8">
       </div>
-      <div class="control">
-        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">8</output>
-        <input type="range" id="maxTowns" min="1" max="12" step="1" value="8">
-      </div>
     </div>
 
     <div class="group">
@@ -666,15 +681,6 @@
 
     <div class="group">
       <div class="title">Terrain</div>
-      <div class="control">
-        <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
-        <input type="range" id="size" min="30" max="500" step="10" value="200">
-        <div class="hint">Up to 500 wide. A big valley holds more towns and takes a moment to make; above 300 it runs slower at the highest speeds.</div>
-      </div>
-      <div class="control">
-        <label for="density">Tree density</label><output id="densityOut">0.65</output>
-        <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
-      </div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -690,6 +696,7 @@
       storms bring lightning. Settlers wander in now and then. And every town has that one
       person.
     </div>
+    <div class="foot" id="swFoot"></div>
   </aside>
 </main>
 

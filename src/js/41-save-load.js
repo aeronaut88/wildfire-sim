@@ -11,7 +11,7 @@ const unpackArr = (b64, Ctor) => { const u8 = b64ToBytes(b64); const copy = new 
 function snapshot() {
   const townToId = t => (t ? t.id : -1);
   return {
-    v: SAVE_VERSION, savedAt: Date.now(), n: world.n, seed: world.seed, tick: world.tick,
+    v: SAVE_VERSION, sw: SW_VERSION, savedAt: Date.now(), n: world.n, seed: world.seed, tick: world.tick,
     arrays: {
       type: packArr(world.type), variant: packArr(world.variant), burnLeft: packArr(world.burnLeft), glow: packArr(world.glow),
       wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
@@ -67,6 +67,7 @@ function validateSave(d) {
   if (d.history && d.history.towns) for (const id in d.history.towns) { const r = d.history.towns[id]; if (r) r.name = cleanStr(r.name, 60); }
   if (d.stats) { for (const g of ['deaths', 'deathsTown', 'lost', 'lostTown', 'ev', 'dragons']) if (d.stats[g]) d.stats[g] = cleanKeys(d.stats[g], 80); if (d.stats.max) d.stats.max.name = cleanStr(d.stats.max.name, 60); }
   if (d.climate) d.climate.name = cleanStr(d.climate.name, 20);
+  d.sw = cleanStr(String(d.sw || ''), 16) || null; // software version the save was made with (none before v0.10)
   if (d.weather) d.weather.kind = WEATHER[d.weather.kind] ? d.weather.kind : 'clear';
   return d;
 }
@@ -214,10 +215,12 @@ async function loadSlotMetas() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the browser not to sweep our saves
 }
 function ago(ms) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+// 'v0.10' for a save from this build, 'v0.8 (older)' for one from before, 'pre-v0.10' when the save predates versions.
+function swLabel(sw) { return !sw ? 'pre-v0.10' : sw === SW_VERSION ? 'v' + sw : `v${sw} (older)`; }
 function renderSlots() {
   slotsEl.innerHTML = SLOTS.map(([id, name]) => {
     const m = slotMeta(id);
-    const meta = m ? `t${m.tick} · ${m.towns} town${m.towns === 1 ? '' : 's'} · ${m.n}² · ${ago(m.savedAt)}` : 'empty';
+    const meta = m ? `${swLabel(m.sw)} · t${m.tick} · ${m.towns} town${m.towns === 1 ? '' : 's'} · ${m.n}² · ${ago(m.savedAt)}` : 'empty';
     return `<div class="slot" data-slot="${id}"><div><div class="nm">${name}</div><div class="meta ${m ? '' : 'empty'}">${meta}</div></div>` +
       `<button data-act="save" ${id === 'auto' ? 'disabled title="Autosave writes itself every minute"' : ''}>Save</button><button data-act="load" ${m ? '' : 'disabled'}>Load</button></div>`;
   }).join('');
@@ -225,7 +228,7 @@ function renderSlots() {
 async function saveToSlot(id) {
   const snap = snapshot();
   const text = await encodeSave(snap);
-  const meta = { savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n };
+  const meta = { savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n, sw: snap.sw };
   let ok = (await idb.set(slotKey(id), text)) && (await idb.set(metaKey(id), meta));
   if (!ok) { try { localStorage.setItem(slotKey(id), text); localStorage.setItem(metaKey(id), JSON.stringify(meta)); ok = true; } catch (e) { /* full or blocked */ } }
   if (!ok) { log('Could not save: browser storage is full or blocked. Export a file instead.', 'loss'); return false; }
@@ -237,8 +240,8 @@ async function loadFromSlot(id) {
   let text = await idb.get(slotKey(id));
   if (!text) { try { text = localStorage.getItem(slotKey(id)); } catch (e) { text = null; } }
   if (!text) return false;
-  try { restore(await decodeSave(text)); } catch (e) { log('That save could not be read', 'loss'); return false; }
-  log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}. Paused.`, 'good');
+  let d; try { d = await decodeSave(text); restore(d); } catch (e) { log('That save could not be read', 'loss'); return false; }
+  log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}, made with ${swLabel(d.sw)}. Paused.`, 'good');
   return true;
 }
 loadSlotMetas();
@@ -269,7 +272,7 @@ $('exportBtn').addEventListener('click', async () => {
   const blob = await encodeFile(snapshot());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `wildfire-${world.seed}-t${world.tick}.json${blob.type === 'application/gzip' ? '.gz' : ''}`;
+  a.download = `wildfire-v${SW_VERSION}-${world.seed}-t${world.tick}.json${blob.type === 'application/gzip' ? '.gz' : ''}`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   log(`Exported ${a.download}`, 'good');
@@ -277,7 +280,7 @@ $('exportBtn').addEventListener('click', async () => {
 $('importBtn').addEventListener('click', () => $('importFile').click());
 $('importFile').addEventListener('change', async ev => {
   const f = ev.target.files && ev.target.files[0]; if (!f) return;
-  try { restore(await decodeFile(await f.arrayBuffer())); log(`Loaded ${f.name} at tick ${world.tick}. Paused.`, 'good'); }
+  try { const d = await decodeFile(await f.arrayBuffer()); restore(d); log(`Loaded ${f.name} at tick ${world.tick}, made with ${swLabel(d.sw)}. Paused.`, 'good'); }
   catch (e) { log('That file is not a Wildfire save', 'loss'); }
   ev.target.value = '';
 });

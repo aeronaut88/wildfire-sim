@@ -527,12 +527,31 @@
       <div class="btnrow">
         <button id="btnPlay" class="primary">Pause</button>
         <button id="btnStep">Step</button>
-        <button id="btnReset" class="wide">New Forest</button>
       </div>
       <div class="control">
         <label for="speed">Speed</label><output id="speedOut">4 t/s</output>
         <input type="range" id="speed" min="1" max="240" value="4">
       </div>
+    </div>
+
+    <div class="group">
+      <div class="title">New valley</div>
+      <div class="control">
+        <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
+        <input type="range" id="size" min="30" max="500" step="10" value="200">
+      </div>
+      <div class="control">
+        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">8</output>
+        <input type="range" id="maxTowns" min="1" max="12" step="1" value="8">
+      </div>
+      <div class="control">
+        <label for="density">Tree density</label><output id="densityOut">0.65</output>
+        <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
+      </div>
+      <div class="btnrow">
+        <button id="btnReset" class="primary wide">New Forest</button>
+      </div>
+      <div class="control"><div class="hint">Set the valley you want, then New Forest makes it. Up to 500 wide: a big valley holds more towns, takes a moment to make, and above 300 runs slower at the highest speeds.</div></div>
     </div>
 
     <div class="group">
@@ -622,10 +641,6 @@
         <label for="townCap">Sprawl troubles start at radius</label><output id="townCapOut">8</output>
         <input type="range" id="townCap" min="3" max="16" step="1" value="8">
       </div>
-      <div class="control">
-        <label for="maxTowns">Max living towns</label><output id="maxTownsOut">8</output>
-        <input type="range" id="maxTowns" min="1" max="12" step="1" value="8">
-      </div>
     </div>
 
     <div class="group">
@@ -666,15 +681,6 @@
 
     <div class="group">
       <div class="title">Terrain</div>
-      <div class="control">
-        <label for="size">Map size</label><output id="sizeOut">200 &times; 200</output>
-        <input type="range" id="size" min="30" max="500" step="10" value="200">
-        <div class="hint">Up to 500 wide. A big valley holds more towns and takes a moment to make; above 300 it runs slower at the highest speeds.</div>
-      </div>
-      <div class="control">
-        <label for="density">Tree density</label><output id="densityOut">0.65</output>
-        <input type="range" id="density" min="0" max="1" step="0.05" value="0.65">
-      </div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -690,11 +696,13 @@
       storms bring lightning. Settlers wander in now and then. And every town has that one
       person.
     </div>
+    <div class="foot" id="swFoot"></div>
   </aside>
 </main>
 
 <script>
 (() => {
+const SW_VERSION = '0.10';
 'use strict';
 
 /* ───────────────────────── Sprites ───────────────────────── */
@@ -9684,7 +9692,11 @@ function layout() {
   const hud = $('hud');
   if (hud) { const margin = Math.max(0, (rect.width - css) / 2); const aside = margin >= 260; hud.classList.toggle('aside', aside); hud.style.left = (aside ? 12 : margin + 12) + 'px'; hud.style.maxWidth = (aside ? margin - 24 : css - 24) + 'px'; }
   redrawTerrain();
-  resetView();
+  // A phone hiding its address bar fires resize: keep the player's zoom when it is the same valley,
+  // scaling the view if the canvas changed size; only a new valley resets to 1x.
+  if (layout.lastN === world.n && layout.lastSize > 0) { const k = size / layout.lastSize; if (k !== 1) { view.x *= k; view.y *= k; } clampView(); updateZoomHud(); }
+  else resetView();
+  layout.lastN = world.n; layout.lastSize = size;
 }
 
 // Hillshade: high ground a touch paler, hollows a touch darker, so the lie of the land reads.
@@ -10465,8 +10477,8 @@ bindRange('blast', 'blastOut', 'blast', v => v === 0 ? 'point' : `${v}`);
 bindRange('regrow', 'regrowOut', 'regrow', v => v === 0 ? 'off' : v.toFixed(1));
 bindRange('townCap', 'townCapOut', 'townCap', v => `${v}`);
 bindRange('maxTowns', 'maxTownsOut', 'maxTowns', v => `${v}`);
-bindRange('density', 'densityOut', 'density', v => v.toFixed(2), () => reset());
-bindRange('size', 'sizeOut', null, v => `${v} &times; ${v}`, () => reset(parseInt($('size').value, 10)));
+bindRange('density', 'densityOut', 'density', v => v.toFixed(2));
+bindRange('size', 'sizeOut', null, v => `${v} &times; ${v}`); // takes effect with New Forest
 
 document.querySelectorAll('.seg button[data-nb]').forEach(b => {
   b.addEventListener('click', () => {
@@ -10684,7 +10696,8 @@ function setRunning(r) {
 }
 btnPlay.addEventListener('click', () => setRunning(!running));
 $('btnStep').addEventListener('click', () => { setRunning(false); step(); });
-$('btnReset').addEventListener('click', () => reset());
+$('btnReset').addEventListener('click', () => reset(parseInt($('size').value, 10)));
+{ const f = $('swFoot'); if (f) f.textContent = `Wildfire v${SW_VERSION}. Saves and exported files carry the version they were made with.`; const hs = $('hudSeed'); if (hs) hs.title = `Wildfire v${SW_VERSION}`; }
 $('btnMissile').addEventListener('click', () => launchMissile(randomFuelCell()));
 $('btnLightning').addEventListener('click', () => lightning(randomFuelCell()));
 
@@ -10826,7 +10839,7 @@ function refreshCard(now) {
 let showTab = () => {};
 (function buildTabs() {
   const panel = document.querySelector('aside.panel'), nav = $('tabs');
-  const TABS = [['Play', ['Run', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Towns', ['Settlements']], ['History', ['History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
+  const TABS = [['Play', ['Run', 'New valley', 'Ignite', 'Dispatch', 'Save / Load', 'Valley seed']], ['Towns', ['Settlements']], ['History', ['History']], ['Settings', ['World', 'Fire', 'Wind', 'Terrain']], ['Info', ['Achievements', '__foot']]];
   const groups = [...panel.children].filter(el => el !== nav);
   const byTitle = {};
   for (const g of groups) { const t = g.querySelector(':scope > .title'); byTitle[g.classList.contains('foot') ? '__foot' : (t ? t.firstChild.textContent.trim() : '')] = g; } // first text node: titles may carry a button
@@ -11090,7 +11103,7 @@ const unpackArr = (b64, Ctor) => { const u8 = b64ToBytes(b64); const copy = new 
 function snapshot() {
   const townToId = t => (t ? t.id : -1);
   return {
-    v: SAVE_VERSION, savedAt: Date.now(), n: world.n, seed: world.seed, tick: world.tick,
+    v: SAVE_VERSION, sw: SW_VERSION, savedAt: Date.now(), n: world.n, seed: world.seed, tick: world.tick,
     arrays: {
       type: packArr(world.type), variant: packArr(world.variant), burnLeft: packArr(world.burnLeft), glow: packArr(world.glow),
       wet: packArr(world.wet), wetKind: packArr(world.wetKind), townOf: packArr(world.townOf), road: packArr(world.road),
@@ -11146,6 +11159,7 @@ function validateSave(d) {
   if (d.history && d.history.towns) for (const id in d.history.towns) { const r = d.history.towns[id]; if (r) r.name = cleanStr(r.name, 60); }
   if (d.stats) { for (const g of ['deaths', 'deathsTown', 'lost', 'lostTown', 'ev', 'dragons']) if (d.stats[g]) d.stats[g] = cleanKeys(d.stats[g], 80); if (d.stats.max) d.stats.max.name = cleanStr(d.stats.max.name, 60); }
   if (d.climate) d.climate.name = cleanStr(d.climate.name, 20);
+  d.sw = cleanStr(String(d.sw || ''), 16) || null; // software version the save was made with (none before v0.10)
   if (d.weather) d.weather.kind = WEATHER[d.weather.kind] ? d.weather.kind : 'clear';
   return d;
 }
@@ -11293,10 +11307,12 @@ async function loadSlotMetas() {
   if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); // ask the browser not to sweep our saves
 }
 function ago(ms) { const s = Math.round((Date.now() - ms) / 1000); if (s < 60) return 'just now'; if (s < 3600) return Math.round(s / 60) + ' min ago'; if (s < 86400) return Math.round(s / 3600) + ' h ago'; return Math.round(s / 86400) + ' d ago'; }
+// 'v0.10' for a save from this build, 'v0.8 (older)' for one from before, 'pre-v0.10' when the save predates versions.
+function swLabel(sw) { return !sw ? 'pre-v0.10' : sw === SW_VERSION ? 'v' + sw : `v${sw} (older)`; }
 function renderSlots() {
   slotsEl.innerHTML = SLOTS.map(([id, name]) => {
     const m = slotMeta(id);
-    const meta = m ? `t${m.tick} · ${m.towns} town${m.towns === 1 ? '' : 's'} · ${m.n}² · ${ago(m.savedAt)}` : 'empty';
+    const meta = m ? `${swLabel(m.sw)} · t${m.tick} · ${m.towns} town${m.towns === 1 ? '' : 's'} · ${m.n}² · ${ago(m.savedAt)}` : 'empty';
     return `<div class="slot" data-slot="${id}"><div><div class="nm">${name}</div><div class="meta ${m ? '' : 'empty'}">${meta}</div></div>` +
       `<button data-act="save" ${id === 'auto' ? 'disabled title="Autosave writes itself every minute"' : ''}>Save</button><button data-act="load" ${m ? '' : 'disabled'}>Load</button></div>`;
   }).join('');
@@ -11304,7 +11320,7 @@ function renderSlots() {
 async function saveToSlot(id) {
   const snap = snapshot();
   const text = await encodeSave(snap);
-  const meta = { savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n };
+  const meta = { savedAt: snap.savedAt, tick: snap.tick, towns: snap.towns.length, n: snap.n, sw: snap.sw };
   let ok = (await idb.set(slotKey(id), text)) && (await idb.set(metaKey(id), meta));
   if (!ok) { try { localStorage.setItem(slotKey(id), text); localStorage.setItem(metaKey(id), JSON.stringify(meta)); ok = true; } catch (e) { /* full or blocked */ } }
   if (!ok) { log('Could not save: browser storage is full or blocked. Export a file instead.', 'loss'); return false; }
@@ -11316,8 +11332,8 @@ async function loadFromSlot(id) {
   let text = await idb.get(slotKey(id));
   if (!text) { try { text = localStorage.getItem(slotKey(id)); } catch (e) { text = null; } }
   if (!text) return false;
-  try { restore(await decodeSave(text)); } catch (e) { log('That save could not be read', 'loss'); return false; }
-  log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}. Paused.`, 'good');
+  let d; try { d = await decodeSave(text); restore(d); } catch (e) { log('That save could not be read', 'loss'); return false; }
+  log(`Loaded ${SLOTS.find(s => s[0] === id)[1].toLowerCase()} at tick ${world.tick}, made with ${swLabel(d.sw)}. Paused.`, 'good');
   return true;
 }
 loadSlotMetas();
@@ -11348,7 +11364,7 @@ $('exportBtn').addEventListener('click', async () => {
   const blob = await encodeFile(snapshot());
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `wildfire-${world.seed}-t${world.tick}.json${blob.type === 'application/gzip' ? '.gz' : ''}`;
+  a.download = `wildfire-v${SW_VERSION}-${world.seed}-t${world.tick}.json${blob.type === 'application/gzip' ? '.gz' : ''}`;
   document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   log(`Exported ${a.download}`, 'good');
@@ -11356,7 +11372,7 @@ $('exportBtn').addEventListener('click', async () => {
 $('importBtn').addEventListener('click', () => $('importFile').click());
 $('importFile').addEventListener('change', async ev => {
   const f = ev.target.files && ev.target.files[0]; if (!f) return;
-  try { restore(await decodeFile(await f.arrayBuffer())); log(`Loaded ${f.name} at tick ${world.tick}. Paused.`, 'good'); }
+  try { const d = await decodeFile(await f.arrayBuffer()); restore(d); log(`Loaded ${f.name} at tick ${world.tick}, made with ${swLabel(d.sw)}. Paused.`, 'good'); }
   catch (e) { log('That file is not a Wildfire save', 'loss'); }
   ev.target.value = '';
 });

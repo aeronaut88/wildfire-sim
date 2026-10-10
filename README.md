@@ -655,8 +655,9 @@ you pan, or you press Esc. The town card's recent-events list works the same way
 
 ## The sidebar
 
-Five tabs: Play (run, ignite, dispatch, save and seed), Towns, History, Settings (world,
-fire, wind, terrain and the legend) and Info (achievements and the notes). The running log
+Five tabs: Play (run, the next valley's size, towns and tree density with the New Forest button
+beside them, ignite, dispatch, save and seed), Towns, History, Settings (weather, regrowth,
+fire, wind and the legend) and Info (achievements and the notes). The running log
 sits under the map so you are always in tune with the world.
 
 The History tab draws sand plots, and a full-screen button blows them up to the whole window
@@ -718,7 +719,30 @@ remembers whether it was open.
 | New random forest   | New Forest button   | `N`     |
 
 Sliders: speed (ticks per second), blast radius, spread probability, wind strength,
-map size (30 to 300, default 200), and tree density. Changing size or density regenerates the map.
+map size (30 to 500, default 200), max living towns and tree density. Size and density are
+settings for the next valley: New Forest makes it. The map keeps your zoom when a phone's
+address bar comes and goes; only a new valley resets it.
+
+## Versions
+
+The build stamps the page with the number in `VERSION` (shown at the foot of the Info tab,
+and on the seed readout's tooltip). Every save and exported file carries the version it was
+made with; the slot list shows it, and a save from an older build says so when it loads.
+Saves from before v0.10 show as "pre-v0.10". Bump `VERSION` when a release goes out and
+tag the commit `vX.Y`. The history is tagged back to the first commit:
+
+| tag | what |
+|---|---|
+| v0.1 | the forest fire automaton with sprites and missiles (2026-10-04) |
+| v0.2 | living cities: civic and military buildings, watchable battles, tanks, bombers |
+| v0.3 | beasts and hunters, the ledger, sidebar tabs, history sand plots, hotkeys |
+| v0.4 | the page split into source files with a reproducible build, tests and CI |
+| v0.5 | wartime crimes, tiered achievements, medicine |
+| v0.6 | snow that falls and melts in patches |
+| v0.7 | the larder: fishing, smokehouse, mill, bakery, brewery, inn, four crops, jobs |
+| v0.8 | factions: borders, unions, conquest, governments and rulers |
+| v0.9 | zoom to 40x, valleys up to 500 wide, the hand of god |
+| v0.10 | a log that does not repeat itself, new-valley settings on the Play tab, versions |
 
 ## Safety
 
