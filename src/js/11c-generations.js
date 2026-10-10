@@ -24,7 +24,7 @@ function comeOfAge(town) {
     if (parent && parent.trait && Math.random() < 0.4) { p.trait = parent.trait; p.story = `grew up at ${parent.name}'s knee and has the same ${TRAITS[parent.trait].label}'s way about them`; }
     else p.story = `grew up in the shadow of ${p.parent || 'the hall'} and ${['has never left the valley', 'wants to see what is over the pass', 'can already outshoot the hunter', 'reads better than the elder', 'is afraid of fire and will not say so'][Math.floor(Math.random() * 5)]}`;
     stat('ev', 'cameOfAge');
-    if (Math.random() < 0.3) log(`${p.name} of ${town.name} comes of age${p.trait ? `, ${/^[aeiou]/.test(TRAITS[p.trait].label) ? 'an' : 'a'} ${TRAITS[p.trait].label} like ${p.parent}` : ''}`, 'good');
+    if (Math.random() < 0.3) say(town, 'comeOfAge', { who: p.name, parent: p.parent || null, label: p.trait ? TRAITS[p.trait].label : null, story: p.story, tail: p.story.replace(/^grew up in the shadow of .*? and /, '') }, 'good');
   }
 }
 // Who takes the chair when the elder dies: in a lawful town, often the elder's kin, and sometimes two of them want it.
@@ -36,13 +36,13 @@ function succession(town, prev, quiet, avoidTrait) {
   if (heirs.length >= 2 && (town.unrest || 0) >= 35) {
     const rival = heirs.find(q => q !== h);
     town.unrest = Math.min(100, (town.unrest || 0) + 10); town.militia = Math.floor(town.militia * 0.9); stat('ev', 'successionCrises');
-    log(`${h.name} and ${rival.name} both claim the chair at ${town.name} when ${prev.name} dies. ${h.name} wins it; ${rival.name} does not forget.`, 'war');
+    say(town, 'successionCrisis', { heir: h.name, rival: rival.name, prev: prev.name }, 'war');
     rival.grudge = { against: 'the elder', why: `being passed over for the chair at ${town.name}`, since: world.tick, over: h.name };
-    if (Math.random() < 0.3) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`A house burns in ${town.name} the night of the succession`, 'arson'); } }
+    if (Math.random() < 0.3) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); say(town, 'successionFire', {}, 'arson'); } }
   }
   h.role = 'elder'; h.trait = h.trait || rollTrait(town, avoidTrait);
   town.dynasty = (town.dynasty || 0) + 1; stat('ev', 'dynasties');
-  if (!quiet) log(`${h.name}, ${h.parent === prev.name ? 'child' : 'kin'} of ${prev.name}, takes the chair at ${town.name}: ${/^[aeiou]/.test(TRAITS[h.trait].label) ? 'an' : 'a'} ${TRAITS[h.trait].label} who ${TRAITS[h.trait].blurb}`, 'build');
+  if (!quiet) say(town, 'succession', { heir: h.name, rel: h.parent === prev.name ? 'child' : 'kin', prev: prev.name, label: TRAITS[h.trait].label, blurb: TRAITS[h.trait].blurb }, 'build');
   return h;
 }
 PHRASES.birth = [
