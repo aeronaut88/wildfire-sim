@@ -93,7 +93,7 @@ function updateWater(t) {
     if (t.wells[i] <= 0 || want <= 0) continue;
     const draw = Math.min(t.wells[i], wk === 'drought' ? 2 : 3, want);
     t.wells[i] -= draw; got += draw; want -= draw;
-    if (t.wells[i] <= 0) { log(`${t.name}'s well runs dry`, 'loss'); stat('ev', 'wellsDry'); }
+    if (t.wells[i] <= 0) { if (twDue(t, 'wellDry', YEAR)) say(t, 'wellDry', {}, 'loss', i); stat('ev', 'wellsDry'); } // rain refills and it runs dry again: say it once a year
   }
   if (got) addRes(t, 'water', got);
   t.res.water = Math.max(0, (t.res.water || 0) - need);
@@ -108,7 +108,7 @@ function updatePower(t) {
   if (plants) {
     if (t.res.coal > 0) { supply += plants * 4; t.coalT = (t.coalT || 0) + 16; if (t.coalT >= 40) { t.coalT -= 40; t.res.coal = Math.max(0, t.res.coal - plants); } t.plantLit = true; }
     else if (t.res.wood >= 2) { supply += plants * 3; t.coalT = (t.coalT || 0) + 16; if (t.coalT >= 40) { t.coalT -= 40; t.res.wood = Math.max(0, t.res.wood - 2 * plants); } t.plantLit = true; } // a boiler will burn timber
-    else if (t.plantLit) { t.plantLit = false; log(`${t.name}'s boiler goes cold. Nothing left to burn.`, 'loss'); }
+    else if (t.plantLit) { t.plantLit = false; if (twDue(t, 'boilerCold', YEAR)) say(t, 'boilerCold', {}, 'loss'); }
   }
   const solar = countType(t, T.SOLAR); if (solar) supply += solar * (wk === 'clear' || wk === 'drought' ? 2 : wk === 'snow' || wk === 'storm' ? 0.5 : 1);
   const hydro = countType(t, T.HYDRO); if (hydro) supply += hydro * 6 * ((world.snowCover || 0) > 0.8 ? 0.5 : wk === 'drought' ? 0.6 : 1); // the river runs low in drought and hard frost
@@ -177,7 +177,7 @@ function surveyFor(town) {
   const q = [i], seen = new Set([i]); let found = 0;
   while (q.length) { const j = q.shift(); if (world.deep[j] !== kind) continue; world.surveyed[j] = 1; dirty.add(j); found++; const x = j % n, y = (j - x) / n; for (const [ox, oy] of OFFS4) { const nx = x + ox, ny = y + oy; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const k = ny * n + nx; if (!seen.has(k) && world.deep[k] === kind) { seen.add(k); q.push(k); } } }
   const geo = person(town, 'geologist') || elect(town, 'geologist', true); deed(geo, kind === 5 ? 'found oil' : `found a deep ${ORE_NAMES[kind]} seam`);
-  log(kind === 5 ? `${town.name}'s geologist ${geo.name} finds oil under the ground nearby` : `${town.name}'s geologist ${geo.name} finds a deep ${ORE_NAMES[kind]} seam`, 'tech');
+  log(kind === 5 ? `${town.name}'s geologist ${geo.name} and the survey crew find oil under the ground nearby` : `${town.name}'s geologist ${geo.name} finds a deep ${ORE_NAMES[kind]} seam`, 'tech');
 }
 // Derricks and shafts pull from the surveyed pocket they stand on, as long as the town has power.
 function updateExtraction(town) {
@@ -213,7 +213,7 @@ function updateLivestock(town) {
   // Fences before beasts: a town with animals, or one big enough to want some, lays out a pasture.
   const pastures = countPlanned(town, T.PASTURE);
   if ((total > 0 && pastureRoom(town) < 2 && pastures < 1 + Math.floor(total / 8)) || (!pastures && town.popLeft >= 30 && Math.random() < 0.2)) {
-    if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) log(`${town.name} fences a pasture`, 'build'); }
+    if (canAfford(town, COST[T.PASTURE]) && buildField(town, T.PASTURE)) { pay(town, COST[T.PASTURE]); if (pastures === 0) twNews(town, 'pasture', true, {}, 'build'); }
   }
 }
 // How far a town will send people for rock and ore: further on big maps, where the rock is further.
@@ -233,11 +233,11 @@ function buildSites(town) {
   }
   if (town.popLeft >= 25 && countPlanned(town, T.QUARRY) < 1 + Math.floor(town.popLeft / 150) + (town.code && town.code.stone ? 1 : 0) && canAfford(town, COST[T.QUARRY])) {
     const i = placeSite(town, T.QUARRY, siteReach(town), (t, j) => t === T.ROCK && !world.oreKind[j]);
-    if (i >= 0) { pay(town, COST[T.QUARRY]); log(`${town.name} opens ${hasType(town, T.QUARRY) ? 'another quarry' : 'a quarry'}`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
+    if (i >= 0) { pay(town, COST[T.QUARRY]); const far = Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8; twNews(town, 'quarry', !hasType(town, T.QUARRY), { n: countPlanned(town, T.QUARRY), far }, 'build', i); if (far) startWorkRoad(town, i); return; }
   }
   if (town.popLeft >= 20 && countPlanned(town, T.FISHERY) < (town.popLeft >= 150 ? 2 : 1) && canAfford(town, COST[T.FISHERY]) && (town.fisherySought || 0) < world.tick) {
     const i = placeSite(town, T.FISHERY, town.R + 10, (t, j) => t === T.WATER);
-    if (i >= 0) { pay(town, COST[T.FISHERY]); log(`${town.name} ${hasType(town, T.FISHERY) ? "builds a second fisher's hut" : "builds a fisher's hut on the shore"}`, 'build'); return; }
+    if (i >= 0) { pay(town, COST[T.FISHERY]); twNews(town, 'fishery', !hasType(town, T.FISHERY), {}, 'build', i); return; }
     town.fisherySought = world.tick + 600; // no shore in reach: look again later
   }
   if ((town.craft || 0) >= 3 && town.popLeft >= 50 && !hasPlanned(town, T.MILL) && canAfford(town, COST[T.MILL])) {
@@ -253,7 +253,7 @@ function buildSites(town) {
       if (kind === 4 && town.mil < 4 && town.civ < 3) continue; // nobody digs for uranium until they know what it is
       if (countPlanned(town, T.MINE) >= 1 + Math.floor(town.popLeft / 80) + (wanted ? 1 : 0)) { if (wanted) continue; break; }
       const i = placeSite(town, T.MINE, siteReach(town) + 6, (t, j) => t === T.ROCK && world.oreKind[j] === kind && world.ore[j] > 0 && !mineServes(j));
-      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; log(kind === 6 ? `GOLD! ${town.name} digs a gold mine` : `${town.name} digs ${kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind]} mine`, 'build'); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
+      if (i >= 0) { pay(town, COST[T.MINE]); town.mineKind[i] = kind; if (kind === 6) log(`GOLD! ${town.name} digs a gold mine`, 'build', i); else say(town, 'mine', { a: kind === 1 ? 'an iron' : 'a ' + ORE_NAMES[kind], ore: ORE_NAMES[kind], far: Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8 }, 'build', i); if (Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R + 8) startWorkRoad(town, i); return; }
     }
   }
   {
@@ -265,13 +265,13 @@ function buildSites(town) {
     }
     if (town.popLeft >= 30 && worried && cisterns < 1 + Math.floor(town.popLeft / 120) && canAfford(town, COST[T.CISTERN]) && Math.random() < 0.5) {
       const i = placeCivic(town, T.CISTERN, false);
-      if (i >= 0) { pay(town, COST[T.CISTERN]); log(cisterns ? `${town.name} builds another cistern` : `${town.name} builds a cistern against the dry months`, 'build'); return; }
+      if (i >= 0) { pay(town, COST[T.CISTERN]); twNews(town, 'cistern', !cisterns, { n: cisterns + 1 }, 'build', i); return; }
     }
   }
   const wells = countPlanned(town, T.WELL), dryWells = town.buildings.filter(i => world.type[i] === T.WELL && town.wells[i] !== undefined && town.wells[i] <= 0).length;
   if (town.popLeft >= 12 && town.res.water < resCap(town, 'water') * 0.35 && wells - dryWells < 1 + Math.floor(town.popLeft / 50) && (canAfford(town, COST[T.WELL]) || canAfford(town, COST.timberWell))) {
     const i = placeCivic(town, T.WELL, true);
-    if (i >= 0) { const timber = !canAfford(town, COST[T.WELL]); pay(town, timber ? COST.timberWell : COST[T.WELL]); town.wells[i] = aquifer(town); log(wells ? `${town.name} digs another well${timber ? ', lined with timber for want of stone' : ''}` : `${town.name} digs a well${timber ? ', lined with timber for want of stone' : ''}`, 'build'); return; }
+    if (i >= 0) { const timber = !canAfford(town, COST[T.WELL]); pay(town, timber ? COST.timberWell : COST[T.WELL]); town.wells[i] = aquifer(town); twNews(town, 'well', !wells, { timber, n: wells + 1 }, 'build', i); return; }
   }
   if (town.civ >= 1 && !hasPlanned(town, T.WHEEL) && canAfford(town, COST[T.WHEEL])) {
     const i = placeSite(town, T.WHEEL, town.R + 6, t => t === T.WATER);

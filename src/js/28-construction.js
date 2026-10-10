@@ -30,7 +30,7 @@ function finishSite(town, i) {
     log(aliveNow < 3 ? `${town.name} opens its fire station and buys an engine` : `${town.name} reopens its fire station`, 'build');
   }
   if (st.type === T.WELL && town.wells[i] === undefined) town.wells[i] = aquifer(town);
-  if (BUILDING_NAMES[st.type] && st.type !== T.TENEMENT && Math.random() < 0.4) log(`${town.name} finishes its ${BUILDING_NAMES[st.type].toLowerCase()}`, 'build');
+  if (BUILDING_NAMES[st.type] && st.type !== T.TENEMENT && st.type !== T.STATION && st.type !== T.GRAVE) twFinished(town, st.type, i); // the first of a kind is news; the rest seldom
   nameWorkshop(town, st.type);
   if (st.mat && town.people && !person(town, 'mason')) { const p = elect(town, 'mason', true); if (p) { p.story = WORKSHOP_STORY.mason; deed(p, `laid the first stone in ${town.name}`); } }
   stat('ev', 'built');

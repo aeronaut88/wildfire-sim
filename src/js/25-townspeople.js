@@ -14,6 +14,7 @@ function updateWorkers(town) {
     return;
   }
   const rubble = townRubble(town);
+  twRebuildCheck(town, rubble.length);
   const want = Math.min(5, 1 + Math.floor(town.popLeft / 40) + (rubble.length ? 1 : 0));
   const barracks = town.buildings.filter(i => world.type[i] === T.BARRACKS);
   const wantDrill = barracks.length && town.militia >= 8 ? Math.min(4, 1 + Math.floor(town.militia / 15)) : 0;
@@ -85,8 +86,8 @@ function rebuildAt(town, i) {
   const cost = shell ? COST.shell : stone ? COST.stoneHouse : COST[T.HOUSE];
   if (!canAfford(town, cost)) {
     // No timber: now and then they rebuild from what the ruins still hold. Slow, but nobody is ever stuck for good.
-    if (Math.random() < 0.12) { if (!town.scavLogged || world.tick - town.scavLogged > 600) { town.scavLogged = world.tick; log(`${town.name} rebuilds with timber scavenged from the ruins`, 'build'); } }
-    else { town.short = 'wood'; if (!town.shortLogged || world.tick - town.shortLogged > 300) { town.shortLogged = world.tick; log(`${town.name} wants to rebuild but has no timber`, 'loss'); } return; }
+    if (Math.random() < 0.12) { if (twDue(town, 'scavenged', YEAR)) say(town, 'scavenged', {}, 'build', i); }
+    else { town.short = 'wood'; if (twDue(town, 'noTimber', YEAR)) say(town, 'noTimber', {}, 'loss', i); return; }
   } else pay(town, cost); // paced by the woodpile
   town.short = null;
   world.type[i] = T.HOUSE;
@@ -97,8 +98,8 @@ function rebuildAt(town, i) {
   town.built++;
   toSite(town, i, T.HOUSE, undefined, stone);
   if (shell) town.sites[i].need = Math.max(4, Math.round(town.sites[i].need * 0.4)); // the walls are standing; it wants a roof
-  if (town.destroyed) { town.destroyed = false; log(`${town.name} rebuilds from the ashes`, 'build'); }
-  else if (Math.random() < 0.1) log(`${town.name} is rebuilding (${town.housesLeft} homes)`, 'build');
+  if (town.destroyed) { town.destroyed = false; town.rebuilding = town.rebuilding || world.tick; log(`${town.name} rebuilds from the ashes`, 'build'); }
+  else twRebuilt(town); // said once when it starts, and once when the last plot is built on
   dirty.add(i);
 }
 

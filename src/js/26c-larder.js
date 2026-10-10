@@ -52,7 +52,7 @@ function updateProcessing(t) {
       t.smoked = (t.smoked || 0) + out; if (src === 'fish') t.smokedFish = (t.smokedFish || 0) + out;
     }
     if (done) { puff(sm, '#6a6a6a', done); first('firstJerky', `The smokehouse at ${t.name} is lit. ${t.res.game >= t.res.fish ? 'Venison' : 'Fish'} hangs in the smoke, and for the first time something will keep till winter.`); }
-    else if ((t.res.wood || 0) < 1 && ((t.res.fish || 0) >= 6 || (t.res.game || 0) >= 6) && (!t.coldLogged || world.tick - t.coldLogged > 800)) { t.coldLogged = world.tick; log(`The smokehouse at ${t.name} stands cold for want of firewood, and the catch is going off`, 'loss'); }
+    else if ((t.res.wood || 0) < 1 && ((t.res.fish || 0) >= 6 || (t.res.game || 0) >= 6) && (!t.coldLogged || world.tick - t.coldLogged > YEAR)) { t.coldLogged = world.tick; say(t, 'smokeCold', {}, 'loss'); }
   }
   // Mill and bakery: grain into bread. Without a mill the bakers grind by hand and manage half as much.
   const bk = workshop(T.BAKERY);
@@ -64,7 +64,7 @@ function updateProcessing(t) {
       t.baked = (t.baked || 0) + out;
     }
     if (done) { puff(bk, '#9a9aa4', 1); first('firstBread', `The ovens at ${t.name} are lit ${daypart()}. The first bread comes out ${mill ? 'light and good' : 'heavy, but it is bread'}.`); }
-    else if ((t.res.grain || 0) < eat * 2 + 2 && (!t.bakersLogged || world.tick - t.bakersLogged > 800) && Math.random() < 0.5) { t.bakersLogged = world.tick; log(`${t.name}'s bakers are out of grain`, 'loss'); }
+    else if ((t.res.grain || 0) < eat * 2 + 2 && (!t.bakersLogged || world.tick - t.bakersLogged > YEAR) && Math.random() < 0.5) { t.bakersLogged = world.tick; say(t, 'bakersOut', {}, 'loss'); }
   }
   // Brewery: barley into beer, if there are barley fields to speak of.
   const br = workshop(T.BREWERY);
@@ -219,7 +219,8 @@ function updateCheer(t) {
     if (best) {
       const k = Math.max(2, Math.round(t.popLeft * 0.02));
       t.popLeft -= k; best.popLeft += k; best.popTotal += k; stat('ev', 'leftForCheer', k);
-      log(pick([`${k} leave ${t.name} for ${best.name}, where the inn is open and nobody is hungry`, `A handful of families walk out of ${t.name} ${daypart()}. They are bound for ${best.name}, which is said to be a better place`, `${t.name} loses ${k} people to ${best.name}. There is nothing to keep them.`]), 'loss');
+      t.leftAcc = (t.leftAcc || 0) + k; // said once a season, with everyone who went since
+      if (twDue(t, 'emigrate', YEAR / 4)) { say(t, 'emigrate', { k: t.leftAcc, other: best.name }, 'loss'); t.leftAcc = 0; }
     }
   }
 }
