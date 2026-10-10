@@ -11,11 +11,11 @@ function updatePacks() {
   if (packs.length < maxPacks && Math.random() < (cold ? 0.004 : 0.0008) * (season() === 2 && world.tick % YEAR < YEAR * 0.5 + 300 ? 3 : 1)) { // the packs follow the herds down
     const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
     if (edge === 0) y = 0; else if (edge === 1) y = n - 1; else if (edge === 2) x = 0; else x = n - 1;
-    if (herdCell(y * n + x)) { packs.push({ kind: 'wolves', x, y, px: x, py: y, face: 1, size: 3 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, hunger: 0, next: world.tick + 100 }); stat('ev', 'packs'); if (Math.random() < 0.6) log(`Wolves come down ${cold ? 'with the snow' : 'out of the far timber'}: a pack of ${packs[packs.length - 1].size} on the ${edge === 0 ? 'north' : edge === 1 ? 'south' : edge === 2 ? 'west' : 'east'} edge`, 'weather'); }
+    if (herdCell(y * n + x)) { packs.push({ kind: 'wolves', x, y, px: x, py: y, face: 1, size: 3 + Math.floor(Math.random() * 4), wx: -1, wy: -1, rest: 0, t0: world.tick, hunger: 0, next: world.tick + 100 }); stat('ev', 'packs'); if (Math.random() < 0.6) say(null, 'wolvesCome', { cold, n: packs[packs.length - 1].size, edge: edge === 0 ? 'north' : edge === 1 ? 'south' : edge === 2 ? 'west' : 'east' }, 'weather'); }
   }
   if (!packs.some(p => p.kind === 'bear') && Math.random() < 0.0006) {
     let i = -1; for (let tries = 0; tries < 100 && i < 0; tries++) { const c = Math.floor(Math.random() * N); if (isTree(world.type[c]) && world.townOf[c] < 0 && !world.towns.some(t => Math.hypot(t.cx - c % n, t.cy - Math.floor(c / n)) < t.R + 10)) i = c; }
-    if (i >= 0) { packs.push({ kind: 'bear', x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: 1, wx: -1, wy: -1, rest: 0, t0: world.tick, hunger: 0, next: world.tick }); stat('ev', 'bears'); log('Hunters report a bear in the deep timber. Nobody goes that way for a while.', 'weather'); }
+    if (i >= 0) { packs.push({ kind: 'bear', x: i % n, y: Math.floor(i / n), px: i % n, py: Math.floor(i / n), face: 1, size: 1, wx: -1, wy: -1, rest: 0, t0: world.tick, hunger: 0, next: world.tick }); stat('ev', 'bears'); say(null, 'bearSeen', {}, 'weather'); }
   }
   for (const p of packs) {
     if (p.size <= 0) continue;
@@ -40,13 +40,13 @@ function updatePacks() {
             const lone = (town.workers || []).find(w => (w.job === 'forage' || w.job === 'hunt' || w.job === 'log' || w.job === 'fugitive') && Math.hypot(w.x - p.x, w.y - p.y) <= 1.5);
             if (lone && Math.random() < (p.kind === 'bear' ? 0.5 : 0.25)) {
               town.workers = (town.workers || []).filter(w => w !== lone); applyLosses(town, 1, p.kind === 'bear' ? 'bear' : 'wolves'); p.hunger = 0; p.next = world.tick + 300; stat('ev', p.kind === 'bear' ? 'bearKills' : 'wolfKills');
-              log(`${p.kind === 'bear' ? 'The bear' : 'Wolves'} take${p.kind === 'bear' ? 's' : ''} ${lone.job === 'forage' ? 'a forager' : lone.job === 'hunt' ? 'a hunter' : lone.job === 'log' ? 'a logger' : 'someone'} from ${town.name} in the woods ${daypart()}`, 'loss');
+              say(town, p.kind === 'bear' ? 'bearTakes' : 'wolvesTake', { job: lone.job === 'forage' ? 'a forager' : lone.job === 'hunt' ? 'a hunter' : lone.job === 'log' ? 'a logger' : 'someone' }, 'loss');
             } else if (p.kind === 'wolves' && cold && Math.hypot(town.cx - p.x, town.cy - p.y) <= town.R + 3) {
               const k = ['sheep', 'chickens', 'pigs'].find(k => (town.livestock || {})[k] > 0);
-              if (k) { const took = Math.min(town.livestock[k], 1 + Math.floor(Math.random() * 2)); town.livestock[k] -= took; p.hunger = 0; p.next = world.tick + 200; stat('ev', 'wolfKills', took); log(`Wolves take ${took} ${k} from ${town.name}'s pasture in the night`, 'loss'); }
+              if (k) { const took = Math.min(town.livestock[k], 1 + Math.floor(Math.random() * 2)); town.livestock[k] -= took; p.hunger = 0; p.next = world.tick + 200; stat('ev', 'wolfKills', took); say(town, 'wolvesPasture', { n: took, kind: took === 1 ? { cattle: 'cow', pigs: 'pig', chickens: 'chicken' }[k] || k : k }, 'loss'); }
               else { p.next = world.tick + 100; }
               // The town answers: hunters and militia go out, and the pack pays.
-              if (town.militia >= 4 || (town.workers || []).some(w => w.job === 'hunt')) { const dead = Math.min(p.size, 1 + Math.floor(Math.random() * 2)); p.size -= dead; stat('ev', 'wolvesKilled', dead); p.wx = Math.max(0, Math.min(n - 1, p.x + (p.x - town.cx > 0 ? 10 : -10))); p.wy = p.y; log(`${town.name}'s ${(town.workers || []).some(w => w.job === 'hunt') ? 'hunters' : 'militia'} go out after the wolves and kill ${dead}. The rest run for the trees.`, 'win'); if (p.size <= 0) continue; }
+              if (town.militia >= 4 || (town.workers || []).some(w => w.job === 'hunt')) { const dead = Math.min(p.size, 1 + Math.floor(Math.random() * 2)); p.size -= dead; stat('ev', 'wolvesKilled', dead); p.wx = Math.max(0, Math.min(n - 1, p.x + (p.x - town.cx > 0 ? 10 : -10))); p.wy = p.y; say(town, 'wolvesHunted', { who: (town.workers || []).some(w => w.job === 'hunt') ? 'hunters' : 'militia', n: dead }, 'win'); if (p.size <= 0) continue; }
               target = -1;
             } else if (p.kind === 'wolves' && cold) target = town.cy * n + town.cx;
           }
@@ -56,13 +56,13 @@ function updatePacks() {
       else if (p.wx < 0 || (p.wx === p.x && p.wy === p.y)) {
         if (p.rest > 0) { p.rest--; keep.push(p); continue; }
         const nearEdge = Math.min(p.x, p.y, n - 1 - p.x, n - 1 - p.y) <= 6;
-        if (nearEdge && !cold && Math.random() < 0.1) { if (Math.random() < 0.5) log(`${p.kind === 'bear' ? 'The bear' : 'The wolves'} move on over the ${p.x <= 6 ? 'west' : n - 1 - p.x <= 6 ? 'east' : p.y <= 6 ? 'north' : 'south'} edge`, 'weather'); continue; }
+        if (nearEdge && !cold && Math.random() < 0.1) { if (Math.random() < 0.5) say(null, p.kind === 'bear' ? 'bearLeaves' : 'wolvesLeave', { edge: p.x <= 6 ? 'west' : n - 1 - p.x <= 6 ? 'east' : p.y <= 6 ? 'north' : 'south' }, 'weather'); continue; }
         for (let k = 0; k < 10; k++) { const x = p.x + Math.floor(Math.random() * 17) - 8, y = p.y + Math.floor(Math.random() * 17) - 8; if (x < 0 || y < 0 || x >= n || y >= n || !herdCell(y * n + x) || !clearLine(p.x, p.y, x, y)) continue; p.wx = x; p.wy = y; break; }
         p.rest = p.kind === 'bear' ? 10 + Math.floor(Math.random() * 20) : 3 + Math.floor(Math.random() * 8);
       }
     }
     // Hunters with a bow and a reason bring a bear down.
-    if (p.kind === 'bear') { const t = world.towns.find(t => isAlive(t) && Math.hypot(t.cx - p.x, t.cy - p.y) <= t.R + 12 && (t.workers || []).some(w => w.job === 'hunt' && Math.hypot(w.x - p.x, w.y - p.y) <= 3)); if (t && Math.random() < 0.3) { addRes(t, 'game', 6); const h = person(t, 'hunter'); if (h) deed(h, 'brought down the bear in the deep timber'); stat('ev', 'bearsKilled'); log(`${t.name}'s hunters bring down the bear${h ? `; ${h.name} took the shot` : ''}. There is meat for a month.`, 'win'); continue; } }
+    if (p.kind === 'bear') { const t = world.towns.find(t => isAlive(t) && Math.hypot(t.cx - p.x, t.cy - p.y) <= t.R + 12 && (t.workers || []).some(w => w.job === 'hunt' && Math.hypot(w.x - p.x, w.y - p.y) <= 3)); if (t && Math.random() < 0.3) { addRes(t, 'game', 6); const h = person(t, 'hunter'); if (h) deed(h, 'brought down the bear in the deep timber'); stat('ev', 'bearsKilled'); say(t, 'bearKilled', { who: h ? h.name : null }, 'win'); continue; } }
     if (p.wx >= 0) {
       const steps = scared ? 2 : 1;
       for (let st = 0; st < steps; st++) { const dx = Math.sign(p.wx - p.x), dy = Math.sign(p.wy - p.y); if (!dx && !dy) break; let moved = false; for (const [mx, my] of [[dx, dy], [dx, 0], [0, dy], [-dx, dy], [dx, -dy]]) { const nx = p.x + mx, ny = p.y + my; if (nx < 0 || ny < 0 || nx >= n || ny >= n) continue; const j = ny * n + nx; if (!passable(world.type[j]) || isBuilding(world.type[j]) || world.burnLeft[j] > 0) continue; p.x = nx; p.y = ny; moved = true; if (mx) p.face = mx; break; } if (!moved) { p.wx = -1; break; } }

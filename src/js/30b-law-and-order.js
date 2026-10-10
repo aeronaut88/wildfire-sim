@@ -58,9 +58,9 @@ function openCase(town, kind, who, cell, extra) {
   if (wrong) {
     town.wrongs = town.wrongs.filter(w => w !== wrong); const con = person(town, 'constable'); const inn = findPerson(town, wrong.name);
     const fate = inn && !inn.alive ? (inn.cause === 'hanged' ? 'hanged' : 'cast out') : 'punished';
-    log(`The ${kind === 'arson' ? 'fires' : 'thefts'} did not stop with ${wrong.name}. ${town.name} ${fate} the wrong person. ${moodWord(town)[0].toUpperCase() + moodWord(town).slice(1)}.`, 'loss');
+    say(town, 'wrongPerson', { what: kind === 'arson' ? 'fires' : 'thefts', wrong: wrong.name, fate }, 'loss');
     town.unrest = Math.min(100, (town.unrest || 0) + 12); stat('ev', 'wrongsFound');
-    if (con) { deed(con, `${fate} the wrong person for ${CRIME_LABEL[kind]}`); if (town.align.moral > 0 && Math.random() < 0.5) { con.role = 'townsfolk'; const nc = elect(town, 'constable', true); log(`${con.name} hands in the constable's badge at ${town.name}. ${nc.name} takes it up.`, 'build'); } }
+    if (con) { deed(con, `${fate} the wrong person for ${CRIME_LABEL[kind]}`); if (town.align.moral > 0 && Math.random() < 0.5) { con.role = 'townsfolk'; const nc = elect(town, 'constable', true); say(town, 'badge', { old: con.name, nu: nc.name }, 'build'); } }
     if (inn && inn.alive) { inn.role = 'townsfolk'; inn.innocent = false; deed(inn, `was cleared of ${CRIME_LABEL[kind]} too late`); }
     c.witnessed = true; // this time everyone is watching
   }
@@ -69,8 +69,8 @@ function openCase(town, kind, who, cell, extra) {
   town.case = c;
   town.crimes = (town.crimes || 0) + 1; stat('ev', 'crimes'); stat('crime', CRIME_LABEL[kind]);
   const con = constableOf(town);
-  if (con) { c.hunt = true; log(`Constable ${con.name} of ${town.name} ${c.witnessed ? `goes looking for ${who.name}; people saw them` : 'starts asking questions'}`, 'arson'); }
-  else log(`Nobody in ${town.name} is going after whoever did it`, 'arson');
+  if (con) { c.hunt = true; if (c.witnessed) say(town, 'caseSeen', { con: con.name, who: who.name, kin: kinOf(town, who).some(q => q.alive) }, 'arson'); else say(town, 'caseQuiet', { con: con.name, kind, crime: CRIME_LABEL[kind] }, 'arson'); }
+  else say(town, 'caseNobody', {}, 'arson');
 }
 // Crimes that breed from the town's condition. Called every sixteen ticks a town.
 function updateLaw(town) {
@@ -81,7 +81,7 @@ function updateLaw(town) {
   const hungry = town.famine || town.fed === false, food = (town.res.grain || 0) + (town.res.fish || 0) + (town.res.game || 0);
   const r = Math.random();
   const enemies = world.towns.filter(o => o !== town && isAlive(o) && atWar(town, o));
-  if (town.spy && !enemies.some(o => o.id === town.spy.from)) { const sp = findPerson(town, town.spy.who); if (sp) { town.people = town.people.filter(p => p !== sp); } log(`With the war over, a stranger slips out of ${town.name} by night. Nobody had asked what they were doing there.`, 'arson'); town.spy = null; }
+  if (town.spy && !enemies.some(o => o.id === town.spy.from)) { const sp = findPerson(town, town.spy.who); if (sp) { town.people = town.people.filter(p => p !== sp); } say(town, 'spyLeaves', {}, 'arson'); town.spy = null; }
   if (town.spy) {
     // A spy at work: the enemy learns what the town learns, and the constable may notice a stranger asking too many questions.
     const e = world.towns[town.spy.from];
@@ -89,7 +89,7 @@ function updateLaw(town) {
     if (!town.mobilized && !town.workers.some(w => w.job === 'spy')) { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: town.spy.who, runAt: world.tick + 200 }); }
     const spw = town.workers.find(w => w.job === 'spy');
     let notice = 0.012 * (town.align.order > 0 ? 1.5 : 1) * (hasType(town, T.TOWER) ? 1.3 : 1) * ((town.unrest || 0) >= 50 ? 0.6 : 1) * (person(town, 'constable') ? 1 : 0.3) * (spw && spw.run ? 3 : 1);
-    if (Math.random() < notice) { const sp = findPerson(town, town.spy.who); if (sp) { log(`A stranger in ${town.name} has been asking about the walls and the granary. ${sp.name}, they call themselves.`, 'arson'); openCase(town, 'spying', sp, town.cy * world.n + town.cx, { witnessed: true }); return; } }
+    if (Math.random() < notice) { const sp = findPerson(town, town.spy.who); if (sp) { say(town, 'spyNoticed', { who: sp.name }, 'arson'); openCase(town, 'spying', sp, town.cy * world.n + town.cx, { witnessed: true }); return; } }
   }
   if (enemies.length) {
     const o = enemies[Math.floor(Math.random() * enemies.length)];
@@ -100,7 +100,7 @@ function updateLaw(town) {
       town.militia -= n; stat('ev', 'desertions');
       const who = makePersonIn(town, 'captain', 22 + Math.random() * 25); who.story = `led a company of ${town.name}'s militia and did not like the way the war was going`; town.people.push(who);
       world.warbands.push({ from: town.id, to: o.id, x: town.cx, y: town.cy, px: town.cx, py: town.cy, face: 1, path, pi: 0, size: n, wait: 0, armour: 0, guns: 0, defect: true, captain: who.name });
-      log(`${who.name} walks out of ${town.name} in the night with ${n} soldiers, bound for ${o.name}'s lines`, 'war');
+      say(town, 'desertion', { who: who.name, n, other: o.name }, 'war');
       openCase(town, 'treason', who, hideout(town), { witnessed: true, loot: n, flee: o.id, band: true });
       return;
     }
@@ -108,14 +108,14 @@ function updateLaw(town) {
       const sp = makePerson(Math.random, 'spy', 20 + Math.random() * 30); // a stranger: no family here sp.story = 'arrived over the hills with a trade in pots and pans and a good memory'; sp.revealed = false;
       town.people.push(sp); town.spy = { from: o.id, who: sp.name, since: world.tick }; o.spyPlanted = world.tick; stat('ev', 'spies');
       { const h = hideout(town); if (h >= 0) town.workers.push({ x: h % world.n, y: Math.floor(h / world.n), px: h % world.n, py: Math.floor(h / world.n), target: -1, linger: 0, face: 1, job: 'spy', law: true, name: sp.name, runAt: world.tick + 200 + Math.floor(Math.random() * 300) }); }
-      log(`${o.name} sends someone to live quietly in ${town.name}`, 'war'); // the player sees this; the town does not
+      say(o, 'spyPlanted', { other: town.name }, 'war'); // the player sees this; the town does not
       return;
     }
   }
   if (has(town, 'tyrant') && town.popLeft >= 30 && r < 0.004 && person(town, 'constable')) {
     const g = grudgeHolders(town).find(q => q.role === 'townsfolk'); const who = g || innocentOf(town);
     const l = leader(town);
-    log(`${l ? l.name : 'The elder'} of ${town.name} has ${who.name} seized ${daypart()} for ${g ? 'carrying a grudge' : 'a word said at the well'}`, 'arson');
+    say(town, 'seized', { ln: l ? l.name : 'the elder', who: who.name, why: g ? 'carrying a grudge' : 'a word said at the well' }, 'arson');
     town.unrest = Math.min(100, (town.unrest || 0) + 5); stat('ev', 'seizures');
     openCase(town, 'sedition', who, town.cy * world.n + town.cx, { witnessed: true, political: true });
     return;
@@ -124,17 +124,17 @@ function updateLaw(town) {
     const take = Math.min(food, 2 + Math.floor(Math.random() * 5)); let left = take;
     for (const k of THEFT_ORDER) { const a = Math.min(town.res[k] || 0, left); town.res[k] -= a; left -= a; if (!left) break; }
     const who = thiefOf(town, 'took to the granary at night when the children were hungry');
-    log(`Someone has been at the granary in ${town.name}: ${take} food gone in the night`, 'arson');
+    say(town, 'theftGranary', { n: take }, 'arson');
     openCase(town, 'theft', who, town.cy * world.n + town.cx, { loot: take, hungry: true });
   } else if (!hungry && (town.unrest || 0) >= 60 && food >= 20 && r < 0.012) {
     const take = 3 + Math.floor(Math.random() * 6); town.res.grain = Math.max(0, (town.res.grain || 0) - take);
     const who = thiefOf(town, 'thinks the stores belong to whoever can carry them');
-    log(`${take} grain missing from the granary in ${town.name}`, 'arson');
+    say(town, 'theftGrain', { n: take }, 'arson');
     openCase(town, 'theft', who, town.cy * world.n + town.cx, { loot: take });
   } else if (town.res.coin >= 120 && ((town.unrest || 0) >= 45 || has(town, 'miser') || has(town, 'tyrant')) && r < 0.012) {
     const take = Math.floor(town.res.coin * (0.1 + Math.random() * 0.2)); town.res.coin -= take;
     const who = thiefOf(town, 'kept the ledgers at the hall and kept a little of what they counted');
-    log(`The chest at ${town.name} is light: ${take} coin missing from the coin room`, 'arson');
+    say(town, 'theftChest', { n: take }, 'arson');
     openCase(town, 'embezzle', who, town.cy * world.n + town.cx, { loot: take });
   }
 }
@@ -156,7 +156,7 @@ function updateCase(town) {
   const age = world.tick - c.started;
   if (!c.hunt) {
     const con = constableOf(town);
-    if (con) { c.hunt = true; log(`Constable ${con.name} takes up the case of ${CRIME_LABEL[c.kind]} in ${town.name}`, 'arson'); }
+    if (con) { c.hunt = true; say(town, 'caseTakeUp', { con: con.name, crime: CRIME_LABEL[c.kind] }, 'arson'); }
     else if (age > 300) { town.case = null; town.lawCooldown = world.tick + 400; return; }
     else return;
   }
@@ -183,13 +183,13 @@ function updateCase(town) {
     if (Math.random() < p) {
       world.warbands = world.warbands.filter(b => b !== band); town.militia += band.size;
       const n = world.n; town.workers.push({ x: band.x, y: band.y, px: band.x, py: band.y, target: -1, linger: 0, face: 1, job: 'fugitive', law: true });
-      log(`${town.name}'s constable rides down the deserters on the road; ${band.size} soldiers come back shamefaced`, 'win');
+      say(town, 'ridesDown', { n: band.size }, 'win');
       capture(town, c, who);
     }
     return;
   } else if (c.fled === undefined && age > 400 && Math.random() < 0.03) {
     const o = world.towns.filter(t => t !== town && isAlive(t) && Math.hypot(t.cx - town.cx, t.cy - town.cy) < 70).sort((a, b) => Math.hypot(a.cx - town.cx, a.cy - town.cy) - Math.hypot(b.cx - town.cx, b.cy - town.cy))[0];
-    if (o) { c.fled = o.id; c.fledAt = world.tick; town.workers = town.workers.filter(w => w.job !== 'fugitive'); log(`${who.name} slips out of ${town.name} on the road to ${o.name}`, 'arson'); return; }
+    if (o) { c.fled = o.id; c.fledAt = world.tick; town.workers = town.workers.filter(w => w.job !== 'fugitive'); say(town, 'slipsOut', { who: who.name, other: o.name }, 'arson'); return; }
   }
   if (c.fled !== undefined) {
     const o = world.towns[c.fled];
@@ -197,13 +197,13 @@ function updateCase(town) {
     if (world.tick - c.fledAt < 100) return;
     if (o.align.order > 0 || rel(town, o) >= 20) {
       const b = town.bounty && town.bounty.name === who.name ? town.bounty : null;
-      if (b) { const paid = Math.min(town.res.coin, b.coin); town.res.coin -= paid; o.res.coin += paid; town.bounty = null; log(`${o.name} sends ${who.name} back to ${town.name} in chains and claims the bounty, ${paid} coin`, 'win'); }
-      else log(`${o.name} sends ${who.name} back to ${town.name} in chains`, 'win');
+      if (b) { const paid = Math.min(town.res.coin, b.coin); town.res.coin -= paid; o.res.coin += paid; town.bounty = null; say(town, 'sentBack', { other: o.name, who: who.name, paid }, 'win'); }
+      else say(town, 'sentBack', { other: o.name, who: who.name, paid: 0 }, 'win');
       stat('ev', 'extraditions'); capture(town, c, who);
     }
     else {
       setRel(town, o, rel(town, o) - 10); stat('ev', 'extraditionsRefused');
-      log(`${o.name} will not give up ${who.name}. ${town.name} takes it badly.`, 'diplo');
+      say(town, 'refused', { other: o.name, who: who.name }, 'diplo');
       town.people = town.people.filter(p => p !== who); who.role = c.kind === 'arson' ? 'firebug' : 'townsfolk'; who.revealed = false; who.story = `came to ${o.name} one step ahead of ${town.name}'s constable`;
       o.people.push(who); if (o.people.length > 14) o.people = o.people.filter(q => q.alive).slice(-10).concat(o.people.filter(q => !q.alive).slice(-4));
       town.workers = town.workers.filter(w => !w.law); town.case = null; town.lawCooldown = world.tick + 200;
@@ -214,7 +214,7 @@ function updateCase(town) {
   if (age > 2000) {
     town.case = null; town.lawCooldown = world.tick + 300; who.revealed = c.witnessed; who.escaped = (who.escaped || 0) + 1;
     town.workers = town.workers.filter(w => !w.law);
-    log(`The trail goes cold in ${town.name}. ${c.witnessed ? `${who.name} is still about, and everyone knows it` : 'Whoever it was is still about'}.`, 'arson');
+    say(town, 'trailCold', { who: who.name, seen: c.witnessed }, 'arson');
     if (c.kind === 'arson' && Math.random() < 0.3) { town.people = town.people.filter(p => p !== who); roam(town, who, 'slips away into the hills'); }
     else if ((c.kind === 'theft' || c.kind === 'escape' || c.kind === 'smuggling') && (who.escaped || 0) >= 2) { town.people = town.people.filter(p => p !== who); gangUp(town, who); }
   }
@@ -225,7 +225,7 @@ function gangUp(town, who) {
   world.firebugs = world.firebugs || [];
   world.firebugs.push({ kind: 'gang', name: who.name, from: town.id, x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), face: 1, target: -1, next: world.tick + 200, town: -1, stuck: 0, size: 3, robbed: 0, camp: -1 });
   stat('ev', 'gangs');
-  log(`${who.name} takes to the woods above ${town.name} with ${2} hard cases. The roads out of ${town.name} are not safe.`, 'arson');
+  say(town, 'gangUp', { who: who.name }, 'arson');
 }
 function updateGang(b, keep) {
   const n = world.n, home = world.towns[b.from];
@@ -235,12 +235,12 @@ function updateGang(b, keep) {
   if (tr && Math.hypot(tr.x - b.x, tr.y - b.y) <= 6 && world.tick >= b.next) {
     const took = []; for (const k in tr.stock) { const amt = Math.ceil(tr.stock[k] * 0.3); if (amt > 0) { tr.stock[k] -= amt; took.push(`${amt} ${k}`); } } const coin = Math.floor(tr.coin * 0.4); tr.coin -= coin;
     b.robbed++; b.next = world.tick + 300; b.loot = (b.loot || 0) + coin; stat('ev', 'robberies');
-    log(`${b.name}'s gang stops the caravan on the road${home ? ' below ' + home.name : ''} and takes ${took.length ? took.join(', ') + ' and ' : ''}${coin} coin`, 'arson');
+    say(home && isAlive(home) ? home : null, 'gangCaravan', { gang: b.name, home: home ? home.name : null, took: took.length ? took.join(', ') + ' and ' : '', coin }, 'arson');
     world.traderWary = Math.max(world.traderWary || 0, world.tick + 600);
   } else if (world.tick >= b.next) {
     const g = (world.wagons || []).find(w => Math.hypot(w.x - b.x, w.y - b.y) <= 6);
-    if (g) { world.wagons = world.wagons.filter(w => w !== g); b.robbed++; b.next = world.tick + 300; stat('ev', 'robberies'); const a = world.towns[g.from]; log(`${b.name}'s gang takes the wagons from ${a ? a.name : 'the road'} and burns what they cannot carry`, 'arson'); }
-    else if (home && isAlive(home) && Math.random() < 0.3) { let best = null; for (const k of RES_KINDS) if (k !== 'coin' && k !== 'water' && (!best || home.res[k] > home.res[best])) best = k; if (best && home.res[best] >= 6) { home.res[best] -= 4; b.robbed++; b.next = world.tick + 300; stat('ev', 'robberies'); log(`${b.name}'s gang comes down on ${home.name}'s edge ${daypart()} and makes off with 4 ${best}`, 'arson'); } else b.next = world.tick + 100; }
+    if (g) { world.wagons = world.wagons.filter(w => w !== g); b.robbed++; b.next = world.tick + 300; stat('ev', 'robberies'); const a = world.towns[g.from]; say(null, 'gangWagons', { gang: b.name, from: a ? a.name : 'the road' }, 'arson'); }
+    else if (home && isAlive(home) && Math.random() < 0.3) { let best = null; for (const k of RES_KINDS) if (k !== 'coin' && k !== 'water' && (!best || home.res[k] > home.res[best])) best = k; if (best && home.res[best] >= 6) { home.res[best] -= 4; b.robbed++; b.next = world.tick + 300; stat('ev', 'robberies'); say(home, 'gangEdge', { gang: b.name, k: best }, 'arson'); } else b.next = world.tick + 100; }
     else b.next = world.tick + 60;
   }
   // Keep near the camp, or shadow the road when a caravan is about.
@@ -249,7 +249,7 @@ function updateGang(b, keep) {
   // A posse rides when the gang has robbed enough and the town can spare the militia.
   if (home && isAlive(home) && b.robbed >= 2 && home.militia >= 6 && !world.warbands.some(q => q.posse === b.name) && Math.random() < 0.02) {
     const size = Math.min(home.militia, 4 + Math.floor(Math.random() * 5)); const path = findPath(home.cx, home.cy, b.x, b.y);
-    if (path) { home.militia -= size; world.warbands.push({ from: home.id, to: home.id, x: home.cx, y: home.cy, px: home.cx, py: home.cy, face: 1, path, pi: 0, size, wait: 0, armour: 0, guns: 0, posse: b.name }); stat('ev', 'posses'); log(`A posse of ${size} rides out of ${home.name} after ${b.name}'s gang`, 'war'); }
+    if (path) { home.militia -= size; world.warbands.push({ from: home.id, to: home.id, x: home.cx, y: home.cy, px: home.cx, py: home.cy, face: 1, path, pi: 0, size, wait: 0, armour: 0, guns: 0, posse: b.name }); stat('ev', 'posses'); say(home, 'posseRides', { n: size, gang: b.name }, 'war'); }
   }
   keep.push(b);
 }
@@ -260,11 +260,11 @@ function posseArrives(band, gang) {
   if (win) {
     const dead = Math.min(band.size, Math.floor(Math.random() * 2)); applyLosses(home, dead, 'battle'); home.militia += band.size - dead;
     world.firebugs = world.firebugs.filter(g => g !== gang);
-    if (Math.random() < 0.5) { log(`${home.name}'s posse corners ${gang.name}'s gang in the trees. ${gang.name} is shot running${dead ? `; ${dead} of the posse will not ride again` : ''}. ${gang.loot ? `${gang.loot} coin comes home in a sack.` : ''}`, 'war'); if (gang.loot) home.res.coin += gang.loot; stat('ev', 'gangsBroken'); }
-    else { const p = makePersonIn(home, 'thief', 25 + Math.random() * 25); p.name = gang.name; p.revealed = true; p.escaped = 0; p.story = `ran a gang in the woods until the posse came`; home.people.push(p); if (gang.loot) home.res.coin += gang.loot; log(`${home.name}'s posse takes ${gang.name} alive in the trees and brings them in${dead ? `, ${dead} of the posse dead` : ''}`, 'war'); stat('ev', 'gangsBroken'); if (!home.case) openCase(home, 'banditry', p, home.cy * world.n + home.cx, { witnessed: true, hunt: true }); if (home.case && home.case.who === p.name) { home.case.hunt = true; capture(home, home.case, p); } }
+    if (Math.random() < 0.5) { say(home, 'posseShot', { gang: gang.name, dead, loot: gang.loot || 0 }, 'war'); if (gang.loot) home.res.coin += gang.loot; stat('ev', 'gangsBroken'); }
+    else { const p = makePersonIn(home, 'thief', 25 + Math.random() * 25); p.name = gang.name; p.revealed = true; p.escaped = 0; p.story = `ran a gang in the woods until the posse came`; home.people.push(p); if (gang.loot) home.res.coin += gang.loot; say(home, 'posseTakes', { gang: gang.name, dead }, 'war'); stat('ev', 'gangsBroken'); if (!home.case) openCase(home, 'banditry', p, home.cy * world.n + home.cx, { witnessed: true, hunt: true }); if (home.case && home.case.who === p.name) { home.case.hunt = true; capture(home, home.case, p); } }
   } else {
     const dead = Math.min(band.size, 1 + Math.floor(Math.random() * 2)); applyLosses(home, dead, 'battle'); home.militia += band.size - dead; gang.camp = -1; gang.next = world.tick + 400;
-    log(`${gang.name}'s gang ambushes ${home.name}'s posse in the trees: ${dead} dead, the rest come home, and the gang moves camp`, 'war');
+    say(home, 'posseAmbushed', { gang: gang.name, dead }, 'war');
   }
 }
 // A new elder's first act, in a good town, is to open the gaol.
@@ -273,12 +273,12 @@ function amnesty(town, why) {
   if (!held.length) return;
   for (const p of held) { p.role = 'townsfolk'; p.revealed = true; p.labour = false; town.workers = town.workers.filter(w => w.convict !== p.name); }
   town.unrest = Math.max(0, (town.unrest || 0) - 4); stat('ev', 'amnesties');
-  log(`${why}: ${held.map(p => p.name).join(', ')} walk${held.length === 1 ? 's' : ''} out of the ${hasType(town, T.GAOL) ? 'gaol' : 'cellar'} at ${town.name}`, 'good');
+  say(town, 'amnesty', { why, names: listWords(held.map(p => p.name)), n: held.length, place: hasType(town, T.GAOL) ? 'gaol' : 'cellar' }, 'good');
 }
 function defect(town, who, o, c) {
   town.workers = town.workers.filter(w => !w.law); town.case = null; town.lawCooldown = world.tick + 200;
   town.people = town.people.filter(p => p !== who);
-  if (o && isAlive(o)) { who.role = 'townsfolk'; who.revealed = true; who.story = `came over from ${town.name} in the war with ${c.loot} soldiers at their back`; o.people.push(who); log(`${who.name} reaches ${o.name}'s lines. ${town.name} will not forget it.`, 'war'); }
+  if (o && isAlive(o)) { who.role = 'townsfolk'; who.revealed = true; who.story = `came over from ${town.name} in the war with ${c.loot} soldiers at their back`; o.people.push(who); say(town, 'reachesLines', { who: who.name, other: o.name }, 'war'); }
   deed(who, `deserted ${town.name} for ${o ? o.name : 'the enemy'}`);
 }
 // Exiles: cast out, they walk the woods, and in time knock at another town's gate. Winter is hard on them.
@@ -289,6 +289,8 @@ function exile(town, who, how) {
   stat('ev', 'exiles');
   log(`${who.name} ${how}`, 'arson');
 }
+// How a banishment is said: every way keeps "is cast out of", which the camera follows.
+function banishHow(town, who, kind) { const k = kinOf(town, who).find(q => q.alive); return phraseText('banishHow', { name: town.name, crime: kind, first: who.name.split(' ')[0], kin: k ? k.name : null }); }
 // Graveyards grow with the dead; notables get a funeral; a dragon gets a statue.
 function updateGraves(town) {
   if (town.popLeft < 20 || (town.deaths || 0) < 10) return;
@@ -297,7 +299,7 @@ function updateGraves(town) {
   const n = world.n;
   let spot = -1;
   if (have) { for (const g of town.buildings) { if (world.type[g] !== T.GRAVE) continue; for (const [ox, oy] of OFFS8) { const x = g % n + ox, y = Math.floor(g / n) + oy; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue; const i = y * n + x; const t = world.type[i]; if ((t === T.GRASS || t === T.SCRUB || t === T.ASH) && !world.road[i] && world.burnLeft[i] <= 0) { spot = i; break; } } if (spot >= 0) break; } }
-  if (spot < 0) { spot = placeCivic(town, T.GRAVE, false); if (spot >= 0) { finishSite(town, spot); log(`${town.name} lays out a graveyard on the edge of town`, 'build'); return; } }
+  if (spot < 0) { spot = placeCivic(town, T.GRAVE, false); if (spot >= 0) { finishSite(town, spot); say(town, 'graveyard', {}, 'build'); return; } }
   if (spot < 0) return;
   world.type[spot] = T.GRAVE; world.townOf[spot] = town.id; if (!town.buildings.includes(spot)) town.buildings.push(spot); world.buildingsTotal++; world.buildingsLeft++; dirty.add(spot); forgetCounts(town);
 }
@@ -305,7 +307,7 @@ function funeral(town, p, hanged) {
   const g = town.buildings.find(i => world.type[i] === T.GRAVE);
   if (g === undefined || town.mobilized) return;
   spawnCrowd(town, g, 25, hanged ? 2 : 3 + Math.floor(Math.random() * 3));
-  if (!hanged && Math.random() < 0.5) log(`${town.name} buries ${p.name} ${['under a grey sky', 'in the rain', 'on a bright morning', 'as the snow comes down', 'at dusk'][Math.floor(Math.random() * 5)]}. ${p.story[0].toUpperCase() + p.story.slice(1)}.`, 'loss');
+  if (!hanged && Math.random() < 0.5) { const k = kinOf(town, p).find(q => q.alive); say(town, 'funeral', { who: p.name, story: p.story, kinName: k ? k.name : null }, 'loss'); }
 }
 function raiseMonument(town, text) {
   if (hasType(town, T.MONUMENT)) return;
@@ -324,9 +326,9 @@ function updateFestival(town) {
   if (town.align.moral > 0 && Math.random() < 0.3) amnesty(town, `Festival mercy at ${town.name}`);
   const [px, py] = cellCenter(centre); popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'FESTIVAL', color: '#ffd166', t0: performance.now(), dur: 3000 });
   for (let k = 0; k < 10; k++) particles.push({ x: px + (Math.random() - 0.5) * cellPx * 2, y: py, vx: (Math.random() - 0.5) * 30, vy: -40 - Math.random() * 40, life: 0, max: 600, color: Math.random() < 0.5 ? '#ffe866' : '#ff6a1f', size: Math.max(2, cellPx * 0.3), grav: -10 });
-  log(`${town.name} brings in the harvest and lights a bonfire in the square. ${['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.'][Math.floor(Math.random() * 5)]}`, 'good');
-  if ((town.craft || 0) >= 8) { town.unrest = Math.max(0, (town.unrest || 0) - 2); const cook = person(town, 'cook'), dish = recipeFor(town); log(`${town.name}'s cooks lay out a feast: ${dish}.${cook ? ` ${cook.name} is carried round the square.` : ''}`, 'good'); if (cook) deed(cook, `cooked the ${dish} at the feast of Y${Math.floor(world.tick / YEAR) + 1}`); stat('ev', 'feasts'); }
-  if (Math.random() < 0.05) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); log(`The bonfire at ${town.name} gets away from them`, 'alarm'); } }
+  say(town, 'festival', { beer: (town.res.beer || 0) > 0, extra: pick(['There is dancing.', 'The elder makes a speech nobody listens to.', 'Someone falls in the river.', 'The healer treats three burns and a broken ankle.', 'The constable has the night off.', 'Two families who have not spoken in years share a bench.', 'A dog steals a whole ham and is not caught.']) }, 'good');
+  if ((town.craft || 0) >= 8) { town.unrest = Math.max(0, (town.unrest || 0) - 2); const cook = person(town, 'cook'), dish = recipeFor(town); say(town, 'festivalFeast', { dish, cook: cook ? cook.name : null }, 'good'); if (cook) deed(cook, `cooked the ${dish} at the feast of Y${Math.floor(world.tick / YEAR) + 1}`); stat('ev', 'feasts'); }
+  if (Math.random() < 0.05) { const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0); if (homes.length) { ignite(homes[Math.floor(Math.random() * homes.length)]); say(town, 'bonfireEscapes', {}, 'alarm'); } }
 }
 // The healer walks house to house while the plague is in town.
 function updateRounds(town) {
@@ -348,7 +350,7 @@ function updateTravellers() {
     v.px = v.x; v.py = v.y;
     const a = world.towns[v.from], b = world.towns[v.to];
     if (!a || !b || !isAlive(b)) continue;
-    if (world.burnLeft[v.y * n + v.x] > 0) { log(v.kind === 'wedding' ? `The wedding party from ${a.name} is caught by the fire on the road to ${b.name}` : `${a.name}'s envoy to ${b.name} is caught by the fire on the road and never arrives`, 'loss'); setRel(a, b, rel(a, b) - 4); continue; }
+    if (world.burnLeft[v.y * n + v.x] > 0) { say(a, v.kind === 'wedding' ? 'weddingBurned' : 'envoyBurned', { other: b.name }, 'loss'); setRel(a, b, rel(a, b) - 4); continue; }
     if (v.pi < v.path.length) {
       const next = v.path[v.pi];
       if (world.burnLeft[next] > 0 || !passable(world.type[next])) { if (++v.wait > 40) { const alt = findPath(v.x, v.y, b.cx, b.cy); if (alt) { v.path = alt; v.pi = 0; v.wait = 0; } else if (v.wait > 120) continue; } keep.push(v); continue; }
@@ -360,7 +362,7 @@ function updateTravellers() {
     const p = v.payload || {};
     if (v.kind === 'envoy') { setRel(a, b, rel(a, b) + (p.delta || 0)); log(p.text, 'diplo'); if (p.delta > 0 && Math.random() < 0.4) spawnCrowd(b, b.cy * n + b.cx, 20, 4); }
     else if (v.kind === 'council') { if (world.council && world.council.host === v.to) world.council.arrived++; }
-    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); log(`${a.name}'s wedding party reaches ${b.name}; ${bride.name} is married at the hall and ${b.name} feasts for a day`, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
+    else if (v.kind === 'wedding') { setRel(a, b, rel(a, b) + (p.delta || 12)); const bride = makePersonIn(a, 'townsfolk', 18 + Math.random() * 10); bride.story = `came from ${a.name} in a wedding party and never went back`; b.people = b.people || []; b.people.push(bride); if (b.people.length > 14) b.people = b.people.filter(q => q.alive).slice(-10).concat(b.people.filter(q => !q.alive).slice(-4)); say(b, 'weddingArrives', { other: a.name, bride: bride.name }, 'diplo'); remember(b, 'wedding', { who: bride.name }); spawnCrowd(b, b.cy * n + b.cx, 40, 6); }
   }
   world.travellers = keep;
 }
@@ -371,19 +373,19 @@ function roam(town, who, how) {
   world.firebugs = world.firebugs || [];
   world.firebugs.push({ name: who.name, from: town.id, x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), face: 1, target: -1, next: world.tick + 1500 + Math.floor(Math.random() * 3000), town: -1, stuck: 0 });
   stat('ev', 'firebugsLoose');
-  log(`${who.name} ${how}. Somebody should have made sure.`, 'arson');
+  log(`${who.name} ${how}. ${phraseText('roamTail')}`, 'arson');
 }
 function updateFirebugs() {
   const bugs = world.firebugs; if (!bugs || !bugs.length) return;
   const n = world.n, keep = [];
   for (const b of bugs) {
     b.px = b.x; b.py = b.y;
-    if (world.burnLeft[b.y * n + b.x] > 0) { log(`${b.name}, the firebug, dies in a fire of somebody else's making`, 'loss'); continue; }
+    if (world.burnLeft[b.y * n + b.x] > 0) { say(null, 'firebugDies', { who: b.name }, 'loss'); continue; }
     // Fire nearby: run the other way, whatever the errand.
     { let fx = 0, fy = 0, hot = 0; for (let dy = -4; dy <= 4; dy++) for (let dx = -4; dx <= 4; dx++) { const x = b.x + dx, y = b.y + dy; if (x < 0 || y < 0 || x >= n || y >= n) continue; if (world.burnLeft[y * n + x] > 0) { fx += dx; fy += dy; hot++; } }
       if (hot) { const len = Math.hypot(fx, fy) || 1; const tx = Math.max(1, Math.min(n - 2, Math.round(b.x - fx / len * 6))), ty = Math.max(1, Math.min(n - 2, Math.round(b.y - fy / len * 6))); if (passable(world.type[ty * n + tx])) { stepToward(b, tx, ty, 2, false); b.target = -1; keep.push(b); continue; } } }
     if (b.kind === 'gang') { if (world.tick % 2 === 0) updateGang(b, keep); else keep.push(b); continue; }
-    if (b.kind === 'exile' && (world.snowCover || 0) > 0.8 && Math.random() < 0.0015) { log(`${b.name}, cast out of ${world.towns[b.from] ? world.towns[b.from].name : 'a town'}, is found frozen in the woods when the snow goes`, 'loss'); stat('ev', 'exileDeaths'); continue; }
+    if (b.kind === 'exile' && (world.snowCover || 0) > 0.8 && Math.random() < 0.0015) { say(null, 'exileFrozen', { who: b.name, from: world.towns[b.from] ? world.towns[b.from].name : 'a town' }, 'loss'); stat('ev', 'exileDeaths'); continue; }
     if (b.kind === 'exile' && b.town >= 0) {
       const t = world.towns[b.town];
       if (!t || !isAlive(t)) { b.town = -1; b.next = world.tick + 600; keep.push(b); continue; }
@@ -391,8 +393,8 @@ function updateFirebugs() {
         const from = world.towns[b.from];
         if (t.align.moral >= 0 && (!from || rel(t, from) > -20 || t.align.moral > 0)) {
           const p = makePerson(Math.random, 'townsfolk', 25 + Math.random() * 30); p.name = b.name; p.story = `was cast out of ${from ? from.name : 'another valley'} and taken in here, and is grateful for it`; t.people = t.people || []; t.people.push(p);
-          log(`${b.name}, cast out of ${from ? from.name : 'the hills'}, is taken in at ${t.name}`, 'good'); stat('ev', 'exilesTakenIn');
-        } else { log(`${t.name} turns ${b.name} away at the gate`, 'arson'); b.town = -1; b.next = world.tick + 800; b.tried = (b.tried || []).concat(t.id); keep.push(b); }
+          say(t, 'exileTakenIn', { who: b.name, from: from ? from.name : 'the hills' }, 'good'); stat('ev', 'exilesTakenIn');
+        } else { say(t, 'exileTurned', { who: b.name }, 'arson'); b.town = -1; b.next = world.tick + 800; b.tried = (b.tried || []).concat(t.id); keep.push(b); }
         continue;
       }
       stepToward(b, t.cx, t.cy, 1, false);
@@ -416,7 +418,7 @@ function updateFirebugs() {
         const p = makePerson(Math.random, 'firebug', 25 + Math.random() * 30); p.name = b.name; p.revealed = true; p.arsons = 3; p.story = `was driven out of ${from ? from.name : 'another valley'} for arson and came back with matches`;
         t.people = t.people || []; t.people.push(p);
         stat('ev', 'firebugFires');
-        log(`${b.name}, the firebug driven out of ${from ? from.name : 'the hills'}, sets a fire on the edge of ${t.name}`, 'arson');
+        say(t, 'firebugReturns', { who: b.name, from: from ? from.name : 'the hills' }, 'arson');
         const [px, py] = cellCenter(t.cy * n + t.cx); popups.push({ x: px, y: py - t.R * cellPx - 14, text: 'FIREBUG', color: '#ff6ad5', t0: performance.now(), dur: 2600 });
         if (!t.case) openCase(t, 'arson', p, b.y * n + b.x, { witnessed: true });
         continue;
@@ -442,7 +444,7 @@ function maybeSmuggle(tr, town) {
   const wants = techWants(town);
   if (wants.size && Math.random() < 0.3) {
     const k = [...wants][0], amt = 4 + Math.floor(Math.random() * 5); addRes(town, k, amt); stat('ev', 'smuggled', amt);
-    log(`After the caravan leaves ${town.name}, ${amt} ${k} turns up that nobody paid for. ${town.align.order < 0 ? 'Nobody asks.' : 'The elder wants to know who.'}`, 'arson');
+    say(town, 'smuggleIn', { n: amt, k, lax: town.align.order < 0 }, 'arson');
     if (town.align.order < 0) return;
     openCase(town, 'smuggling', thiefOf(town, 'knows every trader by name and every back road out of town'), town.cy * world.n + town.cx, { loot: amt, witnessed: Math.random() < 0.4 });
     return;
@@ -450,8 +452,8 @@ function maybeSmuggle(tr, town) {
   let best = null; for (const k of RES_KINDS) if (k !== 'coin' && k !== 'water' && PRICE[k] && (!best || town.res[k] > town.res[best])) best = k;
   if (!best || town.res[best] < 8) return;
   const amt = Math.min(town.res[best] - 3, 5 + Math.floor(Math.random() * 8)); town.res[best] -= amt; tr.stock[best] = (tr.stock[best] || 0) + amt; stat('ev', 'smuggled', amt);
-  if (town.align.order < 0 && Math.random() < 0.6) { log(`${amt} ${best} leaves ${town.name} on the caravan by the back road, and nobody minds`, 'arson'); return; }
-  log(`${amt} ${best} is missing from ${town.name}'s stores after market day, and the caravan's wagons sit low`, 'arson');
+  if (town.align.order < 0 && Math.random() < 0.6) { say(town, 'smuggleOutQuiet', { n: amt, k: best }, 'arson'); return; }
+  say(town, 'smuggleMissing', { n: amt, k: best }, 'arson');
   openCase(town, 'smuggling', thiefOf(town, 'knows every trader by name and every back road out of town'), town.cy * world.n + town.cx, { loot: amt, witnessed: Math.random() < 0.4 });
 }
 function hideout(town) {
@@ -534,25 +536,24 @@ function capture(town, c, who) {
   // A merchant's constable can be bought: the thief walks, the elder's purse is heavier, the town notices.
   if ((c.kind === 'smuggling' || c.kind === 'theft' || c.kind === 'embezzle') && has(town, 'merchant') && Math.random() < 0.4) {
     const l = leader(town), purse = 10 + Math.floor(Math.random() * 30); if (l) l.hoard = (l.hoard || 0) + purse; stat('ev', 'bribes'); town.unrest = Math.min(100, (town.unrest || 0) + 2);
-    log(`${con ? `Constable ${con.name}` : 'The constable'} takes ${who.name} for ${CRIME_LABEL[c.kind]}, and ${l ? l.name : 'the elder'} takes a purse of ${purse} coin and looks the other way. ${who.name} is home by supper.`, 'arson');
+    say(town, 'bribe', { con: con ? con.name : null, who: who.name, crime: CRIME_LABEL[c.kind], ln: l ? l.name : 'the elder', purse }, 'arson');
     who.role = who.role === 'thief' ? 'thief' : 'townsfolk'; town.case = null; town.lawCooldown = world.tick + 200; return;
   }
   if (con) deed(con, `caught ${who.name} for ${CRIME_LABEL[c.kind]}`);
   deed(who, `was caught for ${CRIME_LABEL[c.kind]}`);
-  if (c.loot && c.kind === 'embezzle') { const back = Math.floor(c.loot * 0.8); town.res.coin += back; log(`${back} of the ${c.loot} coin is found under ${who.name}'s floor`, 'win'); }
+  if (c.loot && c.kind === 'embezzle') { const back = Math.floor(c.loot * 0.8); town.res.coin += back; say(town, 'floorCoin', { n: back, loot: c.loot, who: who.name }, 'win'); }
   if (c.kind === 'spying') { const e = world.towns[town.spy ? town.spy.from : -1]; if (e) { setRel(town, e, rel(town, e) - 10); deed(who, `was unmasked as ${e.name}'s spy`); } town.spy = null; stat('ev', 'spiesCaught'); }
   const s = decideSentence(town, c, who);
   const [px, py] = cellCenter(town.cy * world.n + town.cx);
   popups.push({ x: px, y: py - town.R * cellPx - 14, text: 'CAUGHT', color: '#a7e36f', t0: performance.now(), dur: 2200 });
-  const where = c.kind === 'arson' ? 'in the woods above the town' : 'at the edge of town';
-  const l = leader(town);
-  log(`${con ? `Constable ${con.name}` : `${town.name}'s militia`} takes ${who.name} ${where} for ${CRIME_LABEL[c.kind]}. ${l ? l.name : 'The elder'}'s word is ${SENTENCE_LABEL[s]}.`, 'win');
+  const l = leader(town), kin = kinOf(town, who).find(q => q.alive);
+  say(town, con ? 'capture' : 'captureMilitia', { con: con ? con.name : null, who: who.name, where: captureWhere(c.kind, town.name), crime: CRIME_LABEL[c.kind], ln: l ? l.name : 'the elder', sentence: SENTENCE_LABEL[s], kin: kin ? kin.name : null }, 'win');
   startProcession(town, c, who, s);
 }
 // Where a sentence is carried out, and the walk there with the constable at the prisoner's elbow.
 function sentenceGround(town, s) {
   const n = world.n;
-  if (s === 'execution') { let g = town.buildings.find(i => world.type[i] === T.GALLOWS); if (g === undefined) { g = placeCivic(town, T.GALLOWS, true); if (g >= 0) { finishSite(town, g); log(`A gallows goes up in the square at ${town.name}`, 'build'); } } return g >= 0 ? g : town.cy * n + town.cx; }
+  if (s === 'execution') { let g = town.buildings.find(i => world.type[i] === T.GALLOWS); if (g === undefined) { g = placeCivic(town, T.GALLOWS, true); if (g >= 0) { finishSite(town, g); say(town, 'gallowsUp', {}, 'build'); } } return g >= 0 ? g : town.cy * n + town.cx; }
   if (s === 'mob') { let best = -1, bd = 99; for (let dy = -town.R - 4; dy <= town.R + 4; dy++) for (let dx = -town.R - 4; dx <= town.R + 4; dx++) { const x = town.cx + dx, y = town.cy + dy; if (x < 1 || y < 1 || x >= n - 1 || y >= n - 1) continue; const i = y * n + x; if (isTree(world.type[i]) && world.burnLeft[i] <= 0) { const d = Math.hypot(dx, dy); if (d < bd) { bd = d; best = i; } } } return best >= 0 ? best : town.cy * n + town.cx; }
   if (s === 'gaol') { const g = town.buildings.find(i => world.type[i] === T.GAOL); return g !== undefined ? g : (town.buildings.find(i => world.type[i] === T.TOWNHALL) ?? town.cy * n + town.cx); }
   if (s === 'labour') { const q = town.buildings.find(i => world.type[i] === T.QUARRY); return q !== undefined ? q : town.cy * n + town.cx; }
@@ -591,7 +592,7 @@ function updateCrowd(town, w) {
     const tx = w.target % n, ty = Math.floor(w.target / n);
     const l = findPerson(town, w.ousted) || { name: w.ousted, alive: true, role: 'ousted', story: w.story || 'ran the town until the town had had enough', deeds: [], born: world.tick - 50 * YEAR };
     if (Math.max(Math.abs(w.x - tx), Math.abs(w.y - ty)) <= 1 || world.tick >= w.until) {
-      if (w.hanged) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; log(`${l.name} is hanged on the gallows at ${town.name} with the whole town watching. ${pick(['Nobody speaks.', 'Somebody cheers, and is hushed.', 'It is over quickly.', 'The new elder watches from the hall steps.'])}`, 'loss'); }
+      if (w.hanged) { l.alive = false; l.died = world.tick; l.cause = 'hanged by the mob'; say(town, 'mobGallows', { leader: l.name }, 'loss'); }
       else { town.people = town.people.filter(p => p !== l); exile(town, l, `is marched out of ${town.name}'s gate by the mob with a sack and a stick, and the gate shut behind them`); }
       return false;
     }
@@ -615,21 +616,21 @@ function applySentence(town, c, who, s) {
   switch (s) {
     case 'gaol':
       who.role = 'convict'; who.until = world.tick + term; who.wasRole = wasFirebug ? 'firebug' : 'thief';
-      if (!hasType(town, T.GAOL)) { town.wantGaol = true; log(`${who.name} is tried for ${kind} and locked in the cellar of the hall for ${Math.round(term / YEAR * 12)} months; ${town.name} needs a gaol`, 'arson'); }
-      else log(`${who.name} is tried for ${kind} and sent to the gaol for ${Math.round(term / YEAR * 12)} months`, 'arson');
+      if (!hasType(town, T.GAOL)) { town.wantGaol = true; say(town, 'gaolCellar', { who: who.name, crime: kind, months: Math.round(term / YEAR * 12) }, 'arson'); }
+      else say(town, 'gaolSent', { who: who.name, crime: kind, months: Math.round(term / YEAR * 12) }, 'arson');
       break;
     case 'labour': {
       who.role = 'convict'; who.until = world.tick + term; who.labour = true; who.wasRole = wasFirebug ? 'firebug' : 'thief';
       const q = town.buildings.find(i => world.type[i] === T.QUARRY), n = world.n, h = campPoint(town);
       if (h >= 0) town.workers.push({ x: h % n, y: Math.floor(h / n), px: h % n, py: Math.floor(h / n), target: -1, linger: 0, face: 1, job: q !== undefined ? 'quarry' : 'log', gather: true, site: q !== undefined ? q : -1, siteType: q !== undefined ? T.QUARRY : 0, home: h, phase: 'out', work: 0, carry: 0, stuck: 0, convict: who.name });
-      log(`${who.name} gets ${Math.round(term / YEAR * 12)} months of hard labour ${q !== undefined ? 'at the quarry' : 'in the timber'} for ${kind}`, 'arson');
+      say(town, 'labour', { who: who.name, months: Math.round(term / YEAR * 12), at: q !== undefined ? 'at the quarry' : 'in the timber', crime: kind }, 'arson');
       break;
     }
     case 'execution': {
       const feared = c.kind === 'arson' && (who.arsons || 0) >= 2;
       who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged');
       town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + (feared ? -4 : 6))); town.fear = world.tick + 2000;
-      log(`${ln} of ${town.name} has ${who.name} hanged ${hasType(town, T.GALLOWS) ? 'on the gallows' : 'in the square'} for ${kind}${town.workers.filter(w => w.crowd).length >= 4 ? ' with the whole town watching' : ''}. ${feared ? 'Nobody weeps.' : 'People mutter that it was too much.'}`, 'loss');
+      say(town, 'hanged', { ln, who: who.name, where: hasType(town, T.GALLOWS) ? 'on the gallows' : 'in the square', crime: kind, crowd: town.workers.filter(w => w.crowd).length >= 4, feared }, 'loss');
       remember(town, 'hanging', { who: who.name }); if (!feared) grudgeKin(town, who, 'the law', `the hanging of ${who.name}`);
       if (hasType(town, T.GRAVE)) funeral(town, who, true);
       break;
@@ -637,38 +638,38 @@ function applySentence(town, c, who, s) {
     case 'banish':
       stat('ev', 'banished'); remember(town, 'exile', { who: who.name }); grudgeKin(town, who, 'the law', `the casting out of ${who.name}`);
       town.people = town.people.filter(p => p !== who);
-      if (c.kind === 'arson' && Math.random() < 0.6) roam(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
-      else exile(town, who, `is cast out of ${town.name} for ${kind} and walks into the hills with what they can carry`);
+      if (c.kind === 'arson' && Math.random() < 0.6) roam(town, who, banishHow(town, who, kind));
+      else exile(town, who, banishHow(town, who, kind));
       break;
     case 'fine': {
       const fine = 10 + Math.floor(Math.random() * 20); town.res.coin += fine; who.role = 'townsfolk';
-      log(`${who.name} pays ${town.name} ${fine} coin for ${kind} and goes home`, 'arson');
+      say(town, 'fine', { who: who.name, n: fine, crime: kind }, 'arson');
       break;
     }
     case 'mob':
-      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); log(`A mob in ${town.name} drags ${who.name} to the old oak for ${kind}. The constable looks away.`, 'loss'); remember(town, 'hanging', { who: who.name }); grudgeKin(town, who, 'the mob', `the night the mob took ${who.name}`); }
-      else { who.role = 'townsfolk'; log(`A mob in ${town.name} beats ${who.name} for ${kind} and lets them go, and some of them are laughing`, 'arson'); }
+      if (Math.random() < 0.5) { who.alive = false; who.died = world.tick; who.cause = 'hanged'; stat('ev', 'hanged'); town.unrest = Math.max(0, Math.min(100, (town.unrest || 0) + 3)); say(town, 'mobHang', { who: who.name, crime: kind }, 'loss'); remember(town, 'hanging', { who: who.name }); grudgeKin(town, who, 'the mob', `the night the mob took ${who.name}`); }
+      else { who.role = 'townsfolk'; say(town, 'mobBeat', { who: who.name, crime: kind }, 'arson'); }
       break;
     case 'pressed': {
       const add = world.towns.some(o => o !== town && atWar(town, o)) ? 2 : 1; town.militia += add; who.role = 'soldier';
-      log(`${who.name} is given a spear and a place in ${town.name}'s militia for ${kind}. ${add > 1 ? 'There is a war on; nobody asks questions.' : 'It is cheaper than a gaol.'}`, 'arson');
+      say(town, 'pressed', { who: who.name, crime: kind, war: add > 1 }, 'arson');
       break;
     }
     case 'pillory': {
       who.role = 'townsfolk'; const centre = town.cy * world.n + town.cx, n = world.n;
       town.workers.push({ x: centre % n, y: Math.floor(centre / n), px: centre % n, py: Math.floor(centre / n), target: centre, linger: 0, face: 1, job: 'gather', crowd: true, until: world.tick + 150, spread: 0, pilloried: true });
       spawnCrowd(town, centre, 40, 3);
-      log(`${who.name} stands a day in the pillory at ${town.name} for ${kind}. The children bring rotten apples.`, 'arson');
+      say(town, 'pillory', { who: who.name, crime: kind }, 'arson');
       break;
     }
     case 'pardon':
       town.unrest = Math.max(0, (town.unrest || 0) - 3); who.role = 'townsfolk';
-      log(c.hungry ? `${ln} of ${town.name} says a hungry parent is no thief and sends ${who.name} home with a loaf` : `${ln} of ${town.name} pardons ${who.name} for ${kind}`, 'good');
+      say(town, c.hungry ? 'pardonHungry' : 'pardon', { ln, who: who.name, crime: kind }, 'good');
       break;
     case 'warden': {
       const chief = person(town, 'chief'); if (chief) chief.role = 'townsfolk';
       who.role = 'chief'; who.fires = who.fires || 0;
-      log(`${ln} of ${town.name} says it takes one to know one and makes ${who.name} the fire chief. The town is not sure what to think.`, 'arson');
+      say(town, 'warden', { ln, who: who.name }, 'arson');
       break;
     }
   }
@@ -690,15 +691,15 @@ function heal(t, dead, cause) {
   let share = (hosp ? 0.5 : 0.3) + (has(t, 'physician') ? 0.15 : 0);
   if (cause === 'fallout') share *= hosp ? 1 : 0.5; // sickness nobody can name needs a hospital
   const want = Math.floor(dead * share), canTreat = Math.min(want, (t.res.herbs || 0) * 4);
-  if (canTreat <= 0) { if (want >= 3 && (!t.herbLogged || world.tick - t.herbLogged > 600)) { t.herbLogged = world.tick; log(`${h.name} has nothing on the shelves at ${t.name} and can only watch`, 'loss'); } return 0; }
+  if (canTreat <= 0) { if (want >= 3 && (!t.herbLogged || world.tick - t.herbLogged > 600)) { t.herbLogged = world.tick; say(t, 'emptyShelves', { who: h.name }, 'loss'); } return 0; }
   t.res.herbs -= Math.ceil(canTreat / 4); t.healed = (t.healed || 0) + canTreat; stat('ev', 'healed', canTreat);
   if (canTreat >= 3) deed(h, `pulled ${canTreat} through the ${cause === 'battle' ? 'fighting' : cause === 'dragon' ? 'dragon\'s visit' : cause}`);
-  if (cause !== 'plague' && Math.random() < 0.5) log(`${h.name} patches up ${canTreat} at ${t.name} who would not have lived`, 'good');
+  if (cause !== 'plague' && Math.random() < 0.5) say(t, 'patchUp', { who: h.name, n: canTreat }, 'good');
   return canTreat;
 }
 function updateHealer(town) {
   if (!hasType(town, T.HEALER) && !hasType(town, T.HOSPITAL)) return;
-  if (!person(town, 'healer')) { const h = elect(town, 'healer', true); h.story = 'learned the herbs from a grandmother and the rest from burying people'; log(`${h.name} hangs out a healer's sign in ${town.name}`, 'build'); }
+  if (!person(town, 'healer')) { const h = elect(town, 'healer', true); h.story = 'learned the herbs from a grandmother and the rest from burying people'; say(town, 'healerSign', { who: h.name }, 'build'); }
 }
 
 // Convicts serve their time. Hard labour means stone, as long as the town has a quarry to work.
@@ -710,7 +711,7 @@ function releaseConvicts(town) {
       p.role = p.wasRole || 'thief'; p.revealed = true; p.escaped = (p.escaped || 0) + 1;
       const bounty = 20 + Math.floor(Math.random() * 40); town.bounty = { name: p.name, coin: bounty };
       stat('ev', 'breakouts');
-      log(`${kinOf(town, p).some(q => q.alive) ? `${p.name}'s kin break them` : `${p.name} breaks`} out of the ${hasType(town, T.GAOL) ? 'gaol' : 'hall cellar'} at ${town.name} in the night. ${town.name} posts a bounty of ${bounty} coin.`, 'arson');
+      say(town, 'breakout', { who: p.name, kin: kinOf(town, p).some(q => q.alive), place: hasType(town, T.GAOL) ? 'gaol' : 'hall cellar', n: bounty }, 'arson');
       openCase(town, 'escape', p, hideout(town), { witnessed: true });
       continue;
     }
@@ -718,7 +719,7 @@ function releaseConvicts(town) {
       town.workers = town.workers.filter(w => w.convict !== p.name);
       const reformed = Math.random() < 0.7, from = p.labour ? 'the quarry' : 'the gaol';
       p.role = reformed ? 'townsfolk' : p.wasRole || 'townsfolk'; p.revealed = !reformed; p.labour = false;
-      log(reformed ? `${p.name} comes out of ${from} at ${town.name} a changed person` : `${p.name} is let out of ${from} at ${town.name} and has learned nothing`, 'build');
+      say(town, reformed ? 'released' : 'releasedBad', { who: p.name, from }, 'build');
     }
   }
 }

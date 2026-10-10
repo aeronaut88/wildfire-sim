@@ -28,7 +28,7 @@ function updateHerds() {
   const n = world.n, N = n * n, herds = world.herds || (world.herds = []), keep = [];
   const maxHerds = Math.max(6, Math.round(N / 1000));
   const migration = season() === 2 && world.tick % YEAR < YEAR * 0.5 + 200; // the first weeks of autumn: the herds come down from the hills
-  if (migration && world.migrationYear !== Math.floor(world.tick / YEAR)) { world.migrationYear = Math.floor(world.tick / YEAR); log(pick(['The herds come down from the hills', 'Deer on every ridge: the autumn migration is on', 'The hills empty into the valley: deer, elk and boar on the move in the mornings']), 'weather'); stat('ev', 'migrations'); }
+  if (migration && world.migrationYear !== Math.floor(world.tick / YEAR)) { world.migrationYear = Math.floor(world.tick / YEAR); say(null, 'migration', {}, 'weather'); stat('ev', 'migrations'); }
   const scarce = herds.filter(h => h.size > 0).length < maxHerds / 3; // hunted thin: more come in from beyond the edge
   if (herds.length < maxHerds && Math.random() < (migration ? 0.036 : 0.012) * (scarce ? 3 : 1)) { // a new herd wanders in from the edge
     const edge = Math.floor(Math.random() * 4); let x = Math.floor(Math.random() * n), y = Math.floor(Math.random() * n);
@@ -54,7 +54,7 @@ function updateHerds() {
       h.rest = 0; h.leaving = false;
     }
     else if (h.wx < 0 || (h.wx === h.x && h.wy === h.y)) {
-      if (h.leaving) { if (Math.random() < 0.3) log(`A herd of ${HERD_NAME[h.kind] || h.kind} leaves the valley`, 'weather'); continue; } // over the edge and gone
+      if (h.leaving) { if (Math.random() < 0.3) say(null, 'herdLeaves', { kind: HERD_NAME[h.kind] || h.kind }, 'weather'); continue; } // over the edge and gone
       if (h.rest > 0) { h.rest--; keep.push(h); continue; }
       const nearEdge = Math.min(h.x, h.y, n - 1 - h.x, n - 1 - h.y) <= 6;
       if (nearEdge && Math.random() < 0.03) { // wander off the map

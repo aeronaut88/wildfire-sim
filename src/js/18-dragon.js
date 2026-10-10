@@ -80,7 +80,7 @@ function maybeDragon(force) {
   world.dragon = { legs, leg: 0, t: 0, x: legs[0][0], y: legs[0][1], heading: 0, town, targets: targets.map(t => t.id), lit: 0, flap: 0, breathT: 0, kind: kind.name, name, frames: tintDragonFrames(kind), flame: kind.flame, hp: 3 + Math.floor(Math.random() * 3) };
   for (const t of targets) t.dragons = (t.dragons || 0) + 1;
   stat('ev', 'dragons'); stat('dragons', name);
-  if (grudge) { log(`${name}, the ${kind.name} dragon, returns for ${town.name}`, 'dragon'); world.dragonGrudge = null; }
+  if (grudge) { say(town, 'dragonReturns', { who: name, kind: kind.name }, 'dragon'); world.dragonGrudge = null; }
   else say(town, 'dragonSeen', { who: name, kind: kind.name, then: targets.length > 1 ? targets.slice(1).map(t => t.name).join(' and ') : null }, 'dragon');
   for (const t of targets) remember(t, 'dragon', { who: name });
   const [px, py] = cellCenter(town.cy * n + town.cx);
@@ -111,7 +111,7 @@ function flyDragon(dtSec) {
   if (over && d.breathT > 0.08) { d.breathT = 0; breathe(d); }
   if (d.leg >= d.legs.length - 1) {
     if (d.slain) { /* already announced */ }
-    else if (d.driven) log(`${d.name || 'The dragon'} limps away from ${d.town.name}. ${d.lit} building${d.lit === 1 ? '' : 's'} set ablaze before the archers found their range${d.stole ? `, ${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''} gone with it` : ''}.`, 'dragon');
+    else if (d.driven) say(d.town, 'dragonLimps', { who: d.name || 'the dragon', lit: d.lit, loot: d.stole ? `${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''}` : null }, 'dragon');
     else say(d.town, 'dragonLeaves', { who: d.name || 'The dragon', lit: d.lit, loot: d.stole || d.stoleGold ? `${d.stole} coin${d.stoleGold ? ` and ${d.stoleGold} gold` : ''}` : null }, 'dragon');
     world.dragon = null;
     world.dragonCooldown = world.tick + 4800 + Math.floor(Math.random() * 4800); // two to four years before the valley sees another
@@ -148,7 +148,7 @@ function scrambleFighters(d) {
     const n = world.n, bx = base % n, by = Math.floor(base / n);
     pay(t, { oil: 2 }); stat('ev', 'sorties');
     world.fighters.push({ x: bx, y: by, home: base, from: t.id, heading: Math.atan2(d.y - by, d.x - bx), wp: null, passT: 0, hits: 0, state: 'out' });
-    log(`${t.name} scrambles a jet against ${d.name || 'the dragon'}${mine ? '' : ' for ' + world.towns[d.targets[0]].name}`, 'dragon');
+    say(t, 'scramble', { who: d.name || 'the dragon', forTown: mine ? null : world.towns[d.targets[0]].name }, 'dragon');
   }
 }
 function loseFighter(f, why) {
@@ -182,7 +182,7 @@ function flyFighters(dtSec) {
           const [px, py] = cellCenter(Math.max(0, Math.min(world.n - 1, Math.round(d.y))) * world.n + Math.max(0, Math.min(world.n - 1, Math.round(d.x))));
           for (let k = 0; k < 6; k++) particles.push({ x: px, y: py, vx: (Math.random() - 0.5) * 80, vy: (Math.random() - 0.5) * 80, life: 0, max: 300, color: '#ffe866', size: Math.max(2, cellPx * 0.3), grav: 60 });
           if (--d.hp <= 0) { slayDragon(d, t, true); f.state = 'home'; f.wp = null; }
-          else if (Math.random() < 0.4) log(`${t.name}'s jet rakes ${d.name || 'the dragon'} with cannon fire`, 'dragon');
+          else if (Math.random() < 0.4) say(t, 'jetRakes', { who: d.name || 'the dragon' }, 'dragon');
         } else if (r < 0.4) { loseFighter(f, `${d.name || 'The dragon'} turns and catches ${t.name}'s jet in its breath. The pilot does not get out.`); continue; }
       }
     }
@@ -190,7 +190,7 @@ function flyFighters(dtSec) {
       const n = world.n;
       if (world.type[f.home] !== T.AIRBASE) { loseFighter(f, `${t.name}'s jet comes home to a burnt air base and goes down in the fields`); continue; }
       f.wp = [f.home % n, Math.floor(f.home / n)];
-      if (Math.hypot(f.wp[0] - f.x, f.wp[1] - f.y) < 0.8) { if (f.hits) log(`${t.name}'s jet lands with ${f.hits} hit${f.hits === 1 ? '' : 's'} to its name`, 'dragon'); continue; }
+      if (Math.hypot(f.wp[0] - f.x, f.wp[1] - f.y) < 0.8) { if (f.hits) say(t, 'jetLands', { n: f.hits }, 'dragon'); continue; }
     }
     const target = Math.atan2(f.wp[1] - f.y, f.wp[0] - f.x);
     let da = target - f.heading; while (da > Math.PI) da -= Math.PI * 2; while (da < -Math.PI) da += Math.PI * 2;

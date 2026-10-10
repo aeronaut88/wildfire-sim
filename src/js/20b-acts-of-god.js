@@ -41,8 +41,8 @@ function earthquake() {
     else if (t === T.DAM && Math.random() < 0.6 * f * mag) dams.push(i);
     else if (isBuilding(t) && t !== T.GRAVE && t !== T.MONUMENT && Math.random() < 0.06 * f * mag) { const town = world.towns[world.townOf[i]]; onBuildingDestroyed(i, 'blast'); world.type[i] = T.RUBBLE; dirty.add(i); fell++; if (town && town.sites) delete town.sites[i]; }
   }
-  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - ex, t.cy - ey); if (d > R) continue; const dead = Math.round(t.popLeft * 0.01 * mag * (1 - d / R) * (1 + Math.random())); if (dead > 0) applyLosses(t, dead, 'earthquake'); remember(t, 'quake'); if (dead > 0 || d < t.R + 6) log(`${t.name} in the quake: ${dead} dead${fell ? ', houses down' : ''}${walls ? ', the wall cracked' : ''}. ${moodWord(t)[0].toUpperCase() + moodWord(t).slice(1)}.`, 'loss'); }
-  for (const i of dams) { world.type[i] = T.WATER; dirty.add(i); world.water.push(i); const rise = 2 + mag; floodArea([i], rise, 8, false, 'The dam breaks in the quake'); log('A dam gives way in the quake and the river comes down in a wall', 'loss', i); }
+  for (const t of world.towns) { if (!isAlive(t)) continue; const d = Math.hypot(t.cx - ex, t.cy - ey); if (d > R) continue; const dead = Math.round(t.popLeft * 0.01 * mag * (1 - d / R) * (1 + Math.random())); if (dead > 0) applyLosses(t, dead, 'earthquake'); remember(t, 'quake'); if (dead > 0 || d < t.R + 6) say(t, 'quakeTown', { dead, fell, walls }, 'loss'); }
+  for (const i of dams) { world.type[i] = T.WATER; dirty.add(i); world.water.push(i); const rise = 2 + mag; floodArea([i], rise, 8, false, 'The dam breaks in the quake'); say(null, 'quakeDam', {}, 'loss', i); }
   // The land itself: a ridge of rock thrown up, or a rift that fills with water, across the open country.
   if (mag >= 2 || Math.random() < 0.5) {
     const rift = Math.random() < 0.5, len = 10 + 8 * mag, a = Math.random() * Math.PI;
@@ -56,7 +56,7 @@ function earthquake() {
     }
     if (made) log(rift ? `The ground splits open ${near ? 'near ' + near.name : 'in the hills'} and water fills the rift. The valley has a new lake, long and narrow.` : `A ridge of bare rock is thrown up across the land ${near ? 'near ' + near.name : 'in the hills'}. The old paths no longer go through${Math.random() < 0.5 ? ', and there is colour in the new stone' : ''}.`, 'weather', ey * n + ex);
     stat('ev', 'landChanged', made);
-  } else if (Math.random() < 0.5 && !inAnyTown(ex, ey, 3)) { makeWater(ey * n + ex); for (const [ox, oy] of OFFS8) { const j = (ey + oy) * n + ex + ox; if (Math.random() < 0.5) makeWater(j); } log(`A spring breaks out of the ground where the quake was centred${near ? ', within a walk of ' + near.name : ''}`, 'weather', ey * n + ex); }
+  } else if (Math.random() < 0.5 && !inAnyTown(ex, ey, 3)) { makeWater(ey * n + ex); for (const [ox, oy] of OFFS8) { const j = (ey + oy) * n + ex + ox; if (Math.random() < 0.5) makeWater(j); } say(null, 'quakeSpring', { near: near ? near.name : null }, 'weather', ey * n + ex); }
 }
 
 function comet() {
