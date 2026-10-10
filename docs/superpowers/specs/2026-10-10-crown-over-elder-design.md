@@ -1,6 +1,6 @@
 # The crown over the elder: factions that rule their towns
 
-Design spec, 2026-10-10. Status: written autonomously from James's brief of 2026-10-10 (second feature of the day); assumptions are marked. Implementation starts after the `world-breathes` writers' branches are merged, because this touches `13b-factions.js`, `13-alignment-militia-diplomacy-war.js` and `11-notable-folk.js`, which they are editing.
+Design spec, 2026-10-10. Status: written autonomously from James's brief of 2026-10-10 (second feature of the day); assumptions are marked. **Implemented 2026-10-10** on branch `crown-over-elder` after the `world-breathes` writers' branches merged; `tests/crown.mjs` covers all six governments. Deviations: the research nudge is applied through militarism and craft share rather than the three-way split directly; a kingdom's warning line goes through `crownWarns`, a theocracy's denunciation is silent for the season before the elder steps down.
 
 ## The brief
 

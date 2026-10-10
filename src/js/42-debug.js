@@ -86,3 +86,6 @@ window.__wildfire.debug = toggleDebug;
 window.__wildfire.debugAimedComet = debugAimedComet;
 // Make a faction on demand (for the crown harness): b joins a's faction, friends for life.
 window.__wildfire.debugUnite = (aId, bId) => { const a = world.towns[aId], b = world.towns[bId]; if (!a || !b) return null; setRel(a, b, 100); delete a.wars[b.id]; delete b.wars[a.id]; joinFaction(b, factionOf(a), 'by the hand of god'); recomputeClaims(); return factionOf(a).id; };
+// Force a government on a faction and crown (or elect) a ruler, for the crown harness.
+window.__wildfire.debugCrown = (townId, gov) => { const t = world.towns[townId]; if (!t) return null; const f = factionOf(t); f.gov = gov; f.ruler = null; f.dynasty = null; if (gov === 'republic' || gov === 'merchant') holdElection(f, true); else crownRuler(f, null, 'first'); recomputeClaims(); const r = rulerOf(f); return r ? { name: r.name, trait: r.trait, town: f.ruler.town } : null; };
+window.__wildfire.debugSetElderTrait = (townId, trait) => { const t = world.towns[townId], l = t && leader(t); if (!l) return null; l.trait = trait; return l.name; };

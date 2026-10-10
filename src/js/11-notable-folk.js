@@ -37,6 +37,17 @@ function rollTrait(town, avoid) {
 function leader(town) { return person(town, 'elder'); }
 function trait(town) { const l = leader(town); return l ? l.trait : null; }
 function has(town, tr) { return trait(town) === tr; }
+// The crown over the elder. A town in a governed faction answers to its ruler's trait in its dealings with the
+// world (war, peace, roads, trade, research); the elder's own trait still runs the town's streets. rules() is
+// the faction-level question, has() the local one.
+function rulerTraitOf(town) { const f = factionOf(town); if (!f || f.towns.length < 2) return null; const r = rulerOf(f); return r && r.trait ? r.trait : null; }
+function rules(town, tr) { const rt = rulerTraitOf(town); return rt ? rt === tr : has(town, tr); }
+// How far apart two traits sit, 0 (the same) to 1 (a tyrant and a peacemaker), from their good/evil/chaos weights.
+function traitDistance(a, b) { if (!a || !b || a === b) return 0; const A = TRAITS[a], B = TRAITS[b]; if (!A || !B) return 0; return Math.min(1, Math.hypot(A.good - B.good, A.evil - B.evil, A.chaos - B.chaos) / 3.6); }
+const OUT_OF_LINE = 0.55;
+function outOfLine(town, r) { const l = leader(town); return !!(l && r && r.trait && l.trait && l !== r && traitDistance(l.trait, r.trait) > OUT_OF_LINE); }
+// Outside a republic, the ruler fills an empty chair in a member town. Null when the town chooses for itself.
+function crownOf(town) { const f = factionOf(town); if (!f || f.towns.length < 2 || f.capital === town.id || f.gov === 'republic' || f.gov === 'merchant') return null; const r = rulerOf(f); return r && r.trait ? { f, r } : null; }
 function traitLabel(p) { return p && p.trait ? TRAITS[p.trait].label : ''; }
 function makePerson(rng, role, ageYears) {
   rng = rng || Math.random;
@@ -56,11 +67,13 @@ function elect(town, role, quiet, avoidTrait) {
   const prev = (town.people || []).filter(q => q.role === role).slice(-1)[0];
   if (role === 'elder') { const h = succession(town, prev, quiet, avoidTrait); if (h) return h; }
   const p = makePersonIn(town, role, 20 + Math.random() * 35, prev && role !== 'firebug' && Math.random() < 0.35 ? prev : null);
-  if (role === 'elder') p.trait = rollTrait(town, avoidTrait);
+  const crown = role === 'elder' ? crownOf(town) : null; // the ruler who appoints, outside a republic
+  if (role === 'elder') p.trait = crown && Math.random() < 0.6 ? crown.r.trait : rollTrait(town, avoidTrait);
   town.people.push(p); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
   if (!quiet) {
     const kin = kinLabel(town, p) || null;
-    if (role === 'elder') say(town, 'electElder', { who: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, kin }, 'build');
+    if (role === 'elder' && crown) { deed(p, `was named elder of ${town.name} by ${GOVS[crown.f.gov].title(crown.r)} ${crown.r.name}`); say(town, 'appointed', { heir: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, ruler: crown.r.name, title: GOVS[crown.f.gov].title(crown.r), faction: factionName(crown.f), capital: world.towns[crown.f.capital].name, gov: crown.f.gov }, 'build'); }
+    else if (role === 'elder') say(town, 'electElder', { who: p.name, label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, kin }, 'build');
     else if (role === 'chief') say(town, 'electChief', { who: p.name, story: p.story, kin }, 'build');
     else say(town, 'electRole', { who: p.name, role: ROLE_LABEL[role], story: p.story, kin }, 'build');
   }

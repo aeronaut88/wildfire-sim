@@ -32,7 +32,7 @@ function say(town, key, c, kind, at) {
   return text;
 }
 // A town's memory: the handful of things that defined it lately, for the log to call back to.
-const MEMORY_SHORT = { hanging: c => `the hanging of ${c.who}`, famine: () => 'the famine', dragon: c => `${c.who}'s visit`, bigfire: () => 'the great fire', flood: () => 'the flood', war: c => `the war with ${c.who}`, plague: () => 'the plague', festival: () => 'the festival', wedding: c => `${c.who}'s wedding`, sack: c => `the sack by ${c.who}`, revolt: c => `the revolt against ${c.who}`, slain: c => `the killing of ${c.who}`, meteor: () => 'the night the sky fell', exile: c => `the casting out of ${c.who}` };
+const MEMORY_SHORT = { hanging: c => `the hanging of ${c.who}`, famine: () => 'the famine', dragon: c => `${c.who}'s visit`, bigfire: () => 'the great fire', flood: () => 'the flood', war: c => `the war with ${c.who}`, plague: () => 'the plague', festival: () => 'the festival', wedding: c => `${c.who}'s wedding`, sack: c => `the sack by ${c.who}`, revolt: c => `the revolt against ${c.who}`, slain: c => `the killing of ${c.who}`, meteor: () => 'the night the sky fell', exile: c => `the casting out of ${c.who}`, deposed: c => `the removal of ${c.who} from the chair` };
 function remember(town, kind, c) {
   if (!town) return;
   const m = town.memory || (town.memory = []);

@@ -45,8 +45,8 @@ function maybeTradeRoad() {
     const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id;
     world.tradeRoads = world.tradeRoads || {};
     if (world.tradeRoads[key]) continue;
-    if (has(a, 'hermit') || has(b, 'hermit')) continue; // wants nothing from the neighbours
-    if (rel(a, b) < (has(a, 'merchant') || has(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > roadReach(a, b) || Math.random() > 0.25) continue;
+    if (rules(a, 'hermit') || rules(b, 'hermit')) continue; // wants nothing from the neighbours
+    if (rel(a, b) < (rules(a, 'merchant') || rules(b, 'merchant') ? 30 : 50) || atWar(a, b) || Math.hypot(a.cx - b.cx, a.cy - b.cy) > roadReach(a, b) || Math.random() > 0.25) continue;
     const n = world.n;
     const path = roadPath(a.cy * n + a.cx, b.cy * n + b.cx);
     if (!path) continue;

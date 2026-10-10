@@ -74,6 +74,16 @@ function foundGovernment(f, why) {
   recomputeClaims();
 }
 // A new ruler in the capital. For a kingdom the first ruler is the elder's own house; after that the crown passes to kin.
+// What a government looks for in a ruler, on top of the capital's alignment.
+const GOV_TRAITS = { kingdom: ['builder', 'warmonger', 'hoarder'], dominion: ['tyrant', 'miser', 'warmonger'], republic: ['peacemaker', 'scholar', 'builder', 'physician'], horde: ['warmonger', 'tyrant', 'madman'], theocracy: ['prophet', 'scholar', 'firewatch'], merchant: ['merchant', 'miser', 'hoarder'] };
+function rollRulerTrait(f, cap) {
+  const fav = GOV_TRAITS[f.gov] || [], keys = Object.keys(TRAITS);
+  const w = keys.map(k => { const tr = TRAITS[k]; const base = cap.align.moral > 0 ? tr.good : cap.align.moral < 0 ? tr.evil : (cap.align.order < 0 ? tr.chaos : 1); return base * (fav.includes(k) ? 3 : 1); });
+  let r = Math.random() * w.reduce((a, c) => a + c, 0);
+  for (let k = 0; k < keys.length; k++) { r -= w[k]; if (r <= 0) return keys[k]; }
+  return keys[keys.length - 1];
+}
+function sayCrownTrait(f, p, town) { if (!p || !p.trait) return; say(town, 'crownTrait', { ruler: p.name, title: GOVS[f.gov].title(p), faction: factionName(f), label: TRAITS[p.trait].label, blurb: TRAITS[p.trait].blurb, capital: world.towns[f.capital].name }, 'diplo'); }
 function crownRuler(f, heir, how) {
   const cap = world.towns[f.capital]; if (!cap || !cap.people) return null;
   let p = heir;
@@ -82,10 +92,11 @@ function crownRuler(f, heir, how) {
     p = makePersonIn(cap, 'ruler', 30 + Math.random() * 25, f.gov === 'kingdom' && el ? el : null);
     cap.people.push(p); if (cap.people.length > 16) cap.people = cap.people.filter(q => q.alive).slice(-12).concat(cap.people.filter(q => !q.alive).slice(-4));
   }
-  p.role = 'ruler'; p.title = GOVS[f.gov].title(p);
+  p.role = 'ruler'; p.title = GOVS[f.gov].title(p); if (!p.trait) p.trait = rollRulerTrait(f, cap);
   p.story = { kingdom: 'wears the crown as if born to it, which is more or less the case', dominion: 'keeps a list, and the list keeps growing', horde: 'is spoken of in the other towns in a whisper', theocracy: 'hears the will of heaven mostly at mealtimes', republic: 'won the vote and has not stopped mentioning it', merchant: 'counts the coin before the votes' }[f.gov] || p.story;
   f.ruler = { town: cap.id, name: p.name }; if (f.gov === 'kingdom') f.dynasty = p.name.split(' ').slice(-1)[0];
   deed(p, how === 'first' ? `became the first ${p.title} of ${factionName(f)}` : `became ${p.title} of ${factionName(f)}`);
+  sayCrownTrait(f, p, cap);
   return p;
 }
 // Elections: every member town votes for its own elder, weighted by its people and their spirits (or its coin, in a
@@ -103,7 +114,9 @@ function holdElection(f, first) {
   if (!first && inc && capEl && (capEl.trait === 'tyrant' || capEl.trait === 'madman') && win.el !== inc && Math.random() < 0.5) { stolen = true; win = tally.find(c => c.el === inc) || win; }
   // the winner's elder becomes ruler and stays elder of their town
   if (inc && inc !== win.el) { inc.title = undefined; if (inc.role === 'ruler') inc.role = 'townsfolk'; }
+  const newRuler = !inc || inc !== win.el;
   win.el.title = GOVS[f.gov].title(win.el); f.ruler = { town: win.t.id, name: win.el.name }; f.nextElection = world.tick + 2 * YEAR;
+  if (newRuler) sayCrownTrait(f, win.el, win.t);
   const total = tally.reduce((a, c) => a + c.v, 0), share = Math.round(100 * win.v / Math.max(1, total));
   stat('ev', 'elections');
   if (first) { deed(win.el, `was elected the first ${win.el.title} of ${factionName(f)}`); return; }
@@ -160,7 +173,7 @@ function maybeUnions() {
   for (let i = 0; i < towns.length; i++) for (let j = i + 1; j < towns.length; j++) {
     const a = towns[i], b = towns[j];
     if (sameFaction(a, b) || rel(a, b) < 80 || atWar(a, b) || a.popLeft < 30 || b.popLeft < 30) continue;
-    if (has(a, 'hermit') || has(b, 'hermit')) continue;
+    if (rules(a, 'hermit') || rules(b, 'hermit')) continue;
     const key = a.id < b.id ? a.id + '-' + b.id : b.id + '-' + a.id, road = world.tradeRoads && world.tradeRoads[key];
     if (!road || road.building) continue;
     if (world.towns.some(o => o !== a && o !== b && (atWar(o, a) !== atWar(o, b)) && isAlive(o)) && Math.random() < 0.7) continue; // one is at war and the other is not: not yet
@@ -188,20 +201,22 @@ function updateFactions() {
     const towns = factionTowns(f);
     // the family holds together: no wars inside, friends inside, wars shared
     for (const a of towns) for (const b of towns) if (a !== b) { if (atWar(a, b)) { delete a.wars[b.id]; delete b.wars[a.id]; } if (rel(a, b) < 100) setRel(a, b, 100); if (a.master >= 0 && b.id === a.master && f.capital !== b.id) {} }
-    for (const a of towns) for (const o of world.towns) if (isAlive(o) && !f.towns.includes(o.id) && atWar(a, o)) for (const b of towns) if (b !== a && !atWar(b, o) && !has(b, 'peacemaker')) declareWar(b, o, `with ${factionName(f)}`);
+    for (const a of towns) for (const o of world.towns) if (isAlive(o) && !f.towns.includes(o.id) && atWar(a, o)) for (const b of towns) if (b !== a && !atWar(b, o) && !rules(b, 'peacemaker')) declareWar(b, o, `with ${factionName(f)}`);
     // the ruler
     const r = rulerOf(f);
     if (!r && f.ruler) { f.ruler = null; succeedRuler(f, { name: 'the ruler' }); }
     else if (!r && !f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) holdElection(f, false);
-    if (f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) holdElection(f, false);
+    if (f.ruler && (f.gov === 'republic' || f.gov === 'merchant') && world.tick >= f.nextElection) { holdElection(f, false); townElections(f); }
     if (r && (f.gov === 'dominion' || f.gov === 'horde')) {
       const unrest = towns.reduce((a, t) => a + (t.unrest || 0), 0) / towns.length;
       if (f.gov === 'dominion' && unrest > 60 && Math.random() < 0.03) depose(f, 'coup');
       else if (Math.random() < 0.0008) depose(f, 'assassin');
       if (f.gov === 'horde' && world.tick - (f.lastPurge || f.founded) > 3 * YEAR && Math.random() < 0.05) { f.lastPurge = world.tick; purge(f); }
     }
-    // towns that cannot bear it break away
-    if (f.gov === 'dominion' || f.gov === 'horde') for (const t of towns) if (t.id !== f.capital && (t.unrest || 0) >= 80 && Math.random() < 0.03) { const nf = leaveFaction(t, 'the people have had enough'); if (nf) { declareWar(cap, t, 'to bring it back'); break; } }
+    // the crown over the elder: a town whose elder is out of line with the ruler answers for it, by government
+    if (r && r.trait) crownOverElders(f, r, towns);
+    // towns that cannot bear it break away: under a dictator or a horde, or anywhere the crown has reached in twice
+    for (const t of towns) if (t.id !== f.capital && (f.gov === 'dominion' || f.gov === 'horde' || (t.ousted || []).length >= 2) && (t.unrest || 0) >= 80 && Math.random() < 0.03) { const nf = leaveFaction(t, 'the people have had enough'); if (nf) { declareWar(cap, t, 'to bring it back'); break; } }
     // government flavour
     for (const t of towns) {
       if (f.gov === 'dominion') t.unrest = Math.min(100, (t.unrest || 0) + 0.15);
@@ -209,6 +224,75 @@ function updateFactions() {
   }
   maybeUnions();
   if (world.tick - (world.claimTick || -1000) >= 200) recomputeClaims();
+}
+// ── The crown over the elder ──
+// Every faction pass, each member town's elder is measured against the ruler. One who is out of line is
+// warned, replaced, jailed, driven out or denounced, as the government does things; a republic never uses
+// force, its towns vote (townElections). The capital's elder is never touched: the ruler lives there.
+function crownOverElders(f, r, towns) {
+  const gov = f.gov, cap = world.towns[f.capital]; if (!cap) return;
+  for (const t of towns) {
+    if (t.id === f.capital) continue;
+    const l = leader(t); if (!l) continue;
+    if (!outOfLine(t, r)) { t.warned = 0; continue; }
+    if (gov === 'republic' || gov === 'merchant') continue;
+    if (gov === 'kingdom') {
+      if (!t.warned) { t.warned = world.tick; say(t, 'crownWarns', { ruler: r.name, title: GOVS[gov].title(r), faction: factionName(f), elder: l.name, capital: cap.name, gov }, 'diplo'); continue; }
+      if (world.tick - t.warned >= YEAR && Math.random() < 0.08) oust(f, r, t, l, 'crownNames');
+    } else if (gov === 'theocracy') {
+      if (!t.warned) { t.warned = world.tick; continue; }
+      if (world.tick - t.warned >= YEAR / 4 && Math.random() < 0.06) oust(f, r, t, l, 'denounced');
+    } else if (gov === 'dominion') { if (Math.random() < 0.12) oust(f, r, t, l, 'writServed'); }
+    else if (gov === 'horde') { if (Math.random() < 0.1) oust(f, r, t, l, 'hordeDrags'); }
+  }
+}
+function oust(f, r, town, old, key) {
+  const gov = f.gov, cap = world.towns[f.capital], title = GOVS[gov].title(r);
+  let dead = false;
+  old.title = undefined;
+  if (key === 'writServed') { if (Math.random() < 0.3) { dead = true; old.alive = false; old.died = world.tick; old.cause = 'shot on the Dictator\'s writ'; } else { old.role = 'convict'; old.until = world.tick + YEAR; old.labour = false; old.wasRole = 'elder'; } }
+  else if (key === 'hordeDrags') { if (Math.random() < 0.5) { dead = true; old.alive = false; old.died = world.tick; old.cause = 'killed by the warbands'; } else { old.role = 'townsfolk'; exile(town, old, `is driven out of ${town.name} by the warbands with a broken hand and a bundle`); } }
+  else old.role = 'townsfolk';
+  if (!dead) grudgeKin(town, old, 'the crown', `the removal of ${old.name} by ${title} ${r.name}`);
+  // the ruler's choice for the chair, biased to the ruler's own trait
+  const heir = makePersonIn(town, 'elder', 25 + Math.random() * 30, null);
+  heir.trait = Math.random() < 0.6 ? r.trait : rollTrait(town, old.trait);
+  town.people.push(heir); if (town.people.length > 14) town.people = town.people.filter(q => q.alive).slice(-10).concat(town.people.filter(q => !q.alive).slice(-4));
+  deed(old, `was put out of the chair at ${town.name} by ${title} ${r.name}`); deed(heir, `was named elder of ${town.name} by ${title} ${r.name}`); deed(r, `removed ${old.name} from the chair at ${town.name}`);
+  town.unrest = Math.min(100, (town.unrest || 0) + { crownNames: 8, writServed: 15, hordeDrags: 12, denounced: 4 }[key]);
+  if (key === 'hordeDrags') town.militia = Math.floor(town.militia * 0.9);
+  town.ousted = (town.ousted || []).filter(k => world.tick - k < 3 * YEAR); town.ousted.push(world.tick); town.warned = 0;
+  remember(town, 'deposed', { who: old.name }); stat('ev', 'oustings');
+  say(town, key, { ruler: r.name, title, faction: factionName(f), elder: old.name, heir: heir.name, label: TRAITS[heir.trait].label, blurb: TRAITS[heir.trait].blurb, capital: cap.name, gov, dead }, 'war');
+  if (dead && typeof funeral === 'function') funeral(town, old, false);
+  if (town.ousted.length >= 2) { town.unrest = Math.min(100, town.unrest + 25); if (!town.chafedAt || world.tick - town.chafedAt > YEAR) { town.chafedAt = world.tick; say(town, 'chafes', { capital: cap.name }, 'war'); } }
+  if (cap !== town) sendTraveller(cap, town, 'envoy', { delta: 0 }); // the writ has a body: someone walks it from the capital
+}
+// Under a republic every member town votes for its own elder on the faction's election day. The ruler backs
+// whichever candidate is nearer their own trait; the voters weigh spirits against unrest.
+function townElections(f) {
+  const towns = factionTowns(f), r = rulerOf(f), cap = world.towns[f.capital]; if (!cap) return;
+  const title = r ? GOVS[f.gov].title(r) : GOVS[f.gov].title(null), changed = [];
+  for (const t of towns) {
+    const inc = leader(t); if (!inc || !t.people || inc === r) continue;
+    let ch = t.people.find(q => q.alive && q.role === 'townsfolk' && q !== inc && personAge(q) >= 25);
+    if (!ch) { ch = makePersonIn(t, 'townsfolk', 28 + Math.random() * 25); t.people.push(ch); }
+    if (!ch.trait) ch.trait = rollTrait(t);
+    const cheer = cheerOf(t), unrest = t.unrest || 0;
+    const incLine = !r || !r.trait || traitDistance(inc.trait, r.trait) <= OUT_OF_LINE, chLine = !r || !r.trait || traitDistance(ch.trait, r.trait) <= OUT_OF_LINE;
+    const backsInc = !!(r && incLine && !chLine), backsCh = !!(r && chLine && !incLine);
+    const vi = Math.max(1, 50 + cheer / 2 - unrest / 2 + (incLine ? 10 : -10) + (backsInc ? 10 : 0) + (Math.random() - 0.5) * 20);
+    const vc = Math.max(1, 50 + unrest / 2 - cheer / 2 + (backsCh ? 10 : 0) + (Math.random() - 0.5) * 30);
+    const share = Math.round(100 * Math.max(vi, vc) / (vi + vc)), swap = vc > vi;
+    if (swap) {
+      inc.role = 'townsfolk'; ch.role = 'elder'; changed.push(t);
+      if (Math.random() < 0.4) inc.grudge = { against: ch.name, why: `losing the chair at ${t.name}`, since: world.tick, over: inc.name };
+      deed(ch, `won the chair at ${t.name} with ${share}% of the vote`); deed(inc, `lost the chair at ${t.name} at the ballot`);
+    } else deed(inc, `kept the chair at ${t.name} with ${share}% of the vote`);
+    if (towns.length <= 3) say(t, 'townVotes', { winner: swap ? ch.name : inc.name, loser: swap ? inc.name : ch.name, share, backed: backsInc || backsCh, incumbent: swap, title, ruler: r ? r.name : 'the President', capital: cap.name }, 'diplo');
+  }
+  stat('ev', 'townElections', towns.length);
+  if (towns.length > 3) say(cap, 'republicVotes', { faction: factionName(f), changed: changed.length, towns: changed.map(t => t.name).join(', '), title, ruler: r ? r.name : 'the President' }, 'diplo');
 }
 // Deaths that reach a ruler: killNotable and agePeople take anyone; the next check notices the empty seat.
 function rulerDied(town, p) { for (const id in world.factions || {}) { const f = world.factions[id]; if (f.ruler && f.ruler.town === town.id && f.ruler.name === p.name) { f.ruler = null; succeedRuler(f, p); } } }

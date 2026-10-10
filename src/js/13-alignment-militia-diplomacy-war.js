@@ -27,7 +27,7 @@ function declareWar(a, b, why) {
   for (const t of [a, b]) { const [x, y] = cellCenter(t.cy * world.n + t.cx); popups.push({ x, y: y - t.R * cellPx - 14, text: 'WAR', color: '#ff4040', t0: performance.now(), dur: 2500 }); }
   // Leagues: a friend of the one attacked may come in.
   if (!why || !/for its ally/.test(why)) for (const o of world.towns) {
-    if (o === a || o === b || !isAlive(o) || atWar(o, a) || rel(o, b) < 60 || o.align.moral < 0 || has(o, 'peacemaker') || has(o, 'hermit') || o.militia < 6) continue;
+    if (o === a || o === b || !isAlive(o) || atWar(o, a) || rel(o, b) < 60 || o.align.moral < 0 || rules(o, 'peacemaker') || rules(o, 'hermit') || o.militia < 6) continue;
     if (Math.random() < 0.5) { const pn = pairNote(o, a); if (!(pn.peaceAt !== undefined && world.tick - pn.peaceAt < YEAR)) say(o, 'standsWithAlly', { other: b.name }, 'war'); declareWar(o, a, `for its ally ${b.name}`); }
   }
 }
@@ -36,7 +36,7 @@ function updateCouncil() {
   const c = world.council;
   if (!c) {
     if (world.tick % (YEAR * 3) !== YEAR) return;
-    const towns = world.towns.filter(t => isAlive(t) && t.popLeft >= 20 && !has(t, 'hermit'));
+    const towns = world.towns.filter(t => isAlive(t) && t.popLeft >= 20 && !rules(t, 'hermit'));
     if (towns.length < 3) return;
     const host = towns.slice().sort((p, q) => q.popLeft - p.popLeft)[0];
     const members = towns.filter(t => t !== host && !atWar(t, host) && sendTraveller(t, host, 'council', {}));
@@ -154,11 +154,11 @@ function updateDiplomacy() {
     const r = rel(a, b);
     if (!atWar(a, b) && r < -60) {
       const agg = a.align.moral < 0 || a.align.order < 0 ? a : (b.align.moral < 0 || b.align.order < 0 ? b : null);
-      if (agg && Math.random() < 0.35 * (has(agg, 'warmonger') ? 2.5 : has(agg, 'peacemaker') ? 0.15 : has(agg, 'tyrant') ? 1.5 : 1)) { const vic = agg === a ? b : a; declareWar(agg, vic, agg.covets && agg.covets.town === vic.id ? `over the ${agg.covets.res} seams` : ''); }
+      if (agg && Math.random() < 0.35 * (rules(agg, 'warmonger') ? 2.5 : rules(agg, 'peacemaker') ? 0.15 : rules(agg, 'tyrant') ? 1.5 : 1) * (has(agg, 'warmonger') ? 1.25 : has(agg, 'peacemaker') ? 0.75 : 1)) { const vic = agg === a ? b : a; declareWar(agg, vic, agg.covets && agg.covets.town === vic.id ? `over the ${agg.covets.res} seams` : ''); }
     } else if (atWar(a, b)) {
       const since = world.tick - a.wars[b.id];
       const exhausted = since > 700 || Math.min(a.popLeft, b.popLeft) < 12 || (a.militia < 3 && b.militia < 3);
-      const peaceful = has(a, 'peacemaker') || has(b, 'peacemaker'), stubborn = has(a, 'warmonger') || has(b, 'warmonger');
+      const peaceful = rules(a, 'peacemaker') || rules(b, 'peacemaker'), stubborn = rules(a, 'warmonger') || rules(b, 'warmonger');
       if ((exhausted && Math.random() < (peaceful ? 0.7 : stubborn ? 0.12 : 0.3)) || r > (peaceful ? -45 : -30)) makePeace(a, b, exhausted ? 'out of exhaustion' : peaceful ? 'at the peacemaker\'s urging' : '');
     } else if (r > 60 && Math.random() < 0.05) { if (onceIn(pairNote(a, b), 'allyLogged', YEAR * 2)) { const [x, y] = Math.random() < 0.5 ? [a, b] : [b, a]; say(x, 'allies', { other: y.name, o: y }, 'diplo'); } }
   }
@@ -182,10 +182,10 @@ function maybeRaid(t) {
   if (!others.length) return;
   let target = null, p = 0;
   const enemies = others.filter(o => atWar(t, o));
-  if (enemies.length) { target = enemies[Math.floor(Math.random() * enemies.length)]; p = 0.009 * (has(t, 'warmonger') ? 2 : has(t, 'peacemaker') ? 0.4 : 1); }
+  if (enemies.length) { target = enemies[Math.floor(Math.random() * enemies.length)]; p = 0.009 * (rules(t, 'warmonger') ? 2 : rules(t, 'peacemaker') ? 0.4 : 1); }
   else if (t.align.moral < 0 || t.align.order < 0) {
     const grudges = others.filter(o => rel(t, o) < -20);
-    if (grudges.length) { target = grudges[Math.floor(Math.random() * grudges.length)]; p = (t.align.moral < 0 ? 0.0015 : 0.0008) * (has(t, 'warmonger') ? 2.5 : has(t, 'tyrant') ? 1.5 : 1); }
+    if (grudges.length) { target = grudges[Math.floor(Math.random() * grudges.length)]; p = (t.align.moral < 0 ? 0.0015 : 0.0008) * (rules(t, 'warmonger') ? 2.5 : rules(t, 'tyrant') ? 1.5 : 1); }
     else if (t.align.order < 0 && t.align.moral <= 0) { target = others[Math.floor(Math.random() * others.length)]; p = 0.0003; }
   }
   if (target && target.spy && target.spy.from === t.id) p *= 1.5; // somebody inside is telling them when the walls are thin

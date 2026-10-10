@@ -489,3 +489,23 @@ PHRASES.caravan.push(
   c => `${c.name} gets word ${daypart()}: a caravan on the ${c.edge} road, a day out`,
   c => `Bells on the ${c.edge} road. A caravan, and it is ${c.name} it wants`,
 );
+
+// ── Sprawl: the slums burn and the far edge catches. Said once in a half-year per town; the fires happen regardless. ──
+Object.assign(PHRASES, {
+  slumTorch: [
+    c => `Riots in ${c.name}. Someone put a torch to the slums.`,
+    c => `The slums at ${c.name} are burning ${daypart()}, and nobody in the crowd will say who struck the match. ${twMood(c.town)}`,
+    c => `A riot in the tenement streets of ${c.name} ${weatherWord()}; a lamp goes through a window and the back row catches`,
+    c => `${c.name}'s poorest street is alight and the crowd that lit it is still in it, shouting at ${twElder(c.town)}`,
+    c => `Smoke from the slums of ${c.name}. ${twFolk(c.town)} says it was the rent; ${twElder(c.town)} says it was the drink. It was both`,
+    c => `The tenements at ${c.name} burn again. The same families, the same street, and the constable does not hurry`,
+  ],
+  sprawlFire: [
+    c => `A kitchen fire on the far edge of sprawling ${c.name} goes unnoticed`,
+    c => `${c.name} has grown past the reach of its own bell. A hearth on the far edge catches ${daypart()} and nobody is near enough to smell it`,
+    c => `Out where ${c.name} thins into sheds and gardens, a stove is left burning. The town will hear of it when the wind brings the smoke`,
+    c => `A pot boils over in the last house on the ${seasonWord()} road out of ${c.name}, and the thatch takes it. No one is watching that end of town`,
+    c => `${c.name} sprawls, and the far edge pays for it: a fire starts there ${weatherWord()} with the nearest crew a long run away`,
+    c => `A chimney spark in the new streets at the edge of ${c.name}. ${twFolk(c.town)} sees it from the fields and starts running`,
+  ],
+});

@@ -10,7 +10,7 @@ function updateTrader() {
     if (world.tick < 250 || world.tick < world.nextTrader || world.tick < world.traderWary || Math.random() > 0.004 * seasonMul) return;
     const living = world.towns.filter(t => isAlive(t) && !((t.plagueUntil || 0) > world.tick)); if (!living.length) return;
     // Smaller towns get a little extra attention, so the valley is not just one superpower's market.
-    const weights = living.map(t => (20 + t.popLeft * 0.5 + Math.max(0, 90 - t.popLeft)) * (has(t, 'merchant') ? 2.5 : has(t, 'hermit') ? 0.25 : 1)); let r = Math.random() * weights.reduce((a, b) => a + b, 0), town = living[0];
+    const weights = living.map(t => (20 + t.popLeft * 0.5 + Math.max(0, 90 - t.popLeft)) * (rules(t, 'merchant') ? 2.5 : rules(t, 'hermit') ? 0.25 : 1)); let r = Math.random() * weights.reduce((a, b) => a + b, 0), town = living[0];
     for (let k = 0; k < living.length; k++) { r -= weights[k]; if (r <= 0) { town = living[k]; break; } }
     const edges = [[town.cx, 0], [town.cx, n - 1], [0, town.cy], [n - 1, town.cy]];
     edges.sort((a, b) => Math.hypot(a[0] - town.cx, a[1] - town.cy) - Math.hypot(b[0] - town.cx, b[1] - town.cy));
@@ -71,7 +71,7 @@ function holdMarket(tr, town) {
   }
   // Then what it is short of, cheapest first, as long as the coin holds out.
   if (!Number.isFinite(town.res.coin)) town.res.coin = 0;
-  const thrifty = has(town, 'miser') || has(town, 'hoarder');
+  const thrifty = rules(town, 'miser') || rules(town, 'hoarder');
   const tw = techWants(town);
   const wants = Object.keys(tr.stock).filter(k => !LIVESTOCK.includes(k) && (tw.has(k) || (town.res[k] || 0) < resCap(town, k) * (thrifty ? 0.15 : 0.4))).sort((a, b) => (tw.has(b) - tw.has(a)) || PRICE[a] - PRICE[b]);
   for (const k of wants) {

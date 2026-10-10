@@ -53,7 +53,7 @@ function maybeDragon(force) {
   // Riches: weight by population squared.
   const pickTown = (exclude) => {
     const pool = towns.filter(t => !exclude.includes(t)); if (!pool.length) return null;
-    const wgt = t => t.popLeft * t.popLeft * (has(t, 'hoarder') ? 4 : 1) * (1 + (t.res ? (t.res.coin + t.res.gold * 10) / 400 : 0));
+    const wgt = t => t.popLeft * t.popLeft * (rules(t, 'hoarder') ? 4 : 1) * (1 + (t.res ? (t.res.coin + t.res.gold * 10) / 400 : 0));
     let sum = 0; for (const t of pool) sum += wgt(t);
     let r = Math.random() * sum; for (const t of pool) { r -= wgt(t); if (r <= 0) return t; } return pool[pool.length - 1];
   };

@@ -165,7 +165,7 @@ function applyLosses(t, dead, cause) {
 function maybeSendAid(town) {
   const sent = [];
   for (const o of world.towns) {
-    if (o === town || !isAlive(o) || o.mobilized || rel(o, town) < ((world.councilWatch || 0) > world.tick ? 20 : 60) || o.align.moral < 0 || o.popLeft < 30 || has(o, 'hermit')) continue;
+    if (o === town || !isAlive(o) || o.mobilized || rel(o, town) < ((world.councilWatch || 0) > world.tick ? 20 : 60) || o.align.moral < 0 || o.popLeft < 30 || rules(o, 'hermit')) continue;
     if (Math.random() > 0.6) continue;
     const k = 1 + Math.floor(Math.random() * 3);
     const home = musterPoint(o); if (home < 0) continue;

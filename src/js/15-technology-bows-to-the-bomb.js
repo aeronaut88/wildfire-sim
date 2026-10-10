@@ -75,12 +75,13 @@ function updateTech(t) {
   if (t.powerNeed > 0) pts *= 0.5 + 0.5 * (t.powerRatio === undefined ? 1 : t.powerRatio); // brownouts slow the labs
   if (t.power > t.powerNeed) pts *= 1.3; // lamps in the workshops: a powered town learns faster
   if (cheerOf(t) >= 70) pts *= 1.1; else if (cheerOf(t) < 30) pts *= 0.85; // spirits
-  if (has(t, 'scholar')) pts *= 1.4; else if (has(t, 'prophet')) pts *= 0.6; else if (has(t, 'madman')) pts *= 0.8;
-  const m = militarism(t);
+  if (rules(t, 'scholar')) pts *= 1.4; else if (rules(t, 'prophet')) pts *= 0.6; else if (rules(t, 'madman')) pts *= 0.8;
+  const rt = rulerTraitOf(t); // the ruler's leaning nudges every town's research the same way
+  const m = Math.max(0, Math.min(1, militarism(t) + (rt === 'warmonger' ? 0.1 : rt === 'builder' || rt === 'scholar' ? -0.1 : 0)));
   t.research += pts;
   // Split research between tracks by temperament, unless one track is banked and waiting: then all of it goes where it can still be spent.
   const mb = milBanked(t), cb = civBanked(t), kb = craftBanked(t);
-  const cs = kb ? 0 : (mb && cb ? 1 : craftShare(t)), rest = 1 - cs; // the kitchen and the workshops take their share first
+  const cs = kb ? 0 : (mb && cb ? 1 : Math.min(0.5, craftShare(t) + (rt === 'merchant' || rt === 'greenthumb' ? 0.1 : 0))), rest = 1 - cs; // the kitchen and the workshops take their share first
   const milShare = mb && !cb ? 0 : cb && !mb ? rest : rest * Math.min(0.85, m), civShare = rest - milShare; // even a warlord's town keeps a few scholars
   t.milPts = (t.milPts || 0) + pts * milShare; t.civPts = (t.civPts || 0) + pts * civShare; t.craftPts = (t.craftPts || 0) + pts * cs;
   if (t.mil < milCap(t) && t.milPts >= MIL_COST[t.mil + 1]) {

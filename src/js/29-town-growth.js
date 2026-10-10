@@ -161,13 +161,13 @@ function bigCityTroubles(town) {
   }
   if (over > 0 && town.popLeft >= 500 && town.align.order < 0 && Math.random() < 0.004 * over) {
     const homes = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0);
-    if (homes.length) { const h = homes[Math.floor(Math.random() * homes.length)]; if (!world.mat[h] || Math.random() < 0.35) ignite(h); log(`Riots in ${town.name}. Someone put a torch to the slums.`, 'arson'); }
+    if (homes.length) { const h = homes[Math.floor(Math.random() * homes.length)]; if (!world.mat[h] || Math.random() < 0.35) ignite(h); if (twDue(town, 'slumTorch', YEAR / 2)) say(town, 'slumTorch', {}, 'arson'); }
     return;
   }
   if (over > 1 && Math.random() < 0.0015 * over) {
     // Sprawl outruns the fire watch: the far edge catches without anyone noticing for a while.
     const edge = town.buildings.filter(i => isHome(world.type[i]) && world.burnLeft[i] <= 0 && Math.hypot(i % world.n - town.cx, Math.floor(i / world.n) - town.cy) > town.R - 1.5);
-    if (edge.length) { ignite(edge[Math.floor(Math.random() * edge.length)]); town.lastThreat = world.tick - 30; log(`A kitchen fire on the far edge of sprawling ${town.name} goes unnoticed`, 'alarm'); }
+    if (edge.length) { ignite(edge[Math.floor(Math.random() * edge.length)]); town.lastThreat = world.tick - 30; if (twDue(town, 'sprawlFire', YEAR / 2)) say(town, 'sprawlFire', {}, 'alarm'); }
   }
 }
 

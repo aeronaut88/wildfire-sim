@@ -618,6 +618,31 @@ can expose a seam too. Every town within a walk will want it.
 - Towns that cannot bear a dictator or a supreme leader break away, and the capital goes to war
   to bring them back. A faction whose capital falls dissolves.
 
+### The crown over the elder
+
+A faction's ruler has a personality of their own, rolled at the crowning with a government's
+leanings (a horde favours warmongers and tyrants, a republic peacemakers and scholars, a
+merchant republic merchants and misers) or carried over from the elder who won the vote. In a
+governed faction a town answers to the **ruler's** trait in its dealings with the world: war and
+peace, who it helps, councils, roads and unions, how it haggles with the caravan, how fast and in
+which direction it researches. The elder's own trait still runs the streets (justice, building,
+farming, drink) and keeps a quarter say in whether the town goes to war.
+
+An elder whose trait sits far from the ruler's (a peacemaker under a warmonger, a tyrant under a
+scholar) is out of line, and every government has its way with that. A kingdom sends a letter
+first and, a year later, names a new elder by the royal seal. A dominion serves a writ with the
+capital's militia: the elder goes to the gaol, or is shot. A horde's warbands drag the elder out
+and kill or exile them. A theocracy denounces from the pulpit and the elder retires to a shrine.
+A republic never uses force: on the faction's election day every member town votes for its own
+elder, the ruler backing whichever candidate is nearer their own trait, and a town that wants a
+change gets one at the ballot. Outside a republic, when a chair falls empty the ruler appoints
+(usually someone of their own stripe); the capital's elder is never touched. The new elder is
+often in line, so the town falls into step with the faction, but a family that lost its elder to
+the crown remembers, a town reached into twice in three years chafes and may break away under
+any government, and someone always walks the writ from the capital. The town card shows who a
+town answers to, the ruler's trait, when the next election falls, and whether the elder is out
+of favour. `tests/crown.mjs` drives all six governments and checks each one reaches in or votes.
+
 ## The log does not repeat itself
 
 The log is the game, and it is written to be read for an hour without seeing the same kind of
@@ -758,6 +783,7 @@ tag the commit `vX.Y`. The history is tagged back to the first commit:
 | v0.8 | factions: borders, unions, conquest, governments and rulers |
 | v0.9 | zoom to 40x, valleys up to 500 wide, the hand of god |
 | v0.10 | a log that does not repeat itself, new-valley settings on the Play tab, versions |
+| v0.11 | the crown over the elder: rulers with traits that direct their towns, oustings by government, town elections |
 
 ## Safety
 

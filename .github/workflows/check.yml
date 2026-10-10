@@ -27,3 +27,4 @@ jobs:
           node tests/boot.mjs
           node tests/soak.mjs ci 20
           node tests/save.mjs
+          node tests/crown.mjs
